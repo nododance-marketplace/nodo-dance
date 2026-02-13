@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  role          String    @default("DANCER")
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts           Account[]
+  sessions           Session[]
+  instructorProfile  InstructorProfile?
+  submittedEvents    Event[]
+  savedInstructors   SavedInstructor[]
+  savedEvents        SavedEvent[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model InstructorProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  slug        String  @unique
+  displayName String
+  headline    String? // Short tagline
+  bio         String?
+  photoUrl    String?
+
+  // Teaching details
+  styles         String // JSON array
+  otherStyle     String? // Free text for "Other" dance style
+  skillLevels    String // JSON array (beginner/intermediate/advanced)
+  offerings      String @default("[]") // JSON array of offerings
+  languages      String @default("[]") // JSON array of languages
+  yearsTeaching  Int? // Years of teaching experience
+  studentsTaught Int? // Number of students taught
+  certifications String? // Newline-separated certifications
+  rating         Float @default(4.9) // Default placeholder rating
+
+  // Pricing
+  offersPrivate       Boolean @default(false)
+  privateRateHourly   Int?
+  offersGroup         Boolean @default(false)
+  groupRatePerClass   Int?
+  groupClassNotes     String?
+
+  // Location
+  locationType       String?
+  neighborhood       String?
+  address            String?
+  travelRadiusMiles  Int?
+
+  // Payment methods
+  paymentCash    Boolean @default(false)
+  paymentVenmo   String?
+  paymentCashApp String?
+  paymentPayPal  String?
+
+  // Social
+  instagramUrl String?
+  websiteUrl   String?
+  bookingUrl   String? // External booking/calendar link
+  youtubeUrl   String? // YouTube video URL
+  tiktokUrl    String? // TikTok profile URL
+
+  isPublished Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  lessonRequests   LessonRequest[]
+  savedBy          SavedInstructor[]
+}
+
+model SavedInstructor {
+  id           String   @id @default(cuid())
+  userId       String
+  instructorId String
+  createdAt    DateTime @default(now())
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instructor InstructorProfile @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, instructorId])
+  @@index([userId])
+}
+
+model SavedEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+}
+
+model LessonRequest {
+  id                  String   @id @default(cuid())
+  instructorProfileId String
+  instructorProfile   InstructorProfile @relation(fields: [instructorProfileId], references: [id], onDelete: Cascade)
+
+  studentName      String
+  studentEmail     String
+  studentPhone     String?
+  style            String
+  lessonType       String
+  preferredTimes   String
+  message          String
+
+  createdAt DateTime @default(now())
+
+  @@index([instructorProfileId])
+}
+
+model Event {
+  id     String      @id @default(cuid())
+  status String @default("PENDING")
+
+  title       String
+  eventType   String
+  styles      String    // JSON array
+
+  startDateTime DateTime
+  endDateTime   DateTime?
+
+  venueName    String
+  neighborhood String?
+  address      String?
+
+  price Int? // null = free
+
+  organizerName  String
+  organizerEmail String
+  instagramUrl   String?
+  websiteUrl     String?
+
+  description String
+  imageUrl    String?
+
+  submittedByUserId String?
+  submittedBy       User?   @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  savedBy SavedEvent[]
+
+  @@index([status])
+  @@index([startDateTime])
+  @@index([eventType])
+}
+
+model RateLimitEntry {
+  id         String   @id @default(cuid())
+  identifier String   // IP or email
+  action     String   // e.g., "submit-event", "lesson-request"
+  count      Int      @default(1)
+  windowStart DateTime @default(now())
+
+  @@unique([identifier, action])
+  @@index([identifier, action, windowStart])
+}

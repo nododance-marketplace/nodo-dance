@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(ls:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npm install:*)",
+      "Bash(test:*)",
+      "Bash(fi)",
+      "Bash(npx next build:*)",
+      "Bash(timeout 15 npx next dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(cmd /c:*)"
+    ]
+  }
+}
