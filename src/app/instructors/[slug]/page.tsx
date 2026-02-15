@@ -9,11 +9,12 @@ export const dynamic = 'force-dynamic'
 export default async function InstructorProfilePage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
+  const { slug } = await params
   const [instructor, session] = await Promise.all([
     prisma.instructorProfile.findUnique({
-      where: { slug: params.slug, isPublished: true },
+      where: { slug, isPublished: true },
       include: {
         user: {
           select: {

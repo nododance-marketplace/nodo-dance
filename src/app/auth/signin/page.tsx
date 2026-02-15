@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Mail } from 'lucide-react'
 
 export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+      <SignInContent />
+    </Suspense>
+  )
+}
+
+function SignInContent() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)

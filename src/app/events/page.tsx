@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { EventCard } from '@/components/events/event-card'
@@ -19,6 +19,14 @@ import {
 } from '@/lib/calendar-utils'
 
 export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><div className="bg-white rounded-xl h-96 animate-pulse" /></div>}>
+      <EventsContent />
+    </Suspense>
+  )
+}
+
+function EventsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
