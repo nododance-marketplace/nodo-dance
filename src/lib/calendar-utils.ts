@@ -46,6 +46,7 @@ export function groupEventsByDate<T extends { startDateTime: Date | string }>(
   events: T[]
 ): Map<string, T[]> {
   const grouped = new Map<string, T[]>()
+  if (!Array.isArray(events)) return grouped
 
   for (const event of events) {
     const date = typeof event.startDateTime === 'string'

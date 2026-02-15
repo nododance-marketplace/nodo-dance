@@ -34,9 +34,14 @@ export default function InstructorsPage() {
     try {
       const response = await fetch(`/api/instructors?${params}`)
       const data = await response.json()
-      setInstructors(data)
+      const instructorsArray = Array.isArray(data) ? data : []
+      if (process.env.NODE_ENV !== 'production' && !Array.isArray(data)) {
+        console.log('[Instructors] API returned non-array:', data)
+      }
+      setInstructors(instructorsArray)
     } catch (error) {
       console.error('Error fetching instructors:', error)
+      setInstructors([])
     } finally {
       setLoading(false)
     }

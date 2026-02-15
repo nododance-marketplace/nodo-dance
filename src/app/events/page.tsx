@@ -89,9 +89,14 @@ function EventsContent() {
     try {
       const response = await fetch(`/api/events?${params}`)
       const data = await response.json()
-      setEvents(data)
+      const eventsArray = Array.isArray(data) ? data : []
+      if (process.env.NODE_ENV !== 'production' && !Array.isArray(data)) {
+        console.log('[Events] API returned non-array:', data)
+      }
+      setEvents(eventsArray)
     } catch (error) {
       console.error('Error fetching events:', error)
+      setEvents([])
     } finally {
       setLoading(false)
     }
