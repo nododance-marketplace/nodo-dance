@@ -13,11 +13,11 @@ export function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="mb-4">
               <Image
-                src="/Title.png"
+                src="/Title-white.png"
                 alt="Nodo Dance"
                 width={800}
                 height={225}
-                className="h-10 w-auto brightness-0 invert"
+                className="h-10 w-auto"
               />
             </div>
             <p className="text-gray-300 mb-4">
