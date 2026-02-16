@@ -36,6 +36,7 @@ const schema = z.object({
   honeypot: z.string().max(0),
   isRecurring: z.boolean().default(false),
   recurrenceWeeks: z.string().optional(),
+  recurrenceInterval: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -68,6 +69,7 @@ const DEFAULT_VALUES: Partial<FormData> = {
   honeypot: '',
   isRecurring: false,
   recurrenceWeeks: '',
+  recurrenceInterval: '1',
 }
 
 export default function SubmitEventPage() {
@@ -82,6 +84,7 @@ function SubmitEventContent() {
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const editId = searchParams.get('edit')
+  const seriesMode = searchParams.get('series') === 'true'
   const isLoggedIn = !!session?.user
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -110,12 +113,14 @@ function SubmitEventContent() {
   // Load event data for edit mode, or draft for new submission
   useEffect(() => {
     if (editId) {
-      // Edit mode: fetch event data
+      // Edit mode: fetch event data (supports admin + owner via ?id= param)
       setEditLoading(true)
-      fetch('/api/events/my')
-        .then((res) => res.json())
-        .then((events: any[]) => {
-          const event = events.find((e: any) => e.id === editId)
+      fetch(`/api/events/my?id=${editId}`)
+        .then((res) => {
+          if (!res.ok) throw new Error('Event not found')
+          return res.json()
+        })
+        .then((event: any) => {
           if (event) {
             const start = new Date(event.startDateTime)
             const end = event.endDateTime ? new Date(event.endDateTime) : null
@@ -276,8 +281,12 @@ function SubmitEventContent() {
       // Convert recurrenceWeeks string to number for API
       if (data.isRecurring && data.recurrenceWeeks) {
         payload.recurrenceWeeks = parseInt(data.recurrenceWeeks)
+        payload.recurrenceInterval = parseInt(data.recurrenceInterval || '1')
       }
-      if (isEdit) payload.eventId = editId
+      if (isEdit) {
+        payload.eventId = editId
+        if (seriesMode) payload.editSeries = true
+      }
       const response = await fetch('/api/events/submit', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -296,8 +305,13 @@ function SubmitEventContent() {
       }
 
       const result = await response.json()
-      const recurringMsg = result.count ? ` (${result.count} weekly occurrences)` : ''
-      toast.success(isEdit ? 'Event updated!' : `Event submitted!${recurringMsg}`, { id: submitToast })
+      const recurringMsg = result.count ? ` (${result.count} occurrences)` : ''
+      const successMsg = result.seriesUpdated
+        ? 'Series updated!'
+        : isEdit
+        ? 'Event updated!'
+        : `Event submitted!${recurringMsg}`
+      toast.success(successMsg, { id: submitToast })
       if (!isEdit) clearDraft()
       if (result.count) setSubmittedCount(result.count)
       setSuccess(true)
@@ -315,12 +329,16 @@ function SubmitEventContent() {
         <Card>
           <CardContent className="p-8 text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-4">{editId ? 'Event Updated!' : 'Event Submitted!'}</h1>
+            <h1 className="text-3xl font-bold mb-4">
+              {seriesMode ? 'Series Updated!' : editId ? 'Event Updated!' : 'Event Submitted!'}
+            </h1>
             <p className="text-lg text-gray-600 mb-6">
-              {editId
-                ? 'Your event has been updated and will be re-reviewed by our team.'
+              {seriesMode
+                ? 'All occurrences in the series have been updated.'
+                : editId
+                ? 'Your event has been updated.'
                 : submittedCount > 0
-                ? `Your weekly event series (${submittedCount} occurrences) has been submitted. It will be reviewed by our team and published shortly.`
+                ? `Your event series (${submittedCount} occurrences) has been submitted. It will be reviewed by our team and published shortly.`
                 : 'Thank you for submitting your event. It will be reviewed by our team and published shortly.'}
             </p>
             <div className="flex gap-3 justify-center">
@@ -344,10 +362,10 @@ function SubmitEventContent() {
       ) : (<>
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
-          {editId ? 'Edit Event' : 'Submit an Event'}
+          {seriesMode ? 'Edit Series' : editId ? 'Edit Event' : 'Submit an Event'}
         </h1>
         <p className="text-lg text-gray-600">
-          {editId ? 'Update your event details below.' : 'Share your dance event with the community. It\u0027s free!'}
+          {seriesMode ? 'Update all occurrences in this series.' : editId ? 'Update your event details below.' : 'Share your dance event with the community. It\u0027s free!'}
         </p>
       </div>
 
@@ -470,6 +488,19 @@ function SubmitEventContent() {
               </div>
             </div>
 
+            {/* Series Edit Banner */}
+            {editId && seriesMode && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center gap-3">
+                <Repeat className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-indigo-700">Editing entire series</p>
+                  <p className="text-sm text-indigo-600">
+                    Changes will apply to all occurrences. Individual dates will not be changed.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Recurring Event */}
             {!editId && (
               <div className="border border-gray-200 rounded-lg p-4">
@@ -487,10 +518,10 @@ function SubmitEventContent() {
                       <div>
                         <span className="font-medium flex items-center gap-2">
                           <Repeat className="w-4 h-4" />
-                          This event repeats weekly
+                          This event repeats
                         </span>
                         <p className="text-sm text-gray-500">
-                          Automatically create multiple occurrences on the same day each week
+                          Automatically create multiple occurrences
                         </p>
                       </div>
                     </label>
@@ -500,8 +531,31 @@ function SubmitEventContent() {
                 {watchIsRecurring && (
                   <div className="mt-4 ml-8 space-y-3">
                     <div>
+                      <label className="block text-sm font-medium mb-1">Repeat frequency</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            value="1"
+                            {...register('recurrenceInterval')}
+                            className="text-primary focus:ring-primary"
+                          />
+                          <span className="text-sm">Every week</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            value="2"
+                            {...register('recurrenceInterval')}
+                            className="text-primary focus:ring-primary"
+                          />
+                          <span className="text-sm">Every 2 weeks</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium mb-1">
-                        Number of weeks (2-52)
+                        Number of occurrences (2-52)
                       </label>
                       <Input
                         type="number"
@@ -513,7 +567,9 @@ function SubmitEventContent() {
                     </div>
                     {watchRecurrenceWeeks && parseInt(watchRecurrenceWeeks) >= 2 && (
                       <p className="text-sm text-indigo-600 font-medium">
-                        This will create {parseInt(watchRecurrenceWeeks)} weekly events starting from your selected date.
+                        This will create {parseInt(watchRecurrenceWeeks)} events,{' '}
+                        {watch('recurrenceInterval') === '2' ? 'every 2 weeks' : 'every week'},{' '}
+                        starting from your selected date.
                       </p>
                     )}
                     <p className="text-xs text-gray-500">

@@ -2,12 +2,17 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime, parseJsonArray, formatCurrency } from '@/lib/utils'
-import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat } from 'lucide-react'
+import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat, Pencil } from 'lucide-react'
+
+function getIntervalLabel(event: any): string {
+  return event.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'
+}
 
 export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const router = useRouter()
@@ -215,6 +220,25 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
     return { singles, series }
   }, [pendingEvents])
 
+  // Group approved events: singles vs recurring series
+  const approvedGroups = useMemo(() => {
+    const singles: any[] = []
+    const seriesMap = new Map<string, any[]>()
+    approvedEvents.forEach((e) => {
+      if (e.recurrenceGroupId) {
+        const group = seriesMap.get(e.recurrenceGroupId) || []
+        group.push(e)
+        seriesMap.set(e.recurrenceGroupId, group)
+      } else {
+        singles.push(e)
+      }
+    })
+    const series = Array.from(seriesMap.values()).map((group) =>
+      group.sort((a: any, b: any) => (a.recurrenceIndex || 0) - (b.recurrenceIndex || 0))
+    )
+    return { singles, series }
+  }, [approvedEvents])
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -275,7 +299,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant="primary" className="flex items-center gap-1">
-                            <Repeat className="w-3 h-3" /> Weekly Series
+                            <Repeat className="w-3 h-3" /> {getIntervalLabel(first)} Series
                           </Badge>
                           <Badge>{first.eventType}</Badge>
                           <span className="text-sm text-gray-500">{group.length} occurrences</span>
@@ -326,6 +350,12 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                         <XCircle className="w-4 h-4 mr-2" />
                         Reject Series
                       </Button>
+                      <Link href={`/submit-event?edit=${first.id}&series=true`}>
+                        <Button variant="outline" size="sm">
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit Series
+                        </Button>
+                      </Link>
                       <Button variant="destructive" size="sm" onClick={() => deleteSeries(first.id, first.title)}>
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete Series
@@ -366,26 +396,74 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           </Card>
         ) : (
           <div className="space-y-3">
-            {approvedEvents.map((event) => {
-              const hasCords = event.lat != null && event.lng != null
+            {/* Approved recurring series */}
+            {approvedGroups.series.map((group) => {
+              const first = group[0]
+              const last = group[group.length - 1]
+              const hasCoords = first.lat != null && first.lng != null
+              return (
+                <Card key={first.recurrenceGroupId} className="border-l-4 border-l-green-400">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{first.title}</p>
+                          <Badge variant="primary" className="text-xs flex items-center gap-1">
+                            <Repeat className="w-3 h-3" /> {getIntervalLabel(first)}
+                          </Badge>
+                          <span className="text-xs text-gray-500">{group.length} occurrences</span>
+                        </div>
+                        <div className="text-sm text-gray-500 space-y-0.5">
+                          <p>
+                            Every {DAYS[first.recurrenceDay ?? new Date(first.startDateTime).getDay()]} &middot;{' '}
+                            {new Date(first.startDateTime).toLocaleDateString()} - {new Date(last.startDateTime).toLocaleDateString()}
+                          </p>
+                          <p>{first.address || first.venueName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                        {hasCoords ? (
+                          <Badge variant="success" className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> On Map
+                          </Badge>
+                        ) : (
+                          <Badge variant="danger" className="flex items-center gap-1">
+                            <MapPinOff className="w-3 h-3" /> No Coords
+                          </Badge>
+                        )}
+                        <Link href={`/submit-event?edit=${first.id}&series=true`}>
+                          <Button variant="outline" size="sm">
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteSeries(first.id, first.title)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* Approved single events */}
+            {approvedGroups.singles.map((event) => {
+              const hasCoords = event.lat != null && event.lng != null
               return (
                 <Card key={event.id}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{event.title}</p>
-                        {event.isRecurring && (
-                          <Badge variant="primary" className="text-xs flex items-center gap-1">
-                            <Repeat className="w-3 h-3" /> Weekly
-                          </Badge>
-                        )}
-                      </div>
+                      <p className="font-medium">{event.title}</p>
                       <p className="text-sm text-gray-500">
                         {formatDateTime(event.startDateTime)} &middot; {event.venueName || event.address}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {hasCords ? (
+                      {hasCoords ? (
                         <Badge variant="success" className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> On Map
                         </Badge>
@@ -394,30 +472,24 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                           <MapPinOff className="w-3 h-3" /> No Coords
                         </Badge>
                       )}
-                      {!hasCords && (
+                      {!hasCoords && (
                         <Button variant="outline" size="sm" onClick={() => geocodeEvent(event.id, event.title)}>
                           <MapPin className="w-4 h-4 mr-1" />
                           Geocode
                         </Button>
                       )}
-                      {event.recurrenceGroupId ? (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteSeries(event.id, event.title)}
-                          title="Delete entire series"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                      <Link href={`/submit-event?edit=${event.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Pencil className="w-4 h-4" />
                         </Button>
-                      ) : (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteEvent(event.id, event.title)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                      </Link>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteEvent(event.id, event.title)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -621,6 +693,12 @@ function EventCard({
             <XCircle className="w-4 h-4 mr-2" />
             Reject
           </Button>
+          <Link href={`/submit-event?edit=${event.id}`}>
+            <Button variant="outline" size="sm">
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          </Link>
           {!hasCoords && (
             <Button variant="outline" size="sm" onClick={onGeocode}>
               <MapPin className="w-4 h-4 mr-2" />

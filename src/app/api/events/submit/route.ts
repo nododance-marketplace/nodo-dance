@@ -26,6 +26,7 @@ const schema = z.object({
   honeypot: z.string().max(0),
   isRecurring: z.boolean().default(false),
   recurrenceWeeks: z.number().min(2).max(52).optional(),
+  recurrenceInterval: z.number().min(1).max(2).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -103,13 +104,14 @@ export async function POST(request: NextRequest) {
     // Recurring event: generate N occurrences
     if (data.isRecurring && data.recurrenceWeeks && data.recurrenceWeeks >= 2) {
       const weeks = Math.min(data.recurrenceWeeks, 52)
+      const interval = data.recurrenceInterval || 1
       const recurrenceGroupId = crypto.randomUUID()
       const dayOfWeek = startDateTime.getDay()
 
       const eventsData = Array.from({ length: weeks }, (_, i) => {
-        const occStart = new Date(startDateTime.getTime() + i * 7 * 24 * 60 * 60 * 1000)
+        const occStart = new Date(startDateTime.getTime() + i * interval * 7 * 24 * 60 * 60 * 1000)
         const occEnd = endDateTime
-          ? new Date(endDateTime.getTime() + i * 7 * 24 * 60 * 60 * 1000)
+          ? new Date(endDateTime.getTime() + i * interval * 7 * 24 * 60 * 60 * 1000)
           : null
 
         return {
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest) {
           isRecurring: true,
           recurrenceGroupId,
           recurrenceDay: dayOfWeek,
+          recurrenceInterval: interval,
           recurrenceCount: weeks,
           recurrenceIndex: i + 1,
         }
@@ -127,8 +130,9 @@ export async function POST(request: NextRequest) {
       await prisma.event.createMany({ data: eventsData })
 
       // Send ONE admin notification for the series
+      const freqLabel = interval === 2 ? 'Biweekly' : 'Weekly'
       await sendEventSubmissionEmail({
-        eventTitle: `${data.title} (Weekly, ${weeks} weeks)`,
+        eventTitle: `${data.title} (${freqLabel}, ${weeks} occurrences)`,
         organizerName: data.organizerName,
         organizerEmail: data.organizerEmail,
         eventType: data.eventType,
@@ -168,26 +172,29 @@ export async function POST(request: NextRequest) {
 
 const updateSchema = schema.omit({ honeypot: true }).partial().extend({
   eventId: z.string().min(1),
+  editSeries: z.boolean().optional(),
 })
 
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session?.user?.email) {
       return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 })
     }
 
     const body = await request.json()
-    const { eventId, ...data } = updateSchema.parse(body)
+    const { eventId, editSeries, ...data } = updateSchema.parse(body)
 
-    // Ownership check
+    // Permission: admin or owner
     const existing = await prisma.event.findUnique({ where: { id: eventId } })
-    if (!existing || existing.submittedByUserId !== session.user.id) {
+    if (!existing) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    if (existing.status !== 'PENDING') {
-      return NextResponse.json({ error: 'Only pending events can be edited' }, { status: 400 })
+    const userIsAdmin = isAdmin(session.user.email)
+    const isOwner = existing.submittedByUserId === session.user.id
+    if (!isOwner && !userIsAdmin) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     // Build update payload
@@ -213,7 +220,29 @@ export async function PUT(request: NextRequest) {
     if (data.description) update.description = data.description
     if (data.imageUrl !== undefined) update.imageUrl = data.imageUrl || null
 
-    // Re-geocode if address changed
+    // Series edit: update all occurrences with shared fields
+    if (editSeries && existing.recurrenceGroupId) {
+      // Remove date fields — keep existing occurrence dates
+      delete update.startDateTime
+      delete update.endDateTime
+
+      // Re-geocode if address changed
+      if (data.address && data.address !== existing.address) {
+        const geoQuery = buildGeoQuery(data.venueName || existing.venueName, data.address)
+        const coords = await geocodeAddress(geoQuery)
+        update.lat = coords?.lat ?? null
+        update.lng = coords?.lng ?? null
+      }
+
+      await prisma.event.updateMany({
+        where: { recurrenceGroupId: existing.recurrenceGroupId },
+        data: update,
+      })
+
+      return NextResponse.json({ success: true, seriesUpdated: true })
+    }
+
+    // Re-geocode if address changed (single event)
     if (data.address && data.address !== existing.address) {
       const geoQuery = buildGeoQuery(data.venueName || existing.venueName, data.address)
       const coords = await geocodeAddress(geoQuery)

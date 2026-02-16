@@ -19,6 +19,7 @@ interface EventCardProps {
     price: number | null
     imageUrl?: string | null
     isRecurring?: boolean
+    recurrenceInterval?: number | null
   }
 }
 
@@ -47,7 +48,7 @@ export function EventCard({ event }: EventCardProps) {
             <Badge variant="primary">{eventType?.label || event.eventType}</Badge>
             {event.isRecurring && (
               <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
-                <Repeat className="w-3 h-3" /> Weekly
+                <Repeat className="w-3 h-3" /> {event.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'}
               </Badge>
             )}
           </div>

@@ -378,7 +378,7 @@ function MyEventsTab({ events }: { events: any[] }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
-                      <Repeat className="w-3 h-3" /> Weekly Series
+                      <Repeat className="w-3 h-3" /> {first.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'} Series
                     </Badge>
                     <Badge variant={status.variant}>{status.label}</Badge>
                   </div>
@@ -392,6 +392,12 @@ function MyEventsTab({ events }: { events: any[] }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  <Link href={`/submit-event?edit=${first.id}&series=true`}>
+                    <Button variant="outline" size="sm">
+                      <Pencil className="w-4 h-4 mr-1" />
+                      Edit Series
+                    </Button>
+                  </Link>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -410,7 +416,6 @@ function MyEventsTab({ events }: { events: any[] }) {
       {/* Single Events */}
       {singles.map((event) => {
         const status = STATUS_BADGE[event.status] || STATUS_BADGE.PENDING
-        const isPending = event.status === 'PENDING'
 
         return (
           <Card key={event.id}>
@@ -438,13 +443,11 @@ function MyEventsTab({ events }: { events: any[] }) {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge variant={status.variant}>{status.label}</Badge>
-                {isPending && (
-                  <Link href={`/submit-event?edit=${event.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                )}
+                <Link href={`/submit-event?edit=${event.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </Link>
                 <Button
                   variant="destructive"
                   size="sm"

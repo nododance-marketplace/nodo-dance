@@ -119,6 +119,7 @@ export interface MapEvent {
   lng: number
   price: number | null
   isRecurring?: boolean
+  recurrenceInterval?: number | null
 }
 
 interface EventsMapViewProps {
@@ -170,7 +171,9 @@ export function EventsMapView({ events }: EventsMapViewProps) {
                     <p className="text-gray-500 text-xs">{event.address}</p>
                   )}
                   {event.isRecurring && (
-                    <p className="text-indigo-600 text-xs font-medium mt-1">Weekly recurring</p>
+                    <p className="text-indigo-600 text-xs font-medium mt-1">
+                      {event.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'} recurring
+                    </p>
                   )}
                   <p className="text-gray-700 mt-1">
                     {formatDate(startDate)} &middot; {formatTime(startDate)}

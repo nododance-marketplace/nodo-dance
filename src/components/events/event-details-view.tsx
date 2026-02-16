@@ -159,7 +159,8 @@ END:VCALENDAR`
                 <div>
                   <p className="font-semibold">Recurring</p>
                   <p className="text-gray-700">
-                    Every {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][event.recurrenceDay ?? 0]}
+                    {event.recurrenceInterval === 2 ? 'Every other ' : 'Every '}
+                    {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][event.recurrenceDay ?? 0]}
                   </p>
                   {event.recurrenceIndex && event.recurrenceCount && (
                     <p className="text-sm text-gray-500">

@@ -194,6 +194,7 @@ model Event {
   isRecurring         Boolean   @default(false)
   recurrenceGroupId   String?
   recurrenceDay       Int?       // 0=Sun..6=Sat
+  recurrenceInterval  Int?       // 1=weekly, 2=biweekly
   recurrenceCount     Int?       // total occurrences in series
   recurrenceIndex     Int?       // 1-based position (e.g. 3 of 12)
 
