@@ -24,6 +24,8 @@ const schema = z.object({
   description: z.string().min(1),
   imageUrl: z.string().nullable().optional(),
   honeypot: z.string().max(0),
+  isRecurring: z.boolean().default(false),
+  recurrenceWeeks: z.number().min(2).max(52).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -73,27 +75,74 @@ export async function POST(request: NextRequest) {
     const geoQuery = buildGeoQuery(data.venueName || '', data.address)
     const coords = await geocodeAddress(geoQuery)
 
-    // Create event
-    const event = await prisma.event.create({
-      data: {
-        status: 'PENDING',
-        title: data.title,
-        eventType: data.eventType,
-        styles: JSON.stringify(data.styles),
-        startDateTime,
-        endDateTime,
-        venueName: data.venueName || '',
-        address: data.address,
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
-        price: data.price ? parseInt(data.price) : null,
+    // Look up user ID for createMany (which doesn't support connect)
+    const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 400 })
+    }
+
+    const sharedFields = {
+      status: 'PENDING' as const,
+      title: data.title,
+      eventType: data.eventType,
+      styles: JSON.stringify(data.styles),
+      venueName: data.venueName || '',
+      address: data.address,
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
+      price: data.price ? parseInt(data.price) : null,
+      organizerName: data.organizerName,
+      organizerEmail: data.organizerEmail,
+      instagramUrl: data.instagramUrl || null,
+      websiteUrl: data.websiteUrl || null,
+      imageUrl: data.imageUrl || null,
+      description: data.description,
+      submittedByUserId: user.id,
+    }
+
+    // Recurring event: generate N occurrences
+    if (data.isRecurring && data.recurrenceWeeks && data.recurrenceWeeks >= 2) {
+      const weeks = Math.min(data.recurrenceWeeks, 52)
+      const recurrenceGroupId = crypto.randomUUID()
+      const dayOfWeek = startDateTime.getDay()
+
+      const eventsData = Array.from({ length: weeks }, (_, i) => {
+        const occStart = new Date(startDateTime.getTime() + i * 7 * 24 * 60 * 60 * 1000)
+        const occEnd = endDateTime
+          ? new Date(endDateTime.getTime() + i * 7 * 24 * 60 * 60 * 1000)
+          : null
+
+        return {
+          ...sharedFields,
+          startDateTime: occStart,
+          endDateTime: occEnd,
+          isRecurring: true,
+          recurrenceGroupId,
+          recurrenceDay: dayOfWeek,
+          recurrenceCount: weeks,
+          recurrenceIndex: i + 1,
+        }
+      })
+
+      await prisma.event.createMany({ data: eventsData })
+
+      // Send ONE admin notification for the series
+      await sendEventSubmissionEmail({
+        eventTitle: `${data.title} (Weekly, ${weeks} weeks)`,
         organizerName: data.organizerName,
         organizerEmail: data.organizerEmail,
-        instagramUrl: data.instagramUrl || null,
-        websiteUrl: data.websiteUrl || null,
-        imageUrl: data.imageUrl || null,
-        description: data.description,
-        submittedBy: { connect: { email: session.user.email } },
+        eventType: data.eventType,
+      })
+
+      return NextResponse.json({ success: true, recurrenceGroupId, count: weeks })
+    }
+
+    // Single event (non-recurring)
+    const event = await prisma.event.create({
+      data: {
+        ...sharedFields,
+        startDateTime,
+        endDateTime,
       },
     })
 
@@ -194,7 +243,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 })
     }
 
-    const { eventId } = await request.json()
+    const { eventId, deleteSeries } = await request.json()
     if (!eventId) {
       return NextResponse.json({ error: 'eventId required' }, { status: 400 })
     }
@@ -203,6 +252,17 @@ export async function DELETE(request: NextRequest) {
     const existing = await prisma.event.findUnique({ where: { id: eventId } })
     if (!existing || existing.submittedByUserId !== session.user.id) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    // Delete entire series if requested
+    if (deleteSeries && existing.recurrenceGroupId) {
+      await prisma.event.deleteMany({
+        where: {
+          recurrenceGroupId: existing.recurrenceGroupId,
+          submittedByUserId: session.user.id,
+        },
+      })
+      return NextResponse.json({ success: true, seriesDeleted: true })
     }
 
     await prisma.event.delete({ where: { id: eventId } })

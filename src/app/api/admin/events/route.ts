@@ -40,9 +40,21 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const { eventId } = await request.json()
+    const { eventId, deleteSeries } = await request.json()
     if (!eventId) {
       return NextResponse.json({ error: 'eventId required' }, { status: 400 })
+    }
+
+    // Delete entire series if requested
+    if (deleteSeries) {
+      const event = await prisma.event.findUnique({ where: { id: eventId } })
+      if (event?.recurrenceGroupId) {
+        const result = await prisma.event.deleteMany({
+          where: { recurrenceGroupId: event.recurrenceGroupId },
+        })
+        revalidatePath('/events')
+        return NextResponse.json({ success: true, count: result.count })
+      }
     }
 
     await prisma.event.delete({ where: { id: eventId } })
@@ -62,7 +74,37 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { eventId, status, action } = body
+    const { eventId, status, action, seriesAction } = body
+
+    // Series approve/reject: update all events sharing recurrenceGroupId
+    if (seriesAction === 'approve-series' || seriesAction === 'reject-series') {
+      const event = await prisma.event.findUnique({ where: { id: eventId } })
+      if (!event?.recurrenceGroupId) {
+        return NextResponse.json({ error: 'Not a recurring event' }, { status: 400 })
+      }
+
+      const newStatus = seriesAction === 'approve-series' ? 'APPROVED' : 'REJECTED'
+      const result = await prisma.event.updateMany({
+        where: { recurrenceGroupId: event.recurrenceGroupId },
+        data: { status: newStatus },
+      })
+
+      // On series approval, geocode if missing coords (once, then apply to all)
+      if (newStatus === 'APPROVED' && (event.lat == null || event.lng == null)) {
+        const geoQuery = buildGeoQuery(event.venueName, event.address)
+        const coords = await geocodeAddress(geoQuery)
+        if (coords) {
+          await prisma.event.updateMany({
+            where: { recurrenceGroupId: event.recurrenceGroupId },
+            data: { lat: coords.lat, lng: coords.lng },
+          })
+          console.log(`[Admin] Series geocoded "${event.title}" → ${coords.lat}, ${coords.lng}`)
+        }
+      }
+
+      revalidatePath('/events')
+      return NextResponse.json({ success: true, count: result.count })
+    }
 
     // Bulk re-geocode: find all events missing coords and geocode them
     if (action === 'geocode-all') {

@@ -190,6 +190,13 @@ model Event {
   submittedByUserId String?
   submittedBy       User?   @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
+  // Recurrence fields (null/false = one-off event)
+  isRecurring         Boolean   @default(false)
+  recurrenceGroupId   String?
+  recurrenceDay       Int?       // 0=Sun..6=Sat
+  recurrenceCount     Int?       // total occurrences in series
+  recurrenceIndex     Int?       // 1-based position (e.g. 3 of 12)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -198,6 +205,7 @@ model Event {
   @@index([status])
   @@index([startDateTime])
   @@index([eventType])
+  @@index([recurrenceGroupId])
 }
 
 model RateLimitEntry {

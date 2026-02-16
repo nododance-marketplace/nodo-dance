@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
 import { parseJsonArray, formatTime, getEventTypeValue } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
 import {
@@ -29,6 +29,7 @@ interface Event {
   venueName: string
   address: string | null
   price: number | null
+  isRecurring?: boolean
 }
 
 interface EventsMonthCalendarProps {
@@ -203,6 +204,9 @@ function EventChip({ event }: { event: Event }) {
           <div className="flex-1 min-w-0">
             <div className={`text-xs font-medium ${styleColor.text} truncate`}>
               {formatTime(startDate)}
+              {event.isRecurring && (
+                <Repeat className="w-3 h-3 inline-block ml-1 opacity-70" />
+              )}
             </div>
             <div className={`text-xs ${styleColor.text} truncate font-medium`}>
               {event.title}

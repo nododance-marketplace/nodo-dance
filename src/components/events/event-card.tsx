@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, MapPin, DollarSign, Clock } from 'lucide-react'
+import { Calendar, MapPin, DollarSign, Clock, Repeat } from 'lucide-react'
 import { parseJsonArray, formatCurrency, formatDate, formatTime, getEventTypeValue } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
 
@@ -18,6 +18,7 @@ interface EventCardProps {
     address: string | null
     price: number | null
     imageUrl?: string | null
+    isRecurring?: boolean
   }
 }
 
@@ -42,7 +43,14 @@ export function EventCard({ event }: EventCardProps) {
       )}
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-3">
-          <Badge variant="primary">{eventType?.label || event.eventType}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="primary">{eventType?.label || event.eventType}</Badge>
+            {event.isRecurring && (
+              <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
+                <Repeat className="w-3 h-3" /> Weekly
+              </Badge>
+            )}
+          </div>
           <Badge variant={event.price === null ? 'success' : 'default'}>
             {formatCurrency(event.price)}
           </Badge>

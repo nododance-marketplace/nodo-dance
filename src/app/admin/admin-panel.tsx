@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime, parseJsonArray, formatCurrency } from '@/lib/utils'
-import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff } from 'lucide-react'
+import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat } from 'lucide-react'
 
 export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const router = useRouter()
@@ -137,10 +137,83 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
     }
   }
 
+  async function approveSeries(eventId: string, count: number) {
+    const actionToast = toast.loading(`Approving series (${count} events)...`)
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, seriesAction: 'approve-series' }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      toast.success(`Series approved! (${count} events)`, { id: actionToast })
+      fetchData()
+      router.refresh()
+    } catch {
+      toast.error('Failed to approve series', { id: actionToast })
+    }
+  }
+
+  async function rejectSeries(eventId: string, count: number) {
+    const actionToast = toast.loading(`Rejecting series...`)
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, seriesAction: 'reject-series' }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      toast.success(`Series rejected (${count} events)`, { id: actionToast })
+      fetchData()
+      router.refresh()
+    } catch {
+      toast.error('Failed to reject series', { id: actionToast })
+    }
+  }
+
+  async function deleteSeries(eventId: string, title: string) {
+    if (!confirm(`Delete entire series "${title}"? This removes all occurrences.`)) return
+    const deleteToast = toast.loading('Deleting series...')
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, deleteSeries: true }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      toast.success('Series deleted', { id: deleteToast })
+      fetchData()
+    } catch {
+      toast.error('Failed to delete series', { id: deleteToast })
+    }
+  }
+
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
   const pendingEvents = events.filter((e) => e.status === 'PENDING')
   const approvedEvents = events.filter((e) => e.status === 'APPROVED')
   const rejectedEvents = events.filter((e) => e.status === 'REJECTED')
   const missingCoords = events.filter((e) => e.lat == null || e.lng == null)
+
+  // Group pending events: singles vs recurring series
+  const pendingGroups = useMemo(() => {
+    const singles: any[] = []
+    const seriesMap = new Map<string, any[]>()
+    pendingEvents.forEach((e) => {
+      if (e.recurrenceGroupId) {
+        const group = seriesMap.get(e.recurrenceGroupId) || []
+        group.push(e)
+        seriesMap.set(e.recurrenceGroupId, group)
+      } else {
+        singles.push(e)
+      }
+    })
+    // Sort each series by recurrenceIndex
+    const series = Array.from(seriesMap.values()).map((group) =>
+      group.sort((a: any, b: any) => (a.recurrenceIndex || 0) - (b.recurrenceIndex || 0))
+    )
+    return { singles, series }
+  }, [pendingEvents])
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -186,7 +259,85 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           </Card>
         ) : (
           <div className="space-y-4">
-            {pendingEvents.map((event) => (
+            {/* Recurring series */}
+            {pendingGroups.series.map((group) => {
+              const first = group[0]
+              const last = group[group.length - 1]
+              return (
+                <Card key={first.recurrenceGroupId} className="border-l-4 border-l-indigo-400 overflow-hidden">
+                  {first.imageUrl && (
+                    <div className="aspect-[21/9] overflow-hidden">
+                      <img src={first.imageUrl} alt={first.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="primary" className="flex items-center gap-1">
+                            <Repeat className="w-3 h-3" /> Weekly Series
+                          </Badge>
+                          <Badge>{first.eventType}</Badge>
+                          <span className="text-sm text-gray-500">{group.length} occurrences</span>
+                        </div>
+                        <h3 className="text-xl font-semibold">{first.title}</h3>
+                        <p className="text-sm text-gray-500">
+                          by {first.organizerName} ({first.organizerEmail})
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-3 mb-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-600">Schedule: </span>
+                        Every {DAYS[first.recurrenceDay ?? new Date(first.startDateTime).getDay()]}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Dates: </span>
+                        {new Date(first.startDateTime).toLocaleDateString()} - {new Date(last.startDateTime).toLocaleDateString()}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Where: </span>
+                        {first.address || first.venueName}
+                        {first.address && first.venueName && ` (${first.venueName})`}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Price: </span>
+                        {formatCurrency(first.price)}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {parseJsonArray(first.styles).map((style: string) => (
+                        <Badge key={style} variant="default">{style}</Badge>
+                      ))}
+                    </div>
+
+                    {first.description && (
+                      <p className="text-sm text-gray-700 mb-4 line-clamp-3">{first.description}</p>
+                    )}
+
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="gradient" size="sm" onClick={() => approveSeries(first.id, group.length)}>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Approve Series ({group.length})
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => rejectSeries(first.id, group.length)}>
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Reject Series
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => deleteSeries(first.id, first.title)}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Series
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+
+            {/* Single events */}
+            {pendingGroups.singles.map((event) => (
               <EventCard
                 key={event.id}
                 event={event}
@@ -221,7 +372,14 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                 <Card key={event.id}>
                   <CardContent className="p-4 flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium">{event.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{event.title}</p>
+                        {event.isRecurring && (
+                          <Badge variant="primary" className="text-xs flex items-center gap-1">
+                            <Repeat className="w-3 h-3" /> Weekly
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500">
                         {formatDateTime(event.startDateTime)} &middot; {event.venueName || event.address}
                       </p>
@@ -242,13 +400,24 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                           Geocode
                         </Button>
                       )}
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteEvent(event.id, event.title)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {event.recurrenceGroupId ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteSeries(event.id, event.title)}
+                          title="Delete entire series"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteEvent(event.id, event.title)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { DANCE_STYLES, EVENT_TYPES } from '@/lib/constants'
-import { CheckCircle, ImagePlus, X } from 'lucide-react'
+import { CheckCircle, ImagePlus, X, Repeat } from 'lucide-react'
 import { EventGateModal } from '@/components/auth/event-gate-modal'
 
 const DRAFT_KEY = 'eventDraft'
@@ -34,6 +34,8 @@ const schema = z.object({
   websiteUrl: z.string().optional().or(z.literal('')),
   description: z.string().min(1, 'Description is required'),
   honeypot: z.string().max(0),
+  isRecurring: z.boolean().default(false),
+  recurrenceWeeks: z.string().optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -64,6 +66,8 @@ const DEFAULT_VALUES: Partial<FormData> = {
   eventType: 'SOCIAL',
   styles: [],
   honeypot: '',
+  isRecurring: false,
+  recurrenceWeeks: '',
 }
 
 export default function SubmitEventPage() {
@@ -81,6 +85,7 @@ function SubmitEventContent() {
   const isLoggedIn = !!session?.user
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [submittedCount, setSubmittedCount] = useState(0)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -162,6 +167,8 @@ function SubmitEventContent() {
   }, [formValues, draftLoaded, editId])
 
   const selectedStyles = watch('styles') || []
+  const watchIsRecurring = watch('isRecurring')
+  const watchRecurrenceWeeks = watch('recurrenceWeeks')
 
   function handleImageClick() {
     if (!isLoggedIn) {
@@ -265,10 +272,16 @@ function SubmitEventContent() {
 
       const finalImageUrl = imageUrl ?? existingImageUrl
       const isEdit = !!editId
+      const payload: any = { ...data, imageUrl: finalImageUrl }
+      // Convert recurrenceWeeks string to number for API
+      if (data.isRecurring && data.recurrenceWeeks) {
+        payload.recurrenceWeeks = parseInt(data.recurrenceWeeks)
+      }
+      if (isEdit) payload.eventId = editId
       const response = await fetch('/api/events/submit', {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEdit ? { ...data, imageUrl: finalImageUrl, eventId: editId } : { ...data, imageUrl: finalImageUrl }),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -282,8 +295,11 @@ function SubmitEventContent() {
         throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'submit'} event`)
       }
 
-      toast.success(isEdit ? 'Event updated!' : 'Event submitted!', { id: submitToast })
+      const result = await response.json()
+      const recurringMsg = result.count ? ` (${result.count} weekly occurrences)` : ''
+      toast.success(isEdit ? 'Event updated!' : `Event submitted!${recurringMsg}`, { id: submitToast })
       if (!isEdit) clearDraft()
+      if (result.count) setSubmittedCount(result.count)
       setSuccess(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error: any) {
@@ -303,6 +319,8 @@ function SubmitEventContent() {
             <p className="text-lg text-gray-600 mb-6">
               {editId
                 ? 'Your event has been updated and will be re-reviewed by our team.'
+                : submittedCount > 0
+                ? `Your weekly event series (${submittedCount} occurrences) has been submitted. It will be reviewed by our team and published shortly.`
                 : 'Thank you for submitting your event. It will be reviewed by our team and published shortly.'}
             </p>
             <div className="flex gap-3 justify-center">
@@ -451,6 +469,60 @@ function SubmitEventContent() {
                 <Input type="number" min="0" {...register('price')} placeholder="0" />
               </div>
             </div>
+
+            {/* Recurring Event */}
+            {!editId && (
+              <div className="border border-gray-200 rounded-lg p-4">
+                <Controller
+                  name="isRecurring"
+                  control={control}
+                  render={({ field }) => (
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={field.value || false}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary w-5 h-5"
+                      />
+                      <div>
+                        <span className="font-medium flex items-center gap-2">
+                          <Repeat className="w-4 h-4" />
+                          This event repeats weekly
+                        </span>
+                        <p className="text-sm text-gray-500">
+                          Automatically create multiple occurrences on the same day each week
+                        </p>
+                      </div>
+                    </label>
+                  )}
+                />
+
+                {watchIsRecurring && (
+                  <div className="mt-4 ml-8 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Number of weeks (2-52)
+                      </label>
+                      <Input
+                        type="number"
+                        min={2}
+                        max={52}
+                        {...register('recurrenceWeeks')}
+                        placeholder="e.g., 12"
+                      />
+                    </div>
+                    {watchRecurrenceWeeks && parseInt(watchRecurrenceWeeks) >= 2 && (
+                      <p className="text-sm text-indigo-600 font-medium">
+                        This will create {parseInt(watchRecurrenceWeeks)} weekly events starting from your selected date.
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      All occurrences will be submitted for review together.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Venue */}
             <div>

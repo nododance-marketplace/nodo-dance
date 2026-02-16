@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DangerZone } from '@/components/auth/danger-zone'
 import { parseJsonArray, formatDate, formatCurrency } from '@/lib/utils'
-import { Heart, Calendar, MapPin, GraduationCap, Trash2, Send, Pencil } from 'lucide-react'
+import { Heart, Calendar, MapPin, GraduationCap, Trash2, Send, Pencil, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -275,8 +275,34 @@ const STATUS_BADGE: Record<string, { variant: 'warning' | 'success' | 'danger'; 
   REJECTED: { variant: 'danger', label: 'Rejected' },
 }
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
 function MyEventsTab({ events }: { events: any[] }) {
   const router = useRouter()
+
+  // Group events into singles and recurring series
+  const { singles, series } = useMemo(() => {
+    const seriesMap = new Map<string, any[]>()
+    const singles: any[] = []
+
+    for (const event of events) {
+      if (event.isRecurring && event.recurrenceGroupId) {
+        const group = seriesMap.get(event.recurrenceGroupId) || []
+        group.push(event)
+        seriesMap.set(event.recurrenceGroupId, group)
+      } else {
+        singles.push(event)
+      }
+    }
+
+    // Sort each series by recurrenceIndex
+    const series = Array.from(seriesMap.values()).map((group) => {
+      group.sort((a: any, b: any) => (a.recurrenceIndex || 0) - (b.recurrenceIndex || 0))
+      return group
+    })
+
+    return { singles, series }
+  }, [events])
 
   async function deleteEvent(eventId: string, title: string) {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return
@@ -299,6 +325,27 @@ function MyEventsTab({ events }: { events: any[] }) {
     }
   }
 
+  async function deleteSeries(eventId: string, title: string, count: number) {
+    if (!confirm(`Delete all ${count} occurrences of "${title}"? This cannot be undone.`)) return
+
+    const deleteToast = toast.loading('Deleting series...')
+    try {
+      const res = await fetch('/api/events/submit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, deleteSeries: true }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete')
+      }
+      toast.success('Series deleted', { id: deleteToast })
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete series', { id: deleteToast })
+    }
+  }
+
   if (events.length === 0) {
     return (
       <Card>
@@ -318,7 +365,50 @@ function MyEventsTab({ events }: { events: any[] }) {
 
   return (
     <div className="space-y-3">
-      {events.map((event) => {
+      {/* Recurring Series */}
+      {series.map((group) => {
+        const first = group[0]
+        const last = group[group.length - 1]
+        const status = STATUS_BADGE[first.status] || STATUS_BADGE.PENDING
+
+        return (
+          <Card key={first.recurrenceGroupId} className="border-l-4 border-l-indigo-500">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
+                      <Repeat className="w-3 h-3" /> Weekly Series
+                    </Badge>
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                  </div>
+                  <p className="font-semibold truncate">{first.title}</p>
+                  <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                    <p>Every {DAYS[first.recurrenceDay ?? 0]} &middot; {group.length} occurrences</p>
+                    <p>
+                      {formatDate(new Date(first.startDateTime))} &ndash; {formatDate(new Date(last.startDateTime))}
+                    </p>
+                    <p className="truncate">{first.venueName || first.address}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteSeries(first.id, first.title, group.length)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete Series
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+
+      {/* Single Events */}
+      {singles.map((event) => {
         const status = STATUS_BADGE[event.status] || STATUS_BADGE.PENDING
         const isPending = event.status === 'PENDING'
 

@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, MapPin, DollarSign, Clock, Instagram, Globe, Download } from 'lucide-react'
+import { Calendar, MapPin, DollarSign, Clock, Instagram, Globe, Download, Repeat } from 'lucide-react'
 import { parseJsonArray, formatCurrency, formatDateTime, formatDate, formatTime, getEventTypeValue } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
 import { SaveButton } from '@/components/auth/save-button'
@@ -152,6 +152,23 @@ END:VCALENDAR`
                 <p className="text-gray-700">{formatCurrency(event.price)}</p>
               </div>
             </div>
+
+            {event.isRecurring && (
+              <div className="flex items-start gap-3">
+                <Repeat className="w-5 h-5 text-accent-coral mt-1" />
+                <div>
+                  <p className="font-semibold">Recurring</p>
+                  <p className="text-gray-700">
+                    Every {['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][event.recurrenceDay ?? 0]}
+                  </p>
+                  {event.recurrenceIndex && event.recurrenceCount && (
+                    <p className="text-sm text-gray-500">
+                      Week {event.recurrenceIndex} of {event.recurrenceCount}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3">
