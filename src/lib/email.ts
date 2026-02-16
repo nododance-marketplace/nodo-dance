@@ -11,7 +11,27 @@ const transporter = nodemailer.createTransport({
 })
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Nodo Dance <noreply@nododance.com>'
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+// Resolve the app URL with Vercel-aware fallback chain:
+// 1. Explicit NEXT_PUBLIC_APP_URL (preferred — set this in Vercel env vars)
+// 2. Vercel's auto-set VERCEL_PROJECT_PRODUCTION_URL (e.g. "nodo-dance.vercel.app")
+// 3. Vercel's VERCEL_URL (per-deployment, e.g. "nodo-dance-abc123.vercel.app")
+// 4. localhost fallback for local dev
+function getAppUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL !== 'http://localhost:3000') {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+}
+
+const APP_URL = getAppUrl()
+console.log(`[EMAIL] Resolved APP_URL: ${APP_URL}`)
 
 export async function sendLessonRequestEmail(data: {
   instructorName: string
