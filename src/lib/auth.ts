@@ -22,6 +22,18 @@ if (missingEmailVars.length > 0) {
   )
 }
 
+// Log the resolved auth URL on cold start (helps debug OAuth redirect_uri_mismatch)
+const resolvedAuthUrl = process.env.NEXTAUTH_URL
+  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+console.log('[AUTH] NEXTAUTH_URL env:', process.env.NEXTAUTH_URL || '(not set)')
+console.log('[AUTH] VERCEL_URL env:', process.env.VERCEL_URL || '(not set)')
+console.log('[AUTH] Resolved base URL:', resolvedAuthUrl)
+console.log('[AUTH] Google OAuth callback will be:', `${resolvedAuthUrl}/api/auth/callback/google`)
+if (!process.env.NEXTAUTH_URL && !isDev) {
+  console.warn('[AUTH] WARNING: NEXTAUTH_URL is not set in production! NextAuth will fall back to VERCEL_URL.')
+  console.warn('[AUTH] This causes redirect_uri_mismatch. Set NEXTAUTH_URL=https://nododance.com in Vercel env vars.')
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
