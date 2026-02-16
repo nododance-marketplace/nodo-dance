@@ -12,7 +12,12 @@ interface NominatimResult {
 export async function geocodeAddress(
   query: string
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!query.trim()) return null
+  if (!query.trim()) {
+    console.log('[Geocode] Empty query, skipping')
+    return null
+  }
+
+  console.log(`[Geocode] Querying: "${query}"`)
 
   try {
     const url = new URL('https://nominatim.openstreetmap.org/search')
@@ -26,17 +31,27 @@ export async function geocodeAddress(
       },
     })
 
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error(`[Geocode] HTTP ${res.status} from Nominatim for query: "${query}"`)
+      return null
+    }
 
     const results: NominatimResult[] = await res.json()
 
-    if (results.length === 0) return null
+    if (results.length === 0) {
+      console.log(`[Geocode] No results for: "${query}"`)
+      return null
+    }
 
     const lat = parseFloat(results[0].lat)
     const lng = parseFloat(results[0].lon)
 
-    if (isNaN(lat) || isNaN(lng)) return null
+    if (isNaN(lat) || isNaN(lng)) {
+      console.error(`[Geocode] Invalid coords from Nominatim: lat=${results[0].lat}, lon=${results[0].lon}`)
+      return null
+    }
 
+    console.log(`[Geocode] Success: "${query}" → ${lat}, ${lng} (${results[0].display_name})`)
     return { lat, lng }
   } catch (error) {
     console.error('[Geocode] Error:', error)

@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime, parseJsonArray, formatCurrency } from '@/lib/utils'
-import { CheckCircle, XCircle, Trash2, RefreshCw } from 'lucide-react'
+import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff } from 'lucide-react'
 
 export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   const router = useRouter()
@@ -83,6 +83,43 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
     }
   }
 
+  async function deleteEvent(eventId: string, title: string) {
+    if (!confirm(`Delete event "${title}"? This cannot be undone.`)) return
+
+    const deleteToast = toast.loading('Deleting event...')
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId }),
+      })
+      if (!res.ok) throw new Error('Failed to delete event')
+      toast.success('Event deleted', { id: deleteToast })
+      fetchData()
+    } catch (error) {
+      toast.error('Failed to delete event', { id: deleteToast })
+    }
+  }
+
+  async function geocodeEvent(eventId: string, title: string) {
+    const geoToast = toast.loading(`Geocoding "${title}"...`)
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, action: 'geocode' }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Geocoding failed')
+      }
+      toast.success('Geocoded successfully!', { id: geoToast })
+      fetchData()
+    } catch (error: any) {
+      toast.error(error.message || 'Geocoding failed', { id: geoToast })
+    }
+  }
+
   const pendingEvents = events.filter((e) => e.status === 'PENDING')
   const approvedEvents = events.filter((e) => e.status === 'APPROVED')
   const rejectedEvents = events.filter((e) => e.status === 'REJECTED')
@@ -129,6 +166,8 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                 event={event}
                 onApprove={() => updateEventStatus(event.id, 'APPROVED')}
                 onReject={() => updateEventStatus(event.id, 'REJECTED')}
+                onDelete={() => deleteEvent(event.id, event.title)}
+                onGeocode={() => geocodeEvent(event.id, event.title)}
               />
             ))}
           </div>
@@ -150,19 +189,45 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           </Card>
         ) : (
           <div className="space-y-3">
-            {approvedEvents.map((event) => (
-              <Card key={event.id}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{event.title}</p>
-                    <p className="text-sm text-gray-500">
-                      {formatDateTime(event.startDateTime)} &middot; {event.venueName}
-                    </p>
-                  </div>
-                  <Badge variant="success">Approved</Badge>
-                </CardContent>
-              </Card>
-            ))}
+            {approvedEvents.map((event) => {
+              const hasCords = event.lat != null && event.lng != null
+              return (
+                <Card key={event.id}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{event.title}</p>
+                      <p className="text-sm text-gray-500">
+                        {formatDateTime(event.startDateTime)} &middot; {event.venueName || event.address}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {hasCords ? (
+                        <Badge variant="success" className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" /> On Map
+                        </Badge>
+                      ) : (
+                        <Badge variant="danger" className="flex items-center gap-1">
+                          <MapPinOff className="w-3 h-3" /> No Coords
+                        </Badge>
+                      )}
+                      {!hasCords && (
+                        <Button variant="outline" size="sm" onClick={() => geocodeEvent(event.id, event.title)}>
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Geocode
+                        </Button>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteEvent(event.id, event.title)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
       </section>
@@ -178,13 +243,22 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
             {rejectedEvents.map((event) => (
               <Card key={event.id} className="opacity-60">
                 <CardContent className="p-4 flex items-center justify-between">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium">{event.title}</p>
                     <p className="text-sm text-gray-500">
-                      {event.organizerName} &middot; {event.venueName}
+                      {event.organizerName} &middot; {event.venueName || event.address}
                     </p>
                   </div>
-                  <Badge variant="danger">Rejected</Badge>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="danger">Rejected</Badge>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteEvent(event.id, event.title)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -257,11 +331,17 @@ function EventCard({
   event,
   onApprove,
   onReject,
+  onDelete,
+  onGeocode,
 }: {
   event: any
   onApprove: () => void
   onReject: () => void
+  onDelete: () => void
+  onGeocode: () => void
 }) {
+  const hasCoords = event.lat != null && event.lng != null
+
   return (
     <Card className="border-l-4 border-l-yellow-400 overflow-hidden">
       {event.imageUrl && (
@@ -281,7 +361,18 @@ function EventCard({
               by {event.organizerName} ({event.organizerEmail})
             </p>
           </div>
-          <Badge>{event.eventType}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge>{event.eventType}</Badge>
+            {hasCoords ? (
+              <Badge variant="success" className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> Mapped
+              </Badge>
+            ) : (
+              <Badge variant="danger" className="flex items-center gap-1">
+                <MapPinOff className="w-3 h-3" /> No Coords
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-3 mb-3 text-sm">
@@ -291,8 +382,8 @@ function EventCard({
           </div>
           <div>
             <span className="font-medium text-gray-600">Where: </span>
-            {event.venueName}
-            {event.address && ` — ${event.address}`}
+            {event.address || event.venueName}
+            {event.address && event.venueName && ` (${event.venueName})`}
           </div>
           <div>
             <span className="font-medium text-gray-600">Price: </span>
@@ -314,6 +405,12 @@ function EventCard({
             <span className="font-medium text-gray-600">Submitted: </span>
             {formatDateTime(event.createdAt)}
           </div>
+          {hasCoords && (
+            <div>
+              <span className="font-medium text-gray-600">Coords: </span>
+              {event.lat.toFixed(4)}, {event.lng.toFixed(4)}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1 mb-3">
@@ -326,7 +423,7 @@ function EventCard({
           <p className="text-sm text-gray-700 mb-4 line-clamp-3">{event.description}</p>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button variant="gradient" size="sm" onClick={onApprove}>
             <CheckCircle className="w-4 h-4 mr-2" />
             Approve
@@ -334,6 +431,16 @@ function EventCard({
           <Button variant="destructive" size="sm" onClick={onReject}>
             <XCircle className="w-4 h-4 mr-2" />
             Reject
+          </Button>
+          {!hasCoords && (
+            <Button variant="outline" size="sm" onClick={onGeocode}>
+              <MapPin className="w-4 h-4 mr-2" />
+              Geocode
+            </Button>
+          )}
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete
           </Button>
         </div>
       </CardContent>

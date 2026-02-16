@@ -349,21 +349,19 @@ function MyEventsTab({ events }: { events: any[] }) {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge variant={status.variant}>{status.label}</Badge>
                 {isPending && (
-                  <>
-                    <Link href={`/submit-event?edit=${event.id}`}>
-                      <Button variant="outline" size="sm">
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteEvent(event.id, event.title)}
-                    >
-                      <Trash2 className="w-4 h-4" />
+                  <Link href={`/submit-event?edit=${event.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Pencil className="w-4 h-4" />
                     </Button>
-                  </>
+                  </Link>
                 )}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteEvent(event.id, event.title)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -204,10 +204,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    if (existing.status !== 'PENDING') {
-      return NextResponse.json({ error: 'Only pending events can be deleted' }, { status: 400 })
-    }
-
     await prisma.event.delete({ where: { id: eventId } })
     return NextResponse.json({ success: true })
   } catch (error) {

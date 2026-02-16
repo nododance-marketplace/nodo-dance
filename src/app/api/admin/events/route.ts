@@ -33,6 +33,27 @@ export async function GET() {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  const session = await requireAdmin()
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const { eventId } = await request.json()
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId required' }, { status: 400 })
+    }
+
+    await prisma.event.delete({ where: { id: eventId } })
+    revalidatePath('/events')
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting event:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
 export async function PUT(request: NextRequest) {
   const session = await requireAdmin()
   if (!session) {
@@ -40,8 +61,31 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const { eventId, status } = await request.json()
+    const body = await request.json()
+    const { eventId, status, action } = body
 
+    // Re-geocode action (admin can force re-geocode any event)
+    if (action === 'geocode') {
+      let event = await prisma.event.findUnique({ where: { id: eventId } })
+      if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+      console.log(`[Admin] Force re-geocode: "${event.title}" (address: "${event.address}", venue: "${event.venueName}")`)
+      const geoQuery = buildGeoQuery(event.venueName, event.address, event.neighborhood)
+      const coords = await geocodeAddress(geoQuery)
+      if (coords) {
+        event = await prisma.event.update({
+          where: { id: eventId },
+          data: { lat: coords.lat, lng: coords.lng },
+        })
+        console.log(`[Admin] Re-geocoded "${event.title}" → ${coords.lat}, ${coords.lng}`)
+        return NextResponse.json(event)
+      } else {
+        console.warn(`[Admin] Re-geocode FAILED for "${event.title}"`)
+        return NextResponse.json({ error: `Geocoding failed for address: "${event.address || event.venueName}"` }, { status: 422 })
+      }
+    }
+
+    // Status update action
     if (!['APPROVED', 'REJECTED'].includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
@@ -51,8 +95,9 @@ export async function PUT(request: NextRequest) {
       data: { status },
     })
 
-    // On approval, retry geocoding if coordinates are missing
-    if (status === 'APPROVED' && event.lat == null && event.lng == null) {
+    // On approval, always try geocoding if coordinates are missing
+    if (status === 'APPROVED' && (event.lat == null || event.lng == null)) {
+      console.log(`[Admin] Geocoding event "${event.title}" (address: "${event.address}", venue: "${event.venueName}")`)
       const geoQuery = buildGeoQuery(event.venueName, event.address, event.neighborhood)
       const coords = await geocodeAddress(geoQuery)
       if (coords) {
@@ -60,6 +105,9 @@ export async function PUT(request: NextRequest) {
           where: { id: eventId },
           data: { lat: coords.lat, lng: coords.lng },
         })
+        console.log(`[Admin] Geocoded "${event.title}" → ${coords.lat}, ${coords.lng}`)
+      } else {
+        console.warn(`[Admin] Geocoding FAILED for "${event.title}" — event will NOT appear on map`)
       }
     }
 
