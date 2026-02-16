@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DangerZone } from '@/components/auth/danger-zone'
 import { parseJsonArray, formatDate, formatCurrency } from '@/lib/utils'
-import { Heart, Calendar, MapPin, GraduationCap, Trash2 } from 'lucide-react'
+import { Heart, Calendar, MapPin, GraduationCap, Trash2, Send, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -15,10 +15,12 @@ export function AccountDashboard({
   user,
   savedInstructors,
   savedEvents,
+  submittedEvents,
 }: {
   user: any
   savedInstructors: any[]
   savedEvents: any[]
+  submittedEvents: any[]
 }) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('instructors')
@@ -91,6 +93,20 @@ export function AccountDashboard({
           Saved Events
           {savedEvents.length > 0 && (
             <Badge variant="primary" className="ml-2">{savedEvents.length}</Badge>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('myevents')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'myevents'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-gray-600 hover:text-primary'
+          }`}
+        >
+          <Send className="w-4 h-4 inline mr-1" />
+          My Events
+          {submittedEvents.length > 0 && (
+            <Badge variant="primary" className="ml-2">{submittedEvents.length}</Badge>
           )}
         </button>
         <button
@@ -219,6 +235,11 @@ export function AccountDashboard({
         </div>
       )}
 
+      {/* My Submitted Events Tab */}
+      {activeTab === 'myevents' && (
+        <MyEventsTab events={submittedEvents} />
+      )}
+
       {/* Settings Tab */}
       {activeTab === 'settings' && (
         <div className="space-y-6">
@@ -244,6 +265,110 @@ export function AccountDashboard({
           <DangerZone />
         </div>
       )}
+    </div>
+  )
+}
+
+const STATUS_BADGE: Record<string, { variant: 'warning' | 'success' | 'danger'; label: string }> = {
+  PENDING: { variant: 'warning', label: 'Pending Review' },
+  APPROVED: { variant: 'success', label: 'Approved' },
+  REJECTED: { variant: 'danger', label: 'Rejected' },
+}
+
+function MyEventsTab({ events }: { events: any[] }) {
+  const router = useRouter()
+
+  async function deleteEvent(eventId: string, title: string) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return
+
+    const deleteToast = toast.loading('Deleting event...')
+    try {
+      const res = await fetch('/api/events/submit', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete')
+      }
+      toast.success('Event deleted', { id: deleteToast })
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete event', { id: deleteToast })
+    }
+  }
+
+  if (events.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Send className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No submitted events yet</h3>
+          <p className="text-gray-500 mb-4">
+            Share a dance event with the community.
+          </p>
+          <Link href="/submit-event">
+            <Button variant="gradient">Submit an Event</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {events.map((event) => {
+        const status = STATUS_BADGE[event.status] || STATUS_BADGE.PENDING
+        const isPending = event.status === 'PENDING'
+
+        return (
+          <Card key={event.id}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                {event.imageUrl ? (
+                  <img
+                    src={event.imageUrl}
+                    alt={event.title}
+                    className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{event.title}</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span>{formatDate(new Date(event.startDateTime))}</span>
+                    <span>&middot;</span>
+                    <span className="truncate">{event.venueName || event.address}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Badge variant={status.variant}>{status.label}</Badge>
+                {isPending && (
+                  <>
+                    <Link href={`/submit-event?edit=${event.id}`}>
+                      <Button variant="outline" size="sm">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteEvent(event.id, event.title)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

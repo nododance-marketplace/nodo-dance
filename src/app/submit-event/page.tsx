@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -24,9 +25,9 @@ const schema = z.object({
   startDate: z.string().min(1, 'Start date is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().optional(),
-  venueName: z.string().min(1, 'Venue name is required'),
+  venueName: z.string().optional(),
   neighborhood: z.string().optional(),
-  address: z.string().optional(),
+  address: z.string().min(1, 'Address is required'),
   price: z.string().optional(),
   organizerName: z.string().min(1, 'Organizer name is required'),
   organizerEmail: z.string().email('Valid email is required'),
@@ -67,7 +68,17 @@ const DEFAULT_VALUES: Partial<FormData> = {
 }
 
 export default function SubmitEventPage() {
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-8"><div className="bg-white rounded-xl h-96 animate-pulse" /></div>}>
+      <SubmitEventContent />
+    </Suspense>
+  )
+}
+
+function SubmitEventContent() {
   const { data: session, status } = useSession()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('edit')
   const isLoggedIn = !!session?.user
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -76,6 +87,8 @@ export default function SubmitEventPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [showGateModal, setShowGateModal] = useState(false)
   const [draftLoaded, setDraftLoaded] = useState(false)
+  const [editLoading, setEditLoading] = useState(!!editId)
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
 
   const {
     register,
@@ -90,23 +103,65 @@ export default function SubmitEventPage() {
     defaultValues: DEFAULT_VALUES,
   })
 
-  // Load draft from localStorage on mount
+  // Load event data for edit mode, or draft for new submission
   useEffect(() => {
-    const draft = loadDraft()
-    if (draft) {
-      reset({ ...DEFAULT_VALUES, ...draft, honeypot: '' })
+    if (editId) {
+      // Edit mode: fetch event data
+      setEditLoading(true)
+      fetch('/api/events/my')
+        .then((res) => res.json())
+        .then((events: any[]) => {
+          const event = events.find((e: any) => e.id === editId)
+          if (event) {
+            const start = new Date(event.startDateTime)
+            const end = event.endDateTime ? new Date(event.endDateTime) : null
+            const styles = (() => { try { return JSON.parse(event.styles) } catch { return [] } })()
+            reset({
+              title: event.title,
+              eventType: event.eventType,
+              styles,
+              startDate: start.toISOString().split('T')[0],
+              startTime: start.toTimeString().slice(0, 5),
+              endTime: end ? end.toTimeString().slice(0, 5) : '',
+              venueName: event.venueName || '',
+              neighborhood: event.neighborhood || '',
+              address: event.address || '',
+              price: event.price != null ? String(event.price) : '',
+              organizerName: event.organizerName,
+              organizerEmail: event.organizerEmail,
+              instagramUrl: event.instagramUrl || '',
+              websiteUrl: event.websiteUrl || '',
+              description: event.description,
+              honeypot: '',
+            })
+            if (event.imageUrl) {
+              setExistingImageUrl(event.imageUrl)
+              setImagePreview(event.imageUrl)
+            }
+          }
+        })
+        .catch(() => toast.error('Failed to load event data'))
+        .finally(() => {
+          setEditLoading(false)
+          setDraftLoaded(true)
+        })
+    } else {
+      // New submission: load draft
+      const draft = loadDraft()
+      if (draft) {
+        reset({ ...DEFAULT_VALUES, ...draft, honeypot: '' })
+      }
+      setDraftLoaded(true)
     }
-    setDraftLoaded(true)
-  }, [reset])
+  }, [editId, reset])
 
-  // Auto-save draft on field changes (debounced via watch)
+  // Auto-save draft on field changes (only for new submissions)
   const formValues = watch()
   useEffect(() => {
-    if (!draftLoaded) return
-    // Don't save honeypot to draft
+    if (!draftLoaded || editId) return
     const { honeypot, ...draftData } = formValues
     saveDraft(draftData)
-  }, [formValues, draftLoaded])
+  }, [formValues, draftLoaded, editId])
 
   const selectedStyles = watch('styles') || []
 
@@ -210,10 +265,12 @@ export default function SubmitEventPage() {
         toast.loading('Submitting event...', { id: submitToast })
       }
 
+      const finalImageUrl = imageUrl ?? existingImageUrl
+      const isEdit = !!editId
       const response = await fetch('/api/events/submit', {
-        method: 'POST',
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, imageUrl }),
+        body: JSON.stringify(isEdit ? { ...data, imageUrl: finalImageUrl, eventId: editId } : { ...data, imageUrl: finalImageUrl }),
       })
 
       if (!response.ok) {
@@ -224,11 +281,11 @@ export default function SubmitEventPage() {
           setSubmitting(false)
           return
         }
-        throw new Error(error.error || 'Failed to submit event')
+        throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'submit'} event`)
       }
 
-      toast.success('Event submitted!', { id: submitToast })
-      clearDraft()
+      toast.success(isEdit ? 'Event updated!' : 'Event submitted!', { id: submitToast })
+      if (!isEdit) clearDraft()
       setSuccess(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error: any) {
@@ -244,9 +301,11 @@ export default function SubmitEventPage() {
         <Card>
           <CardContent className="p-8 text-center">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-4">Event Submitted!</h1>
+            <h1 className="text-3xl font-bold mb-4">{editId ? 'Event Updated!' : 'Event Submitted!'}</h1>
             <p className="text-lg text-gray-600 mb-6">
-              Thank you for submitting your event. It will be reviewed by our team and published shortly.
+              {editId
+                ? 'Your event has been updated and will be re-reviewed by our team.'
+                : 'Thank you for submitting your event. It will be reviewed by our team and published shortly.'}
             </p>
             <div className="flex gap-3 justify-center">
               <Button variant="gradient" onClick={() => window.location.href = '/events'}>
@@ -264,12 +323,15 @@ export default function SubmitEventPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {editLoading ? (
+        <div className="bg-white rounded-xl h-96 animate-pulse" />
+      ) : (<>
       <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
-          Submit an Event
+          {editId ? 'Edit Event' : 'Submit an Event'}
         </h1>
         <p className="text-lg text-gray-600">
-          Share your dance event with the community. It&apos;s free!
+          {editId ? 'Update your event details below.' : 'Share your dance event with the community. It\u0027s free!'}
         </p>
       </div>
 
@@ -394,18 +456,18 @@ export default function SubmitEventPage() {
 
             {/* Venue */}
             <div>
-              <label className="block text-sm font-medium mb-1">Venue Name *</label>
-              <Input {...register('venueName')} error={errors.venueName?.message} />
+              <label className="block text-sm font-medium mb-1">Full Address *</label>
+              <Input {...register('address')} error={errors.address?.message} placeholder="e.g., 123 Main St, Charlotte, NC 28202" />
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Neighborhood (optional)</label>
-                <Input {...register('neighborhood')} placeholder="e.g., Uptown, South End" />
+                <label className="block text-sm font-medium mb-1">Venue Name (optional)</label>
+                <Input {...register('venueName')} placeholder="e.g., Studio 229" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Full Address (optional)</label>
-                <Input {...register('address')} placeholder="Street address" />
+                <label className="block text-sm font-medium mb-1">Neighborhood (optional)</label>
+                <Input {...register('neighborhood')} placeholder="e.g., Uptown, South End" />
               </div>
             </div>
 
@@ -453,7 +515,7 @@ export default function SubmitEventPage() {
 
             <div className="pt-4">
               <Button type="submit" disabled={submitting || uploadingImage} variant="gradient" size="lg" className="w-full">
-                {uploadingImage ? 'Uploading Image...' : submitting ? 'Submitting...' : 'Submit Event'}
+                {uploadingImage ? 'Uploading Image...' : submitting ? (editId ? 'Updating...' : 'Submitting...') : (editId ? 'Update Event' : 'Submit Event')}
               </Button>
               <p className="text-sm text-gray-500 mt-3 text-center">
                 Your event will be reviewed before publication
@@ -465,6 +527,7 @@ export default function SubmitEventPage() {
 
       {/* Gate Modal */}
       {showGateModal && <EventGateModal onClose={() => setShowGateModal(false)} />}
+      </>)}
     </div>
   )
 }

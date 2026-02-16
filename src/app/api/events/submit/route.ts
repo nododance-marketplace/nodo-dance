@@ -14,9 +14,9 @@ const schema = z.object({
   startDate: z.string(),
   startTime: z.string(),
   endTime: z.string().optional(),
-  venueName: z.string().min(1),
+  venueName: z.string().optional(),
   neighborhood: z.string().optional(),
-  address: z.string().optional(),
+  address: z.string().min(1),
   price: z.string().optional(),
   organizerName: z.string().min(1),
   organizerEmail: z.string().email(),
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       : null
 
     // Geocode the venue address for map view
-    const geoQuery = buildGeoQuery(data.venueName, data.address, data.neighborhood)
+    const geoQuery = buildGeoQuery(data.venueName || '', data.address, data.neighborhood)
     const coords = await geocodeAddress(geoQuery)
 
     // Create event
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         styles: JSON.stringify(data.styles),
         startDateTime,
         endDateTime,
-        venueName: data.venueName,
+        venueName: data.venueName || '',
         neighborhood: data.neighborhood || null,
         address: data.address || null,
         lat: coords?.lat ?? null,
@@ -110,6 +110,108 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }
 
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+const updateSchema = schema.omit({ honeypot: true }).partial().extend({
+  eventId: z.string().min(1),
+})
+
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { eventId, ...data } = updateSchema.parse(body)
+
+    // Ownership check
+    const existing = await prisma.event.findUnique({ where: { id: eventId } })
+    if (!existing || existing.submittedByUserId !== session.user.id) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    if (existing.status !== 'PENDING') {
+      return NextResponse.json({ error: 'Only pending events can be edited' }, { status: 400 })
+    }
+
+    // Build update payload
+    const update: any = {}
+    if (data.title) update.title = data.title
+    if (data.eventType) update.eventType = data.eventType
+    if (data.styles) update.styles = JSON.stringify(data.styles)
+    if (data.startDate && data.startTime) {
+      update.startDateTime = new Date(`${data.startDate}T${data.startTime}`)
+    }
+    if (data.endTime !== undefined) {
+      update.endDateTime = data.startDate && data.endTime
+        ? new Date(`${data.startDate}T${data.endTime}`)
+        : null
+    }
+    if (data.venueName !== undefined) update.venueName = data.venueName || ''
+    if (data.neighborhood !== undefined) update.neighborhood = data.neighborhood || null
+    if (data.address !== undefined) update.address = data.address || null
+    if (data.price !== undefined) update.price = data.price ? parseInt(data.price) : null
+    if (data.organizerName) update.organizerName = data.organizerName
+    if (data.organizerEmail) update.organizerEmail = data.organizerEmail
+    if (data.instagramUrl !== undefined) update.instagramUrl = data.instagramUrl || null
+    if (data.websiteUrl !== undefined) update.websiteUrl = data.websiteUrl || null
+    if (data.description) update.description = data.description
+    if (data.imageUrl !== undefined) update.imageUrl = data.imageUrl || null
+
+    // Re-geocode if address changed
+    const newAddress = data.address ?? existing.address
+    if (data.address && data.address !== existing.address) {
+      const geoQuery = buildGeoQuery(data.venueName || existing.venueName, newAddress, data.neighborhood ?? existing.neighborhood)
+      const coords = await geocodeAddress(geoQuery)
+      update.lat = coords?.lat ?? null
+      update.lng = coords?.lng ?? null
+    }
+
+    const event = await prisma.event.update({
+      where: { id: eventId },
+      data: update,
+    })
+
+    return NextResponse.json(event)
+  } catch (error: any) {
+    console.error('Error updating event:', error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 })
+    }
+
+    const { eventId } = await request.json()
+    if (!eventId) {
+      return NextResponse.json({ error: 'eventId required' }, { status: 400 })
+    }
+
+    // Ownership check
+    const existing = await prisma.event.findUnique({ where: { id: eventId } })
+    if (!existing || existing.submittedByUserId !== session.user.id) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    if (existing.status !== 'PENDING') {
+      return NextResponse.json({ error: 'Only pending events can be deleted' }, { status: 400 })
+    }
+
+    await prisma.event.delete({ where: { id: eventId } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting event:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

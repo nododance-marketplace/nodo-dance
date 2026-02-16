@@ -28,6 +28,9 @@ export default async function AccountPage() {
         },
         orderBy: { createdAt: 'desc' },
       },
+      submittedEvents: {
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 
@@ -40,6 +43,7 @@ export default async function AccountPage() {
       user={user}
       savedInstructors={user.savedInstructors}
       savedEvents={user.savedEvents}
+      submittedEvents={user.submittedEvents}
     />
   )
 }
