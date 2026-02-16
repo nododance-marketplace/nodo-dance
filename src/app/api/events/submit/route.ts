@@ -7,6 +7,19 @@ import { sendEventSubmissionEmail } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { geocodeAddress, buildGeoQuery } from '@/lib/geocode'
 
+/**
+ * Parse date + time strings as America/New_York and return proper UTC Date.
+ * On Vercel (UTC), `new Date("2026-02-27T19:00")` is 19:00 UTC — wrong.
+ * This correctly interprets "19:00" as 7 PM Eastern and stores the UTC equivalent.
+ */
+function parseAsET(dateStr: string, timeStr: string): Date {
+  const naive = new Date(`${dateStr}T${timeStr}:00.000Z`)
+  const etStr = naive.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  const etDate = new Date(etStr)
+  const offsetMs = naive.getTime() - etDate.getTime()
+  return new Date(naive.getTime() + offsetMs)
+}
+
 const schema = z.object({
   title: z.string().min(1),
   eventType: z.enum(['SOCIAL', 'TANGO_MILONGA', 'GROUP_CLASS', 'WORKSHOP', 'FESTIVAL']),
@@ -66,10 +79,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Parse datetime
-    const startDateTime = new Date(`${data.startDate}T${data.startTime}`)
+    // Parse datetime as America/New_York → store as UTC
+    const startDateTime = parseAsET(data.startDate, data.startTime)
     const endDateTime = data.endTime
-      ? new Date(`${data.startDate}T${data.endTime}`)
+      ? parseAsET(data.startDate, data.endTime)
       : null
 
     // Geocode the venue address for map view
@@ -106,7 +119,8 @@ export async function POST(request: NextRequest) {
       const weeks = Math.min(data.recurrenceWeeks, 52)
       const interval = data.recurrenceInterval || 1
       const recurrenceGroupId = crypto.randomUUID()
-      const dayOfWeek = startDateTime.getDay()
+      // Get day of week from the user's intended date (not the UTC-shifted date)
+      const dayOfWeek = new Date(`${data.startDate}T12:00:00Z`).getUTCDay()
 
       const eventsData = Array.from({ length: weeks }, (_, i) => {
         const occStart = new Date(startDateTime.getTime() + i * interval * 7 * 24 * 60 * 60 * 1000)
@@ -203,11 +217,11 @@ export async function PUT(request: NextRequest) {
     if (data.eventType) update.eventType = data.eventType
     if (data.styles) update.styles = JSON.stringify(data.styles)
     if (data.startDate && data.startTime) {
-      update.startDateTime = new Date(`${data.startDate}T${data.startTime}`)
+      update.startDateTime = parseAsET(data.startDate, data.startTime)
     }
     if (data.endTime !== undefined) {
       update.endDateTime = data.startDate && data.endTime
-        ? new Date(`${data.startDate}T${data.endTime}`)
+        ? parseAsET(data.startDate, data.endTime)
         : null
     }
     if (data.venueName !== undefined) update.venueName = data.venueName || ''

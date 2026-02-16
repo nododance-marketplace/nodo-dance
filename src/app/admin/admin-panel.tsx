@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatDateTime, parseJsonArray, formatCurrency } from '@/lib/utils'
+import { formatDateTime, parseJsonArray, formatCurrency, APP_TIMEZONE } from '@/lib/utils'
 import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat, Pencil } from 'lucide-react'
 
 function getIntervalLabel(event: any): string {
@@ -318,7 +318,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                       </div>
                       <div>
                         <span className="font-medium text-gray-600">Dates: </span>
-                        {new Date(first.startDateTime).toLocaleDateString()} - {new Date(last.startDateTime).toLocaleDateString()}
+                        {new Date(first.startDateTime).toLocaleDateString('en-US', { timeZone: APP_TIMEZONE })} - {new Date(last.startDateTime).toLocaleDateString('en-US', { timeZone: APP_TIMEZONE })}
                       </div>
                       <div>
                         <span className="font-medium text-gray-600">Where: </span>
@@ -416,7 +416,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                         <div className="text-sm text-gray-500 space-y-0.5">
                           <p>
                             Every {DAYS[first.recurrenceDay ?? new Date(first.startDateTime).getDay()]} &middot;{' '}
-                            {new Date(first.startDateTime).toLocaleDateString()} - {new Date(last.startDateTime).toLocaleDateString()}
+                            {new Date(first.startDateTime).toLocaleDateString('en-US', { timeZone: APP_TIMEZONE })} - {new Date(last.startDateTime).toLocaleDateString('en-US', { timeZone: APP_TIMEZONE })}
                           </p>
                           <p>{first.address || first.venueName}</p>
                         </div>

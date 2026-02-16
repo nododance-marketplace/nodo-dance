@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { DANCE_STYLES, EVENT_TYPES } from '@/lib/constants'
 import { CheckCircle, ImagePlus, X, Repeat } from 'lucide-react'
+import { toDateInputValue, toTimeInputValue } from '@/lib/utils'
 import { EventGateModal } from '@/components/auth/event-gate-modal'
 
 const DRAFT_KEY = 'eventDraft'
@@ -129,9 +130,9 @@ function SubmitEventContent() {
               title: event.title,
               eventType: event.eventType,
               styles,
-              startDate: start.toISOString().split('T')[0],
-              startTime: start.toTimeString().slice(0, 5),
-              endTime: end ? end.toTimeString().slice(0, 5) : '',
+              startDate: toDateInputValue(start),
+              startTime: toTimeInputValue(start),
+              endTime: end ? toTimeInputValue(end) : '',
               venueName: event.venueName || '',
               address: event.address || '',
               price: event.price != null ? String(event.price) : '',

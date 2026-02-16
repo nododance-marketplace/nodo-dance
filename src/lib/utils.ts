@@ -20,6 +20,8 @@ export function formatCurrency(amount: number | null | undefined): string {
   return `$${amount}`
 }
 
+export const APP_TIMEZONE = 'America/New_York'
+
 export function formatDate(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('en-US', {
@@ -27,6 +29,7 @@ export function formatDate(date: Date | string): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    timeZone: APP_TIMEZONE,
   })
 }
 
@@ -35,11 +38,27 @@ export function formatTime(date: Date | string): string {
   return d.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: APP_TIMEZONE,
   })
 }
 
 export function formatDateTime(date: Date | string): string {
   return `${formatDate(date)} at ${formatTime(date)}`
+}
+
+/** Extract YYYY-MM-DD in America/New_York for date inputs */
+export function toDateInputValue(date: Date): string {
+  return date.toLocaleDateString('en-CA', { timeZone: APP_TIMEZONE })
+}
+
+/** Extract HH:MM (24h) in America/New_York for time inputs */
+export function toTimeInputValue(date: Date): string {
+  return date.toLocaleTimeString('en-GB', {
+    timeZone: APP_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
 }
 
 /**
