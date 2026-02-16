@@ -39,6 +39,18 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'Nodo Dance',
   },
+  openGraph: {
+    title: 'Nodo Dance - Charlotte\'s Partner Dance Hub',
+    description: 'Find dance instructors and events in Charlotte, NC. Salsa, Bachata, Kizomba, Tango, and Zouk.',
+    siteName: 'Nodo Dance',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Nodo Dance - Charlotte\'s Partner Dance Hub',
+    description: 'Find dance instructors and events in Charlotte, NC. Salsa, Bachata, Kizomba, Tango, and Zouk.',
+  },
 }
 
 export default function RootLayout({
@@ -49,8 +61,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
         <link
           rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
