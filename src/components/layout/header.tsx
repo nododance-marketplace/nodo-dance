@@ -22,11 +22,11 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center mr-8 flex-shrink-0">
             <Image
-              src="/logo.svg"
+              src="/Title.png"
               alt="Nodo Dance"
-              width={220}
-              height={60}
-              className="h-9 md:h-11 w-auto object-contain"
+              width={800}
+              height={225}
+              className="h-8 md:h-10 w-auto"
               priority
             />
           </Link>

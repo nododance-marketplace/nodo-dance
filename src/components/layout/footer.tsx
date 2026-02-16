@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Instagram, Mail } from 'lucide-react'
 
 export function Footer() {
@@ -10,13 +11,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center space-x-3 mb-4">
-              <img
-                src="/logo.svg"
+            <div className="mb-4">
+              <Image
+                src="/Title.png"
                 alt="Nodo Dance"
-                className="h-10 w-auto"
+                width={800}
+                height={225}
+                className="h-10 w-auto brightness-0 invert"
               />
-              <span className="text-xl font-bold">Nodo Dance</span>
             </div>
             <p className="text-gray-300 mb-4">
               {city}&apos;s hub for partner dance instructors and events.
