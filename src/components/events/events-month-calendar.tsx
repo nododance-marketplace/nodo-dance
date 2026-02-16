@@ -27,7 +27,7 @@ interface Event {
   startDateTime: Date | string
   endDateTime: Date | string | null
   venueName: string
-  neighborhood: string | null
+  address: string | null
   price: number | null
 }
 

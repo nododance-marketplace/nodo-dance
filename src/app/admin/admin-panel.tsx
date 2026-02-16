@@ -120,9 +120,27 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
     }
   }
 
+  async function geocodeAll() {
+    const geoToast = toast.loading('Re-geocoding all events missing coordinates...')
+    try {
+      const res = await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'geocode-all' }),
+      })
+      if (!res.ok) throw new Error('Bulk geocoding failed')
+      const data = await res.json()
+      toast.success(`Done! ${data.success} geocoded, ${data.failed} failed out of ${data.total}`, { id: geoToast })
+      fetchData()
+    } catch (error: any) {
+      toast.error(error.message || 'Bulk geocoding failed', { id: geoToast })
+    }
+  }
+
   const pendingEvents = events.filter((e) => e.status === 'PENDING')
   const approvedEvents = events.filter((e) => e.status === 'APPROVED')
   const rejectedEvents = events.filter((e) => e.status === 'REJECTED')
+  const missingCoords = events.filter((e) => e.lat == null || e.lng == null)
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -131,10 +149,18 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           <h1 className="text-3xl font-bold">Admin Panel</h1>
           <p className="text-sm text-gray-500 mt-1">Signed in as {adminEmail}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {missingCoords.length > 0 && (
+            <Button variant="gradient" size="sm" onClick={geocodeAll}>
+              <MapPin className="w-4 h-4 mr-2" />
+              Geocode All ({missingCoords.length})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Pending Events */}
@@ -393,12 +419,6 @@ function EventCard({
             <div>
               <span className="font-medium text-gray-600">Submitter: </span>
               {event.submittedBy.email}
-            </div>
-          )}
-          {event.neighborhood && (
-            <div>
-              <span className="font-medium text-gray-600">Area: </span>
-              {event.neighborhood}
             </div>
           )}
           <div>

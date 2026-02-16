@@ -235,7 +235,7 @@ function EventsContent() {
         <div className="flex-1 w-full sm:max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
-            placeholder="Search events, venues, or neighborhoods..."
+            placeholder="Search events, venues, or addresses..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"

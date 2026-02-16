@@ -173,7 +173,6 @@ model Event {
   endDateTime   DateTime?
 
   venueName    String
-  neighborhood String?
   address      String?
   lat          Float?
   lng          Float?

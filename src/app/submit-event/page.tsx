@@ -26,7 +26,6 @@ const schema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().optional(),
   venueName: z.string().optional(),
-  neighborhood: z.string().optional(),
   address: z.string().min(1, 'Address is required'),
   price: z.string().optional(),
   organizerName: z.string().min(1, 'Organizer name is required'),
@@ -124,7 +123,6 @@ function SubmitEventContent() {
               startTime: start.toTimeString().slice(0, 5),
               endTime: end ? end.toTimeString().slice(0, 5) : '',
               venueName: event.venueName || '',
-              neighborhood: event.neighborhood || '',
               address: event.address || '',
               price: event.price != null ? String(event.price) : '',
               organizerName: event.organizerName,
@@ -460,15 +458,9 @@ function SubmitEventContent() {
               <Input {...register('address')} error={errors.address?.message} placeholder="e.g., 123 Main St, Charlotte, NC 28202" />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Venue Name (optional)</label>
-                <Input {...register('venueName')} placeholder="e.g., Studio 229" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Neighborhood (optional)</label>
-                <Input {...register('neighborhood')} placeholder="e.g., Uptown, South End" />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Venue Name (optional)</label>
+              <Input {...register('venueName')} placeholder="e.g., Studio 229" />
             </div>
 
             {/* Organizer Info */}

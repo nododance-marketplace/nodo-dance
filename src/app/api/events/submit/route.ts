@@ -15,7 +15,6 @@ const schema = z.object({
   startTime: z.string(),
   endTime: z.string().optional(),
   venueName: z.string().optional(),
-  neighborhood: z.string().optional(),
   address: z.string().min(1),
   price: z.string().optional(),
   organizerName: z.string().min(1),
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
       : null
 
     // Geocode the venue address for map view
-    const geoQuery = buildGeoQuery(data.venueName || '', data.address, data.neighborhood)
+    const geoQuery = buildGeoQuery(data.venueName || '', data.address)
     const coords = await geocodeAddress(geoQuery)
 
     // Create event
@@ -79,8 +78,7 @@ export async function POST(request: NextRequest) {
         startDateTime,
         endDateTime,
         venueName: data.venueName || '',
-        neighborhood: data.neighborhood || null,
-        address: data.address || null,
+        address: data.address,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
         price: data.price ? parseInt(data.price) : null,
@@ -152,7 +150,6 @@ export async function PUT(request: NextRequest) {
         : null
     }
     if (data.venueName !== undefined) update.venueName = data.venueName || ''
-    if (data.neighborhood !== undefined) update.neighborhood = data.neighborhood || null
     if (data.address !== undefined) update.address = data.address || null
     if (data.price !== undefined) update.price = data.price ? parseInt(data.price) : null
     if (data.organizerName) update.organizerName = data.organizerName
@@ -163,9 +160,8 @@ export async function PUT(request: NextRequest) {
     if (data.imageUrl !== undefined) update.imageUrl = data.imageUrl || null
 
     // Re-geocode if address changed
-    const newAddress = data.address ?? existing.address
     if (data.address && data.address !== existing.address) {
-      const geoQuery = buildGeoQuery(data.venueName || existing.venueName, newAddress, data.neighborhood ?? existing.neighborhood)
+      const geoQuery = buildGeoQuery(data.venueName || existing.venueName, data.address)
       const coords = await geocodeAddress(geoQuery)
       update.lat = coords?.lat ?? null
       update.lng = coords?.lng ?? null

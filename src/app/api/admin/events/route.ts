@@ -64,13 +64,48 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { eventId, status, action } = body
 
+    // Bulk re-geocode: find all events missing coords and geocode them
+    if (action === 'geocode-all') {
+      const missing = await prisma.event.findMany({
+        where: {
+          OR: [{ lat: null }, { lng: null }],
+          address: { not: null },
+        },
+      })
+
+      console.log(`[Admin] Bulk re-geocode: ${missing.length} events missing coordinates`)
+
+      let success = 0
+      let failed = 0
+      for (const ev of missing) {
+        const geoQuery = buildGeoQuery(ev.venueName, ev.address)
+        const coords = await geocodeAddress(geoQuery)
+        if (coords) {
+          await prisma.event.update({
+            where: { id: ev.id },
+            data: { lat: coords.lat, lng: coords.lng },
+          })
+          success++
+          console.log(`[Admin] Bulk geocoded "${ev.title}" → ${coords.lat}, ${coords.lng}`)
+        } else {
+          failed++
+          console.warn(`[Admin] Bulk geocode FAILED: "${ev.title}" (address: "${ev.address}")`)
+        }
+        // Small delay to respect Nominatim rate limit (1 req/sec)
+        await new Promise((r) => setTimeout(r, 1100))
+      }
+
+      revalidatePath('/events')
+      return NextResponse.json({ total: missing.length, success, failed })
+    }
+
     // Re-geocode action (admin can force re-geocode any event)
     if (action === 'geocode') {
       let event = await prisma.event.findUnique({ where: { id: eventId } })
       if (!event) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
       console.log(`[Admin] Force re-geocode: "${event.title}" (address: "${event.address}", venue: "${event.venueName}")`)
-      const geoQuery = buildGeoQuery(event.venueName, event.address, event.neighborhood)
+      const geoQuery = buildGeoQuery(event.venueName, event.address)
       const coords = await geocodeAddress(geoQuery)
       if (coords) {
         event = await prisma.event.update({
@@ -98,7 +133,7 @@ export async function PUT(request: NextRequest) {
     // On approval, always try geocoding if coordinates are missing
     if (status === 'APPROVED' && (event.lat == null || event.lng == null)) {
       console.log(`[Admin] Geocoding event "${event.title}" (address: "${event.address}", venue: "${event.venueName}")`)
-      const geoQuery = buildGeoQuery(event.venueName, event.address, event.neighborhood)
+      const geoQuery = buildGeoQuery(event.venueName, event.address)
       const coords = await geocodeAddress(geoQuery)
       if (coords) {
         event = await prisma.event.update({

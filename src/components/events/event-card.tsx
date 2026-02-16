@@ -15,7 +15,7 @@ interface EventCardProps {
     startDateTime: Date | string
     endDateTime: Date | string | null
     venueName: string
-    neighborhood: string | null
+    address: string | null
     price: number | null
     imageUrl?: string | null
   }
@@ -59,10 +59,14 @@ export function EventCard({ event }: EventCardProps) {
             <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
             {formatTime(startDate)}
           </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-            {event.venueName}
-            {event.neighborhood && ` • ${event.neighborhood}`}
+          <div className="flex items-start text-sm text-gray-600">
+            <MapPin className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+            <div>
+              {event.venueName && <span className="font-medium">{event.venueName}</span>}
+              {event.venueName && event.address && <br />}
+              {event.address && <span>{event.address}</span>}
+              {!event.venueName && !event.address && <span>No address</span>}
+            </div>
           </div>
         </div>
 

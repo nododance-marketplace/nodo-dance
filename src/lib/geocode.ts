@@ -61,23 +61,23 @@ export async function geocodeAddress(
 
 /**
  * Build a geocoding query string from event fields.
- * Combines venue name and address for better results.
+ * If a full address is provided, use it as-is (it already contains city/state).
+ * Only append city context when falling back to venue name alone.
  */
 export function buildGeoQuery(
   venueName: string,
   address?: string | null,
-  neighborhood?: string | null
 ): string {
-  const parts: string[] = []
+  // Full address provided — use as-is (e.g. "123 Main St, Charlotte, NC 28202")
+  if (address && address.trim()) {
+    return address.trim()
+  }
 
-  if (address) parts.push(address)
-  else if (venueName) parts.push(venueName)
+  // Fallback: venue name only — add city context for better results
+  if (venueName && venueName.trim()) {
+    const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte'
+    return `${venueName.trim()}, ${city}, NC`
+  }
 
-  if (neighborhood) parts.push(neighborhood)
-
-  // Default city context for better results
-  const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte'
-  parts.push(`${city}, NC`)
-
-  return parts.join(', ')
+  return ''
 }

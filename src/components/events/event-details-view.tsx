@@ -138,9 +138,9 @@ END:VCALENDAR`
               <MapPin className="w-5 h-5 text-accent-coral mt-1" />
               <div>
                 <p className="font-semibold">Venue</p>
-                <p className="text-gray-700">{event.venueName}</p>
-                {event.neighborhood && (
-                  <p className="text-sm text-gray-600">{event.neighborhood}</p>
+                {event.venueName && <p className="text-gray-700">{event.venueName}</p>}
+                {event.address && (
+                  <p className="text-sm text-gray-600">{event.address}</p>
                 )}
               </div>
             </div>

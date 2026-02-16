@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
                 OR: [
                   { title: { contains: search } },
                   { venueName: { contains: search } },
-                  { neighborhood: { contains: search } },
+                  { address: { contains: search } },
                 ],
               }
             : {},
