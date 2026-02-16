@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdmin } from '@/lib/auth'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { sendEventSubmissionEmail } from '@/lib/email'
@@ -42,20 +42,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    // Rate limiting
-    const ip = getClientIp(request)
-    const allowed = await checkRateLimit({
-      identifier: ip,
-      action: 'submit-event',
-      limit: 3,
-      window: 3600, // 1 hour
-    })
+    // Rate limiting — skip for admins and when disabled via env
+    const rateLimitEnabled = process.env.EVENT_RATE_LIMIT_ENABLED !== 'false'
+    const userIsAdmin = isAdmin(session.user.email)
 
-    if (!allowed) {
-      return NextResponse.json(
-        { error: 'Too many submissions. Please try again later.' },
-        { status: 429 }
-      )
+    if (rateLimitEnabled && !userIsAdmin) {
+      const ip = getClientIp(request)
+      const allowed = await checkRateLimit({
+        identifier: ip,
+        action: 'submit-event',
+        limit: 10,
+        window: 3600, // 1 hour
+      })
+
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Too many submissions. Please wait about an hour and try again.' },
+          { status: 429 }
+        )
+      }
     }
 
     // Parse datetime
