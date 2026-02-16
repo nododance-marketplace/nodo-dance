@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
-import { Menu, X, User } from 'lucide-react'
+import { Menu, X, User, Shield } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 
@@ -56,6 +56,15 @@ export function Header() {
                 {userRole !== 'INSTRUCTOR' && (
                   <Link href="/become-an-instructor" className="text-gray-700 hover:text-primary transition-colors">
                     Become an Instructor
+                  </Link>
+                )}
+                {/* @ts-ignore */}
+                {session.user?.isAdmin && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="border-amber-400 text-amber-700 hover:bg-amber-50">
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin
+                    </Button>
                   </Link>
                 )}
                 <Link href={dashboardUrl}>
@@ -127,6 +136,15 @@ export function Header() {
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       Become an Instructor
+                    </Link>
+                  )}
+                  {/* @ts-ignore */}
+                  {session.user?.isAdmin && (
+                    <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full border-amber-400 text-amber-700">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin Panel
+                      </Button>
                     </Link>
                   )}
                   <Link href={dashboardUrl} onClick={() => setMobileMenuOpen(false)}>

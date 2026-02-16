@@ -21,6 +21,9 @@ export async function GET() {
 
   try {
     const events = await prisma.event.findMany({
+      include: {
+        submittedBy: { select: { email: true } },
+      },
       orderBy: { createdAt: 'desc' },
     })
     return NextResponse.json(events)

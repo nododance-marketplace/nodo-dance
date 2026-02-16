@@ -105,6 +105,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = user.id
         // @ts-ignore
         session.user.role = user.role
+        // @ts-ignore
+        session.user.isAdmin = isAdmin(user.email)
       }
       return session
     },

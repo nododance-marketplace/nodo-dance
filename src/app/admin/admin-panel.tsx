@@ -298,12 +298,22 @@ function EventCard({
             <span className="font-medium text-gray-600">Price: </span>
             {formatCurrency(event.price)}
           </div>
+          {event.submittedBy?.email && (
+            <div>
+              <span className="font-medium text-gray-600">Submitter: </span>
+              {event.submittedBy.email}
+            </div>
+          )}
           {event.neighborhood && (
             <div>
               <span className="font-medium text-gray-600">Area: </span>
               {event.neighborhood}
             </div>
           )}
+          <div>
+            <span className="font-medium text-gray-600">Submitted: </span>
+            {formatDateTime(event.createdAt)}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-1 mb-3">
