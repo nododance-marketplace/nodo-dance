@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions, isAdmin } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
+import { geocodeAddress, buildGeoQuery } from '@/lib/geocode'
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
@@ -42,10 +43,22 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const event = await prisma.event.update({
+    let event = await prisma.event.update({
       where: { id: eventId },
       data: { status },
     })
+
+    // On approval, retry geocoding if coordinates are missing
+    if (status === 'APPROVED' && event.lat == null && event.lng == null) {
+      const geoQuery = buildGeoQuery(event.venueName, event.address, event.neighborhood)
+      const coords = await geocodeAddress(geoQuery)
+      if (coords) {
+        event = await prisma.event.update({
+          where: { id: eventId },
+          data: { lat: coords.lat, lng: coords.lng },
+        })
+      }
+    }
 
     // Revalidate events pages so approved events appear immediately
     revalidatePath('/events')

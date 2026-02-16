@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { sendEventSubmissionEmail } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { geocodeAddress, buildGeoQuery } from '@/lib/geocode'
 
 const schema = z.object({
   title: z.string().min(1),
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
       ? new Date(`${data.startDate}T${data.endTime}`)
       : null
 
+    // Geocode the venue address for map view
+    const geoQuery = buildGeoQuery(data.venueName, data.address, data.neighborhood)
+    const coords = await geocodeAddress(geoQuery)
+
     // Create event
     const event = await prisma.event.create({
       data: {
@@ -76,6 +81,8 @@ export async function POST(request: NextRequest) {
         venueName: data.venueName,
         neighborhood: data.neighborhood || null,
         address: data.address || null,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
         price: data.price ? parseInt(data.price) : null,
         organizerName: data.organizerName,
         organizerEmail: data.organizerEmail,

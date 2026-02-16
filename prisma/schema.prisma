@@ -175,6 +175,8 @@ model Event {
   venueName    String
   neighborhood String?
   address      String?
+  lat          Float?
+  lng          Float?
 
   price Int? // null = free
 

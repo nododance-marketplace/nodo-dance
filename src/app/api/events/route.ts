@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const styles = searchParams.get('styles')?.split(',').filter(Boolean) || []
   const eventTypes = searchParams.get('eventTypes')?.split(',').filter(Boolean) || []
   const dateFilter = searchParams.get('dateFilter') || 'upcoming'
+  const mapMode = searchParams.get('mapMode') === '1'
 
   // Month-based filtering for calendar view
   const monthStart = searchParams.get('monthStart')
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest) {
     if (monthStart && monthEnd) {
       startDate = new Date(monthStart)
       endDate = new Date(monthEnd)
+    } else if (dateFilter === 'today') {
+      startDate = now
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
     } else if (dateFilter === 'this-week') {
       startDate = now
       endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -49,6 +53,8 @@ export async function GET(request: NextRequest) {
           startDate ? { startDateTime: { gte: startDate } } : {},
           endDate ? { startDateTime: { lte: endDate } } : {},
           eventTypes.length > 0 ? { eventType: { in: eventTypes } } : {},
+          // Map mode: only return events with valid coordinates
+          ...(mapMode ? [{ lat: { not: null } }, { lng: { not: null } }] : []),
         ],
       },
       orderBy: {

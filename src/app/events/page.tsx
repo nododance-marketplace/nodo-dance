@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { EventCard } from '@/components/events/event-card'
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Filter, X, Plus, Calendar as CalendarIcon, List } from 'lucide-react'
+import { Search, Filter, X, Plus, Calendar as CalendarIcon, List, MapPin } from 'lucide-react'
 import { DANCE_STYLES, EVENT_TYPES } from '@/lib/constants'
 import {
   getCurrentMonth,
@@ -17,6 +18,13 @@ import {
   formatMonthString,
   getMonthRange,
 } from '@/lib/calendar-utils'
+
+const EventsMapView = dynamic(
+  () => import('@/components/events/events-map-view').then((m) => ({ default: m.EventsMapView })),
+  { ssr: false, loading: () => <div className="bg-white rounded-xl h-[600px] animate-pulse" /> }
+)
+
+type ViewMode = 'calendar' | 'list' | 'map'
 
 export default function EventsPage() {
   return (
@@ -37,14 +45,18 @@ function EventsContent() {
   const urlStyles = searchParams.get('styles')?.split(',').filter(Boolean) || []
   const urlEventTypes = searchParams.get('eventTypes')?.split(',').filter(Boolean) || []
   const urlDateFilter = searchParams.get('dateFilter') || 'upcoming'
+  const urlMapRange = searchParams.get('range') || 'this-week'
 
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'calendar' | 'list'>(urlView === 'list' ? 'list' : 'calendar')
+  const [view, setView] = useState<ViewMode>(
+    urlView === 'list' ? 'list' : urlView === 'map' ? 'map' : 'calendar'
+  )
   const [search, setSearch] = useState(urlSearch)
   const [selectedStyles, setSelectedStyles] = useState<string[]>(urlStyles)
   const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>(urlEventTypes)
   const [dateFilter, setDateFilter] = useState(urlDateFilter)
+  const [mapRange, setMapRange] = useState(urlMapRange)
   const [showFilters, setShowFilters] = useState(false)
 
   // Month state for calendar view
@@ -66,9 +78,12 @@ function EventsContent() {
     if (view === 'list') {
       params.set('dateFilter', dateFilter)
     }
+    if (view === 'map') {
+      params.set('range', mapRange)
+    }
 
     router.replace(`/events?${params.toString()}`, { scroll: false })
-  }, [view, calendarYear, calendarMonth, search, selectedStyles, selectedEventTypes, dateFilter, router])
+  }, [view, calendarYear, calendarMonth, search, selectedStyles, selectedEventTypes, dateFilter, mapRange, router])
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
@@ -77,12 +92,23 @@ function EventsContent() {
     if (selectedStyles.length > 0) params.set('styles', selectedStyles.join(','))
     if (selectedEventTypes.length > 0) params.set('eventTypes', selectedEventTypes.join(','))
 
-    // For calendar view, fetch events for the entire month
     if (view === 'calendar') {
+      // Calendar view: fetch events for the entire month
       const monthRange = getMonthRange(calendarYear, calendarMonth)
       params.set('monthStart', monthRange.start.toISOString())
       params.set('monthEnd', monthRange.end.toISOString())
+    } else if (view === 'map') {
+      // Map view: use mapRange and require coordinates
+      params.set('mapMode', '1')
+      if (mapRange === 'today') {
+        params.set('dateFilter', 'today')
+      } else if (mapRange === 'this-week') {
+        params.set('dateFilter', 'this-week')
+      } else {
+        params.set('dateFilter', 'this-month')
+      }
     } else {
+      // List view
       params.set('dateFilter', dateFilter)
     }
 
@@ -100,7 +126,7 @@ function EventsContent() {
     } finally {
       setLoading(false)
     }
-  }, [search, selectedStyles, selectedEventTypes, dateFilter, calendarYear, calendarMonth, view])
+  }, [search, selectedStyles, selectedEventTypes, dateFilter, calendarYear, calendarMonth, view, mapRange])
 
   // Fetch events when filters or view changes
   useEffect(() => {
@@ -131,6 +157,9 @@ function EventsContent() {
     if (view === 'list') {
       setDateFilter('upcoming')
     }
+    if (view === 'map') {
+      setMapRange('this-week')
+    }
   }
 
   const hasFilters =
@@ -138,6 +167,11 @@ function EventsContent() {
     selectedEventTypes.length > 0 ||
     search !== '' ||
     (view === 'list' && dateFilter !== 'upcoming')
+
+  // Map events: only those with valid lat/lng
+  const mapEvents = view === 'map'
+    ? events.filter((e) => e.lat != null && e.lng != null)
+    : []
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -184,6 +218,17 @@ function EventsContent() {
             <List className="w-4 h-4" />
             List
           </button>
+          <button
+            onClick={() => setView('map')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+              view === 'map'
+                ? 'bg-white shadow-sm text-primary font-medium'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Map
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -213,13 +258,36 @@ function EventsContent() {
           )}
         </button>
 
-        {/* Date Filter - Only for List View */}
+        {/* Date Filter - List View */}
         {view === 'list' && (
           <Select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
             <option value="upcoming">Upcoming</option>
             <option value="this-week">This Week</option>
             <option value="this-month">This Month</option>
           </Select>
+        )}
+
+        {/* Date Range - Map View */}
+        {view === 'map' && (
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+            {[
+              { value: 'today', label: 'Day' },
+              { value: 'this-week', label: 'Week' },
+              { value: 'this-month', label: 'Month' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setMapRange(opt.value)}
+                className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                  mapRange === opt.value
+                    ? 'bg-white shadow-sm text-primary font-medium'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -281,7 +349,9 @@ function EventsContent() {
         {/* Results */}
         <div className="md:col-span-3">
           {loading ? (
-            view === 'calendar' ? (
+            view === 'map' ? (
+              <div className="bg-white rounded-xl h-[600px] animate-pulse" />
+            ) : view === 'calendar' ? (
               <div className="bg-white rounded-xl h-96 animate-pulse" />
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
@@ -290,6 +360,38 @@ function EventsContent() {
                 ))}
               </div>
             )
+          ) : view === 'map' ? (
+            <>
+              {mapEvents.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                  <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-xl text-gray-600 mb-2">No mappable events found</p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Events need an address to appear on the map.
+                    Try a different time range or clear filters.
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    {hasFilters && (
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        Clear Filters
+                      </Button>
+                    )}
+                    <Link href="/submit-event">
+                      <Button variant="gradient" size="sm">
+                        Submit Event
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {mapEvents.length} event{mapEvents.length !== 1 ? 's' : ''} on map
+                  </p>
+                  <EventsMapView events={mapEvents} />
+                </>
+              )}
+            </>
           ) : view === 'calendar' ? (
             <>
               {/* Empty state notice for calendar - shown above grid */}
