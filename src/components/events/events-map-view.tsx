@@ -4,8 +4,9 @@ import { useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { parseJsonArray, formatDate, formatTime } from '@/lib/utils'
+import { EVENT_TYPES } from '@/lib/constants'
 
-// --- Pin colors by dance style ---
+// --- Pin colors by dance genre ---
 const GENRE_COLORS: Record<string, string> = {
   Salsa: '#DC2626',
   Bachata: '#F97316',
@@ -21,24 +22,29 @@ function getGenreColor(styles: string): string {
   return GENRE_COLORS[primary] || GENRE_COLORS.Other
 }
 
-// --- Urgency shapes ---
-type PinShape = 'triangle' | 'square' | 'circle'
+// --- Event type → marker shape ---
+type PinShape = 'circle' | 'ring' | 'square' | 'diamond' | 'triangle'
 
-function getUrgencyShape(startDateTime: string | Date): PinShape {
-  const start = typeof startDateTime === 'string' ? new Date(startDateTime) : startDateTime
-  const now = new Date()
-
-  // Today
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-  if (start <= endOfToday) return 'triangle'
-
-  // Within 7 days
-  const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-  if (start <= in7Days) return 'square'
-
-  // Later
-  return 'circle'
+const EVENT_TYPE_SHAPES: Record<string, PinShape> = {
+  SOCIAL: 'circle',
+  TANGO_MILONGA: 'ring',
+  GROUP_CLASS: 'square',
+  WORKSHOP: 'diamond',
+  FESTIVAL: 'triangle',
 }
+
+function getEventTypeShape(eventType: string): PinShape {
+  return EVENT_TYPE_SHAPES[eventType] || 'circle'
+}
+
+// Legend data: shape unicode + short label
+const SHAPE_LEGEND: { shape: PinShape; label: string; unicode: string }[] = [
+  { shape: 'circle', label: 'Social', unicode: '\u25CF' },
+  { shape: 'ring', label: 'Milonga', unicode: '\u25C9' },
+  { shape: 'square', label: 'Class', unicode: '\u25A0' },
+  { shape: 'diamond', label: 'Workshop', unicode: '\u25C6' },
+  { shape: 'triangle', label: 'Festival', unicode: '\u25B2' },
+]
 
 // --- SVG icon builder ---
 function makeSvg(color: string, shape: PinShape): string {
@@ -46,13 +52,22 @@ function makeSvg(color: string, shape: PinShape): string {
   let shapeEl: string
 
   switch (shape) {
-    case 'triangle':
-      shapeEl = `<polygon points="13,3 24,23 2,23" fill="${color}" stroke="white" stroke-width="2"/>`
+    case 'circle':
+      shapeEl = `<circle cx="13" cy="13" r="10" fill="${color}" stroke="white" stroke-width="2"/>`
+      break
+    case 'ring':
+      // Donut: filled circle with white center hole (milonga)
+      shapeEl = `<circle cx="13" cy="13" r="10" fill="${color}" stroke="white" stroke-width="2"/><circle cx="13" cy="13" r="4" fill="white"/>`
       break
     case 'square':
       shapeEl = `<rect x="3" y="3" width="20" height="20" rx="3" fill="${color}" stroke="white" stroke-width="2"/>`
       break
-    case 'circle':
+    case 'diamond':
+      shapeEl = `<polygon points="13,2 24,13 13,24 2,13" fill="${color}" stroke="white" stroke-width="2"/>`
+      break
+    case 'triangle':
+      shapeEl = `<polygon points="13,3 24,23 2,23" fill="${color}" stroke="white" stroke-width="2"/>`
+      break
     default:
       shapeEl = `<circle cx="13" cy="13" r="10" fill="${color}" stroke="white" stroke-width="2"/>`
       break
@@ -110,6 +125,7 @@ function applyJitter(
 export interface MapEvent {
   id: string
   title: string
+  eventType: string
   venueName: string
   address: string | null
   styles: string
@@ -155,8 +171,9 @@ export function EventsMapView({ events }: EventsMapViewProps) {
         />
         {jitteredEvents.map((event) => {
           const color = getGenreColor(event.styles)
-          const shape = getUrgencyShape(event.startDateTime)
+          const shape = getEventTypeShape(event.eventType)
           const icon = makeIcon(color, shape)
+          const eventTypeLabel = EVENT_TYPES.find((t) => t.value === event.eventType)?.label || event.eventType
           const startDate = typeof event.startDateTime === 'string'
             ? new Date(event.startDateTime)
             : event.startDateTime
@@ -166,6 +183,7 @@ export function EventsMapView({ events }: EventsMapViewProps) {
               <Popup>
                 <div className="text-sm min-w-48">
                   <p className="font-bold text-base mb-1">{event.title}</p>
+                  <p className="text-indigo-600 text-xs font-medium">{eventTypeLabel}</p>
                   <p className="text-gray-600">{event.venueName}</p>
                   {event.address && (
                     <p className="text-gray-500 text-xs">{event.address}</p>
@@ -207,12 +225,15 @@ export function EventsMapView({ events }: EventsMapViewProps) {
       </MapContainer>
 
       {/* Legend */}
-      <div className="bg-white border-t border-gray-200 px-4 py-2 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600">
+      <div className="bg-white border-t border-gray-200 px-4 py-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
         <span className="font-medium mr-1">Shapes:</span>
-        <span>&#9650; Today</span>
-        <span>&#9632; This Week</span>
-        <span>&#9679; Later</span>
-        <span className="mx-2">|</span>
+        {SHAPE_LEGEND.map(({ label, unicode }) => (
+          <span key={label} className="flex items-center gap-1">
+            <span className="text-gray-800">{unicode}</span>
+            {label}
+          </span>
+        ))}
+        <span className="mx-1">|</span>
         <span className="font-medium mr-1">Colors:</span>
         {Object.entries(GENRE_COLORS).filter(([k]) => k !== 'Other').map(([genre, color]) => (
           <span key={genre} className="flex items-center gap-1">

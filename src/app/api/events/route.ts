@@ -71,6 +71,17 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Debug logging for map mode: count by eventType and missing coords
+    if (mapMode) {
+      const typeCounts: Record<string, number> = {}
+      let missingCoords = 0
+      for (const e of filtered) {
+        typeCounts[e.eventType] = (typeCounts[e.eventType] || 0) + 1
+        if (e.lat == null || e.lng == null) missingCoords++
+      }
+      console.log('[Map Debug] Returned:', filtered.length, '| By type:', typeCounts, '| Missing coords:', missingCoords)
+    }
+
     return NextResponse.json(filtered)
   } catch (error) {
     console.error('Error fetching events:', error)
