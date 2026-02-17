@@ -24,8 +24,15 @@ export async function GET(request: NextRequest) {
       startDate = new Date(monthStart)
       endDate = new Date(monthEnd)
     } else if (dateFilter === 'today') {
-      startDate = now
-      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+      // Timezone-aware "today" in America/New_York
+      const etDateStr = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) // YYYY-MM-DD
+      // Build midnight ET as UTC: parse the ET date, then shift by the ET→UTC offset
+      const naive = new Date(`${etDateStr}T00:00:00.000Z`)
+      const etStr = naive.toLocaleString('en-US', { timeZone: 'America/New_York' })
+      const etMid = new Date(etStr)
+      const offsetMs = naive.getTime() - etMid.getTime()
+      startDate = new Date(naive.getTime() + offsetMs)               // midnight ET in UTC
+      endDate = new Date(startDate.getTime() + 24 * 60 * 60 * 1000)  // next midnight ET in UTC
     } else if (dateFilter === 'this-week') {
       startDate = now
       endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

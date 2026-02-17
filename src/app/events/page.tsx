@@ -44,7 +44,7 @@ function EventsContent() {
   const urlSearch = searchParams.get('search') || ''
   const urlStyles = searchParams.get('styles')?.split(',').filter(Boolean) || []
   const urlEventTypes = searchParams.get('eventTypes')?.split(',').filter(Boolean) || []
-  const urlDateFilter = searchParams.get('dateFilter') || 'upcoming'
+  const urlDateFilter = searchParams.get('dateFilter') || 'this-week'
   const urlMapRange = searchParams.get('range') || 'this-week'
 
   const [events, setEvents] = useState<any[]>([])
@@ -155,7 +155,7 @@ function EventsContent() {
     setSelectedEventTypes([])
     setSearch('')
     if (view === 'list') {
-      setDateFilter('upcoming')
+      setDateFilter('this-week')
     }
     if (view === 'map') {
       setMapRange('this-week')
@@ -166,12 +166,23 @@ function EventsContent() {
     selectedStyles.length > 0 ||
     selectedEventTypes.length > 0 ||
     search !== '' ||
-    (view === 'list' && dateFilter !== 'upcoming')
+    (view === 'list' && dateFilter !== 'this-week')
 
   // Map events: only those with valid lat/lng
   const mapEvents = view === 'map'
     ? events.filter((e) => e.lat != null && e.lng != null)
     : []
+
+  // Dev-only: warn about events that were dropped from map due to missing coords
+  if (view === 'map' && process.env.NODE_ENV !== 'production') {
+    const dropped = events.filter((e) => e.lat == null || e.lng == null)
+    if (dropped.length > 0) {
+      console.warn(
+        `[Map] ${dropped.length} event(s) hidden — missing coordinates:`,
+        dropped.map((e) => ({ id: e.id, title: e.title, eventType: e.eventType, lat: e.lat, lng: e.lng }))
+      )
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -261,7 +272,7 @@ function EventsContent() {
         {/* Date Filter - List View */}
         {view === 'list' && (
           <Select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
-            <option value="upcoming">Upcoming</option>
+            <option value="today">Today</option>
             <option value="this-week">This Week</option>
             <option value="this-month">This Month</option>
           </Select>
