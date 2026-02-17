@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
 
@@ -15,6 +17,8 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get('sortBy') || 'recommended'
 
   try {
+    const session = await getServerSession(authOptions)
+    const isLoggedIn = !!session?.user?.email
     const instructors = await prisma.instructorProfile.findMany({
       where: {
         isPublished: true,
@@ -34,12 +38,44 @@ export async function GET(request: NextRequest) {
           maxPrice !== undefined ? { privateRateHourly: { lte: maxPrice } } : {},
         ],
       },
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
+      select: {
+        id: true,
+        slug: true,
+        displayName: true,
+        headline: true,
+        bio: true,
+        photoUrl: true,
+        styles: true,
+        otherStyle: true,
+        skillLevels: true,
+        offerings: true,
+        languages: true,
+        yearsTeaching: true,
+        studentsTaught: true,
+        certifications: true,
+        rating: true,
+        offersPrivate: true,
+        privateRateHourly: true,
+        offersGroup: true,
+        groupRatePerClass: true,
+        groupClassNotes: true,
+        locationType: true,
+        neighborhood: true,
+        address: true,
+        travelRadiusMiles: true,
+        paymentCash: true,
+        paymentVenmo: true,
+        paymentCashApp: true,
+        paymentPayPal: true,
+        contactEmail: isLoggedIn,
+        preferredContactMethod: true,
+        contactNotes: isLoggedIn,
+        instagramUrl: true,
+        websiteUrl: true,
+        bookingUrl: true,
+        youtubeUrl: true,
+        tiktokUrl: true,
+        isPublished: true,
       },
     })
 

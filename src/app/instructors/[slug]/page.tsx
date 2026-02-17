@@ -15,13 +15,6 @@ export default async function InstructorProfilePage({
   const [instructor, session] = await Promise.all([
     prisma.instructorProfile.findUnique({
       where: { slug, isPublished: true },
-      include: {
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
     }),
     getServerSession(authOptions),
   ])
@@ -32,5 +25,10 @@ export default async function InstructorProfilePage({
 
   const isLoggedIn = !!session?.user?.email
 
-  return <InstructorProfileView instructor={instructor} isLoggedIn={isLoggedIn} />
+  // Redact contact email for unauthenticated users
+  const safeInstructor = isLoggedIn
+    ? instructor
+    : { ...instructor, contactEmail: null, contactNotes: null }
+
+  return <InstructorProfileView instructor={safeInstructor} isLoggedIn={isLoggedIn} />
 }

@@ -102,6 +102,11 @@ model InstructorProfile {
   paymentCashApp String?
   paymentPayPal  String?
 
+  // Contact
+  contactEmail           String?  // Instructor's public contact email (gated behind auth)
+  preferredContactMethod String?  // "Email", "Instagram DM", "Website Form", "Text"
+  contactNotes           String?  // e.g. "Best time to reach me: evenings"
+
   // Social
   instagramUrl String?
   websiteUrl   String?

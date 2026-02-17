@@ -41,6 +41,9 @@ const schema = z.object({
   paymentVenmo: z.string().optional(),
   paymentCashApp: z.string().optional(),
   paymentPayPal: z.string().optional(),
+  contactEmail: z.string().email('Valid email is required').min(1, 'Contact email is required'),
+  preferredContactMethod: z.string().optional().or(z.literal('')),
+  contactNotes: z.string().optional().or(z.literal('')),
   instagramUrl: z.string().optional().or(z.literal('')),
   websiteUrl: z.string().optional().or(z.literal('')),
   bookingUrl: z.string().optional().or(z.literal('')),
@@ -94,6 +97,9 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           paymentVenmo: profile.paymentVenmo || '',
           paymentCashApp: profile.paymentCashApp || '',
           paymentPayPal: profile.paymentPayPal || '',
+          contactEmail: profile.contactEmail || user?.email || '',
+          preferredContactMethod: profile.preferredContactMethod || '',
+          contactNotes: profile.contactNotes || '',
           instagramUrl: profile.instagramUrl || '',
           websiteUrl: profile.websiteUrl || '',
           bookingUrl: profile.bookingUrl || '',
@@ -102,6 +108,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           isPublished: profile.isPublished ?? true,
         }
       : {
+          contactEmail: user?.email || '',
           styles: [],
           skillLevels: [],
           offerings: [],
@@ -569,6 +576,46 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
               <div>
                 <label className="block text-sm font-medium mb-1">PayPal Username (optional)</label>
                 <Input {...register('paymentPayPal')} placeholder="username" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Your contact email is shown only to logged-in users so they can reach you for lessons.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Email *</label>
+                <Input
+                  type="email"
+                  {...register('contactEmail')}
+                  placeholder="your@email.com"
+                  error={errors.contactEmail?.message}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This is the email students will use to contact you (hidden from non-logged-in visitors)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Preferred Contact Method (optional)</label>
+                <Select {...register('preferredContactMethod')}>
+                  <option value="">Select...</option>
+                  <option value="Email">Email</option>
+                  <option value="Instagram DM">Instagram DM</option>
+                  <option value="Website Form">Website Form</option>
+                  <option value="Text">Text (future)</option>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Notes (optional)</label>
+                <Input
+                  {...register('contactNotes')}
+                  placeholder="e.g., Best time to reach me: evenings"
+                />
               </div>
             </div>
           </div>

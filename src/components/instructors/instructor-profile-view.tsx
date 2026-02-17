@@ -6,10 +6,9 @@ import { usePathname } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { MapPin, DollarSign, Instagram, Globe, Mail, Calendar, Star, Users, Award, Video, Lock } from 'lucide-react'
+import { MapPin, DollarSign, Instagram, Globe, Mail, Calendar, Star, Users, Award, Video, Lock, Copy, Check } from 'lucide-react'
 import { parseJsonArray, formatCurrency, getYouTubeEmbedUrl } from '@/lib/utils'
 import { LessonRequestModal } from './lesson-request-modal'
-import { LoginPromptCard } from '@/components/auth/login-prompt-card'
 import { SaveButton } from '@/components/auth/save-button'
 import { LOCATION_TYPES } from '@/lib/constants'
 
@@ -20,6 +19,7 @@ interface InstructorProfileViewProps {
 
 export function InstructorProfileView({ instructor, isLoggedIn = false }: InstructorProfileViewProps) {
   const [showRequestModal, setShowRequestModal] = useState(false)
+  const [emailCopied, setEmailCopied] = useState(false)
   const pathname = usePathname()
   const callbackUrl = encodeURIComponent(pathname)
 
@@ -110,35 +110,11 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                   </div>
                 )}
 
-                {/* Action Buttons - Soft Gated */}
+                {/* Social Links Row */}
                 <div className="flex flex-wrap gap-3 mt-4">
-                  {isLoggedIn ? (
-                    <>
-                      {instructor.bookingUrl ? (
-                        <a href={instructor.bookingUrl} target="_blank" rel="noopener noreferrer">
-                          <Button variant="gradient">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Book a Lesson
-                          </Button>
-                        </a>
-                      ) : (
-                        <Button variant="gradient" onClick={() => setShowRequestModal(true)}>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Request a Lesson
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <Link href={`/auth/signin?callbackUrl=${callbackUrl}`}>
-                      <Button variant="gradient">
-                        <Lock className="w-4 h-4 mr-2" />
-                        Create Free Account to Request Lesson
-                      </Button>
-                    </Link>
-                  )}
                   {instructor.websiteUrl && (
                     <a href={instructor.websiteUrl} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline">
+                      <Button variant="outline" size="sm">
                         <Globe className="w-4 h-4 mr-2" />
                         Website
                       </Button>
@@ -168,18 +144,96 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       </Button>
                     </a>
                   )}
+                  {instructor.bookingUrl && (
+                    <a href={instructor.bookingUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Booking
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Login Prompt Card - only for logged-out users */}
-        {!isLoggedIn && (
-          <div className="mb-8">
-            <LoginPromptCard />
-          </div>
-        )}
+        {/* Contact Section — Soft Gated */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h2 className="text-2xl font-bold mb-4">Contact</h2>
+            {isLoggedIn ? (
+              <div className="space-y-4">
+                {instructor.contactEmail ? (
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a href={`mailto:${instructor.contactEmail}?subject=${encodeURIComponent(`Nodo Dance — Lesson Inquiry for ${instructor.displayName}`)}`}>
+                        <Button variant="gradient">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Instructor
+                        </Button>
+                      </a>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(instructor.contactEmail)
+                          setEmailCopied(true)
+                          setTimeout(() => setEmailCopied(false), 2000)
+                        }}
+                      >
+                        {emailCopied ? (
+                          <><Check className="w-4 h-4 mr-1 text-green-600" /> Copied</>
+                        ) : (
+                          <><Copy className="w-4 h-4 mr-1" /> Copy Email</>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">{instructor.contactEmail}</p>
+                    {instructor.preferredContactMethod && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Preferred: {instructor.preferredContactMethod}
+                      </p>
+                    )}
+                    {instructor.contactNotes && (
+                      <p className="text-sm text-gray-500 mt-1">{instructor.contactNotes}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Button variant="gradient" onClick={() => setShowRequestModal(true)}>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Request a Lesson
+                    </Button>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Send a lesson request and the instructor will contact you by email.
+                    </p>
+                    {instructor.preferredContactMethod && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Preferred: {instructor.preferredContactMethod}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-start gap-4 bg-gray-50 rounded-lg p-4">
+                <Lock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-gray-700 mb-3">
+                    Create a free account to unlock the instructor&apos;s email and request lessons.
+                  </p>
+                  <Link href={`/auth/signin?callbackUrl=${callbackUrl}`}>
+                    <Button variant="gradient" size="sm">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Create Free Account to Unlock Contact
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Introduction Video — Preply-style, above bio */}
         {embedUrl && (
