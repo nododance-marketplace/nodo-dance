@@ -139,13 +139,3 @@ export function formatMonthDisplay(year: number, month: number): string {
   return format(date, 'MMMM yyyy')
 }
 
-/**
- * Style color mapping for dance styles
- */
-export const STYLE_COLORS: Record<string, { bg: string; text: string }> = {
-  Salsa: { bg: 'bg-red-100', text: 'text-red-700' },
-  Bachata: { bg: 'bg-pink-100', text: 'text-pink-700' },
-  Kizomba: { bg: 'bg-purple-100', text: 'text-purple-700' },
-  Tango: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  Zouk: { bg: 'bg-green-100', text: 'text-green-700' },
-}

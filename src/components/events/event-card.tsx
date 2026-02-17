@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar, MapPin, DollarSign, Clock, Repeat } from 'lucide-react'
 import { parseJsonArray, formatCurrency, formatDate, formatTime, getEventTypeValue } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
+import { getStyleColor, DANCE_STYLE_COLORS } from '@/lib/styleColors'
 
 interface EventCardProps {
   event: {
@@ -25,12 +26,16 @@ interface EventCardProps {
 
 export function EventCard({ event }: EventCardProps) {
   const styles = parseJsonArray(event.styles)
+  const styleColor = getStyleColor(event.styles)
   const eventTypeValue = getEventTypeValue(event.eventType, event.styles)
   const eventType = EVENT_TYPES.find((t) => t.value === eventTypeValue)
   const startDate = typeof event.startDateTime === 'string' ? new Date(event.startDateTime) : event.startDateTime
 
   return (
-    <Card className="hover:shadow-lg transition-shadow overflow-hidden">
+    <Card
+      className="hover:shadow-lg transition-shadow overflow-hidden"
+      style={{ borderLeft: `4px solid ${styleColor}` }}
+    >
       {event.imageUrl && (
         <Link href={`/events/${event.id}`} className="block overflow-hidden">
           <div className="aspect-[16/9] overflow-hidden">
@@ -81,7 +86,11 @@ export function EventCard({ event }: EventCardProps) {
 
         <div className="flex flex-wrap gap-1 mb-4">
           {styles.slice(0, 3).map((style) => (
-            <Badge key={style} variant="default">
+            <Badge key={style} variant="default" className="flex items-center gap-1">
+              <span
+                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: DANCE_STYLE_COLORS[style] || DANCE_STYLE_COLORS.Other }}
+              />
               {style}
             </Badge>
           ))}

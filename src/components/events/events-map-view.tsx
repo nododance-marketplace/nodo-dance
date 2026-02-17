@@ -5,22 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { parseJsonArray, formatDate, formatTime } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
-
-// --- Pin colors by dance genre ---
-const GENRE_COLORS: Record<string, string> = {
-  Salsa: '#DC2626',
-  Bachata: '#F97316',
-  Kizomba: '#7C3AED',
-  Tango: '#1E293B',
-  Zouk: '#059669',
-  Other: '#64748B',
-}
-
-function getGenreColor(styles: string): string {
-  const arr = parseJsonArray(styles)
-  const primary = arr[0] || 'Other'
-  return GENRE_COLORS[primary] || GENRE_COLORS.Other
-}
+import { DANCE_STYLE_COLORS, getStyleColor } from '@/lib/styleColors'
 
 // --- Event type → marker shape ---
 type PinShape = 'circle' | 'ring' | 'square' | 'diamond' | 'triangle'
@@ -170,7 +155,7 @@ export function EventsMapView({ events }: EventsMapViewProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {jitteredEvents.map((event) => {
-          const color = getGenreColor(event.styles)
+          const color = getStyleColor(event.styles)
           const shape = getEventTypeShape(event.eventType)
           const icon = makeIcon(color, shape)
           const eventTypeLabel = EVENT_TYPES.find((t) => t.value === event.eventType)?.label || event.eventType
@@ -183,7 +168,12 @@ export function EventsMapView({ events }: EventsMapViewProps) {
               <Popup>
                 <div className="text-sm min-w-48">
                   <p className="font-bold text-base mb-1">{event.title}</p>
-                  <p className="text-indigo-600 text-xs font-medium">{eventTypeLabel}</p>
+                  <p className="text-xs font-medium flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-gray-500">{parseJsonArray(event.styles).join(', ') || 'Other'}</span>
+                    <span className="text-gray-300 mx-0.5">&middot;</span>
+                    <span className="text-indigo-600">{eventTypeLabel}</span>
+                  </p>
                   <p className="text-gray-600">{event.venueName}</p>
                   {event.address && (
                     <p className="text-gray-500 text-xs">{event.address}</p>
@@ -235,10 +225,10 @@ export function EventsMapView({ events }: EventsMapViewProps) {
         ))}
         <span className="mx-1">|</span>
         <span className="font-medium mr-1">Colors:</span>
-        {Object.entries(GENRE_COLORS).filter(([k]) => k !== 'Other').map(([genre, color]) => (
-          <span key={genre} className="flex items-center gap-1">
+        {Object.entries(DANCE_STYLE_COLORS).filter(([k]) => k !== 'Other').map(([style, color]) => (
+          <span key={style} className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-            {genre}
+            {style}
           </span>
         ))}
       </div>

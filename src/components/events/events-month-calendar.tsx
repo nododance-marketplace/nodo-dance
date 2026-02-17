@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
-import { parseJsonArray, formatTime, getEventTypeValue } from '@/lib/utils'
-import { EVENT_TYPES } from '@/lib/constants'
+import { parseJsonArray, formatTime } from '@/lib/utils'
+import { getStyleColor, hexToRgba } from '@/lib/styleColors'
 import {
   getCalendarDays,
   groupEventsByDate,
@@ -15,8 +15,6 @@ import {
   getPreviousMonth,
   getNextMonth,
   getCurrentMonth,
-  formatMonthString,
-  STYLE_COLORS,
 } from '@/lib/calendar-utils'
 
 interface Event {
@@ -183,13 +181,7 @@ export function EventsMonthCalendar({
 
 function EventChip({ event }: { event: Event }) {
   const styles = parseJsonArray(event.styles)
-  const primaryStyle = styles[0] || 'Salsa'
-  const styleColor = STYLE_COLORS[primaryStyle] || {
-    bg: 'bg-gray-100',
-    text: 'text-gray-700',
-  }
-  const eventTypeValue = getEventTypeValue(event.eventType, event.styles)
-  const eventType = EVENT_TYPES.find((t) => t.value === eventTypeValue)
+  const color = getStyleColor(event.styles)
   const startDate =
     typeof event.startDateTime === 'string'
       ? new Date(event.startDateTime)
@@ -198,17 +190,21 @@ function EventChip({ event }: { event: Event }) {
   return (
     <Link href={`/events/${event.id}`}>
       <div
-        className={`${styleColor.bg} rounded px-1.5 py-1 cursor-pointer hover:opacity-80 transition-opacity`}
+        className="rounded px-1.5 py-1 cursor-pointer hover:opacity-80 transition-opacity"
+        style={{
+          backgroundColor: hexToRgba(color, 0.15),
+          borderLeft: `4px solid ${color}`,
+        }}
       >
         <div className="flex items-start justify-between gap-1">
           <div className="flex-1 min-w-0">
-            <div className={`text-xs font-medium ${styleColor.text} truncate`}>
+            <div className="text-xs font-medium text-gray-800 truncate">
               {formatTime(startDate)}
               {event.isRecurring && (
                 <Repeat className="w-3 h-3 inline-block ml-1 opacity-70" />
               )}
             </div>
-            <div className={`text-xs ${styleColor.text} truncate font-medium`}>
+            <div className="text-xs text-gray-700 truncate font-medium">
               {event.title}
             </div>
           </div>
@@ -218,13 +214,14 @@ function EventChip({ event }: { event: Event }) {
           {styles.slice(0, 2).map((style) => (
             <span
               key={style}
-              className={`text-[10px] px-1 py-0.5 rounded ${styleColor.bg} ${styleColor.text} font-medium`}
+              className="text-[10px] px-1 py-0.5 rounded font-medium text-gray-600"
+              style={{ backgroundColor: hexToRgba(getStyleColor(JSON.stringify([style])), 0.25) }}
             >
               {style}
             </span>
           ))}
           {styles.length > 2 && (
-            <span className={`text-[10px] px-1 py-0.5 rounded ${styleColor.bg} ${styleColor.text}`}>
+            <span className="text-[10px] px-1 py-0.5 rounded text-gray-500">
               +{styles.length - 2}
             </span>
           )}
