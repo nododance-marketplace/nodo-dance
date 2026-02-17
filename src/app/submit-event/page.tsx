@@ -279,10 +279,13 @@ function SubmitEventContent() {
       const finalImageUrl = imageUrl ?? existingImageUrl
       const isEdit = !!editId
       const payload: any = { ...data, imageUrl: finalImageUrl }
-      // Convert recurrenceWeeks string to number for API
+      // Recurrence: strip fields when not recurring, convert to numbers when recurring
       if (data.isRecurring && data.recurrenceWeeks) {
         payload.recurrenceWeeks = parseInt(data.recurrenceWeeks)
         payload.recurrenceInterval = parseInt(data.recurrenceInterval || '1')
+      } else {
+        delete payload.recurrenceWeeks
+        delete payload.recurrenceInterval
       }
       if (isEdit) {
         payload.eventId = editId

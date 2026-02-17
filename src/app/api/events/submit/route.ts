@@ -38,8 +38,14 @@ const schema = z.object({
   imageUrl: z.string().nullable().optional(),
   honeypot: z.string().max(0),
   isRecurring: z.boolean().default(false),
-  recurrenceWeeks: z.number().min(2).max(52).optional(),
-  recurrenceInterval: z.number().min(1).max(2).optional(),
+  recurrenceWeeks: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+    z.number().min(2).max(52).optional(),
+  ),
+  recurrenceInterval: z.preprocess(
+    (v) => (v === '' || v === undefined || v === null ? undefined : Number(v)),
+    z.number().min(1).max(2).optional(),
+  ),
 })
 
 export async function POST(request: NextRequest) {
