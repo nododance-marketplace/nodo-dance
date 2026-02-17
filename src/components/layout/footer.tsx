@@ -24,10 +24,10 @@ export function Footer() {
               {city}&apos;s hub for partner dance instructors and events.
             </p>
             <div className="flex space-x-4">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent-coral transition-colors">
+              <a href="https://www.instagram.com/nododance/" target="_blank" rel="noopener noreferrer" className="hover:text-accent-coral transition-colors">
                 <Instagram className="w-6 h-6" />
               </a>
-              <a href="mailto:hello@nododance.com" className="hover:text-accent-coral transition-colors">
+              <a href="mailto:nododance@gmail.com" className="hover:text-accent-coral transition-colors">
                 <Mail className="w-6 h-6" />
               </a>
             </div>
