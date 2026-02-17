@@ -302,6 +302,12 @@ function SubmitEventContent() {
           setSubmitting(false)
           return
         }
+        // Surface Zod validation details if available
+        if (error.details && Array.isArray(error.details)) {
+          const fieldErrors = error.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join(', ')
+          console.error('[Submit] Validation errors:', error.details)
+          throw new Error(`Validation failed: ${fieldErrors}`)
+        }
         throw new Error(error.error || `Failed to ${isEdit ? 'update' : 'submit'} event`)
       }
 

@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
     console.error('Error submitting event:', error)
 
     if (error instanceof z.ZodError) {
+      console.error('[Submit POST] Zod validation failed:', JSON.stringify(error.errors))
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }
 
@@ -273,6 +274,7 @@ export async function PUT(request: NextRequest) {
   } catch (error: any) {
     console.error('Error updating event:', error)
     if (error instanceof z.ZodError) {
+      console.error('[Submit PUT] Zod validation failed:', JSON.stringify(error.errors))
       return NextResponse.json({ error: 'Invalid data', details: error.errors }, { status: 400 })
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
