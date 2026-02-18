@@ -5,7 +5,11 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { EventCard } from '@/components/events/event-card'
+import { EventCardCompact } from '@/components/events/event-card-compact'
+import { EventCardTile } from '@/components/events/event-card-tile'
 import { EventsMonthCalendar } from '@/components/events/events-month-calendar'
+import { ViewModeToggle } from '@/components/view-mode-toggle'
+import { useViewMode } from '@/lib/useViewMode'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -58,6 +62,7 @@ function EventsContent() {
   const [dateFilter, setDateFilter] = useState(urlDateFilter)
   const [mapRange, setMapRange] = useState(urlMapRange)
   const [showFilters, setShowFilters] = useState(false)
+  const { mode: listDensity, setMode: setListDensity } = useViewMode('nodo-events-density')
 
   // Month state for calendar view
   const currentMonth = getCurrentMonth()
@@ -269,13 +274,16 @@ function EventsContent() {
           )}
         </button>
 
-        {/* Date Filter - List View */}
+        {/* Date Filter + Density - List View */}
         {view === 'list' && (
-          <Select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
-            <option value="today">Today</option>
-            <option value="this-week">This Week</option>
-            <option value="this-month">This Month</option>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}>
+              <option value="today">Today</option>
+              <option value="this-week">This Week</option>
+              <option value="this-month">This Month</option>
+            </Select>
+            <ViewModeToggle mode={listDensity} onChange={setListDensity} />
+          </div>
         )}
 
         {/* Date Range - Map View */}
@@ -364,6 +372,18 @@ function EventsContent() {
               <div className="bg-white rounded-xl h-[600px] animate-pulse" />
             ) : view === 'calendar' ? (
               <div className="bg-white rounded-xl h-96 animate-pulse" />
+            ) : listDensity === 'tile' ? (
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-lg h-14 animate-pulse" />
+                ))}
+              </div>
+            ) : listDensity === 'compact' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-xl h-48 animate-pulse" />
+                ))}
+              </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -461,11 +481,25 @@ function EventsContent() {
               <p className="text-sm text-gray-600 mb-4">
                 {events.length} event{events.length !== 1 ? 's' : ''} found
               </p>
-              <div className="grid md:grid-cols-2 gap-6">
-                {events.map((event) => (
-                  <EventCard key={event.id} event={event} />
-                ))}
-              </div>
+              {listDensity === 'tile' ? (
+                <div className="flex flex-col gap-2">
+                  {events.map((event) => (
+                    <EventCardTile key={event.id} event={event} />
+                  ))}
+                </div>
+              ) : listDensity === 'compact' ? (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {events.map((event) => (
+                    <EventCardCompact key={event.id} event={event} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {events.map((event) => (
+                    <EventCard key={event.id} event={event} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>

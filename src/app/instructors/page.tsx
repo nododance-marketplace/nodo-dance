@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { InstructorCard } from '@/components/instructors/instructor-card'
+import { InstructorCardCompact } from '@/components/instructors/instructor-card-compact'
+import { InstructorCardTile } from '@/components/instructors/instructor-card-tile'
+import { ViewModeToggle } from '@/components/view-mode-toggle'
+import { useViewMode } from '@/lib/useViewMode'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +21,7 @@ export default function InstructorsPage() {
   const [locationType, setLocationType] = useState('')
   const [sortBy, setSortBy] = useState('recommended')
   const [showFilters, setShowFilters] = useState(false)
+  const { mode: density, setMode: setDensity } = useViewMode('nodo-instructors-density')
 
   useEffect(() => {
     fetchInstructors()
@@ -104,6 +109,7 @@ export default function InstructorsPage() {
             <option value="price-high">Price: High to Low</option>
             <option value="most-styles">Most Styles</option>
           </Select>
+          <ViewModeToggle mode={density} onChange={setDensity} />
         </div>
       </div>
 
@@ -173,11 +179,25 @@ export default function InstructorsPage() {
         {/* Results */}
         <div className="md:col-span-3">
           {loading ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="bg-white rounded-xl h-96 animate-pulse" />
-              ))}
-            </div>
+            density === 'tile' ? (
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-lg h-14 animate-pulse" />
+                ))}
+              </div>
+            ) : density === 'compact' ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-xl h-56 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-xl h-96 animate-pulse" />
+                ))}
+              </div>
+            )
           ) : instructors.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-xl text-gray-600 mb-4">No instructors found</p>
@@ -188,11 +208,25 @@ export default function InstructorsPage() {
               <p className="text-sm text-gray-600 mb-4">
                 {instructors.length} instructor{instructors.length !== 1 ? 's' : ''} found
               </p>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {instructors.map((instructor) => (
-                  <InstructorCard key={instructor.id} instructor={instructor} />
-                ))}
-              </div>
+              {density === 'tile' ? (
+                <div className="flex flex-col gap-2">
+                  {instructors.map((instructor) => (
+                    <InstructorCardTile key={instructor.id} instructor={instructor} />
+                  ))}
+                </div>
+              ) : density === 'compact' ? (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {instructors.map((instructor) => (
+                    <InstructorCardCompact key={instructor.id} instructor={instructor} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {instructors.map((instructor) => (
+                    <InstructorCard key={instructor.id} instructor={instructor} />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
