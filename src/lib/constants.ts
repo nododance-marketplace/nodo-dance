@@ -1,9 +1,15 @@
 export const DANCE_STYLES = [
   'Salsa',
   'Bachata',
+  'Cumbia',
   'Kizomba',
-  'Tango',
   'Zouk',
+  'Tango',
+  'West Coast Swing',
+  'Carolina Shag',
+  'Balboa',
+  'Ballroom',
+  'Country Line Dancing',
   'Other',
 ] as const
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Star, ChevronRight } from 'lucide-react'
+import { MapPin, Star, ChevronRight, Disc3 } from 'lucide-react'
 import { parseJsonArray } from '@/lib/utils'
 import { SaveButton } from '@/components/auth/save-button'
 
@@ -15,6 +15,7 @@ interface InstructorCardTileProps {
     neighborhood: string | null
     rating: number | null
     yearsTeaching: number | null
+    isDJ?: boolean
   }
 }
 
@@ -44,6 +45,9 @@ export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
           <Link href={`/instructors/${instructor.slug}`} className="text-sm font-semibold text-gray-900 truncate hover:underline">
             {instructor.displayName}
           </Link>
+          {instructor.isDJ && (
+            <span title="DJ"><Disc3 className="w-3 h-3 text-primary flex-shrink-0" /></span>
+          )}
           {instructor.rating && (
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />

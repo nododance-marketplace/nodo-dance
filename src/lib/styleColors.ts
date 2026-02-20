@@ -4,9 +4,15 @@ import { parseJsonArray } from '@/lib/utils'
 export const DANCE_STYLE_COLORS: Record<string, string> = {
   Salsa: '#E85D5D',
   Bachata: '#F4A261',
+  Cumbia: '#F472B6',
   Kizomba: '#6C63FF',
-  Tango: '#2F3E46',
   Zouk: '#00B4D8',
+  Tango: '#2F3E46',
+  'West Coast Swing': '#8B5CF6',
+  'Carolina Shag': '#10B981',
+  Balboa: '#D97706',
+  Ballroom: '#0EA5E9',
+  'Country Line Dancing': '#A3722B',
   Other: '#9CA3AF',
 }
 

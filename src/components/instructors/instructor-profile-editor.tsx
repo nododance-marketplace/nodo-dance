@@ -44,6 +44,8 @@ const schema = z.object({
   contactEmail: z.string().email('Valid email is required').min(1, 'Contact email is required'),
   preferredContactMethod: z.string().optional().or(z.literal('')),
   contactNotes: z.string().optional().or(z.literal('')),
+  isDJ: z.boolean(),
+  djStyles: z.array(z.string()),
   instagramUrl: z.string().optional().or(z.literal('')),
   websiteUrl: z.string().optional().or(z.literal('')),
   bookingUrl: z.string().optional().or(z.literal('')),
@@ -100,6 +102,8 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           contactEmail: profile.contactEmail || user?.email || '',
           preferredContactMethod: profile.preferredContactMethod || '',
           contactNotes: profile.contactNotes || '',
+          isDJ: profile.isDJ ?? false,
+          djStyles: parseJsonArray(profile.djStyles),
           instagramUrl: profile.instagramUrl || '',
           websiteUrl: profile.websiteUrl || '',
           bookingUrl: profile.bookingUrl || '',
@@ -116,6 +120,8 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           offersPrivate: false,
           offersGroup: false,
           paymentCash: false,
+          isDJ: false,
+          djStyles: [],
           isPublished: true,
         },
   })
@@ -125,6 +131,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
   const selectedStyles = watch('styles')
   const youtubeUrl = watch('youtubeUrl')
   const showOtherStyle = selectedStyles?.includes('Other')
+  const isDJ = watch('isDJ')
   const embedUrl = getYouTubeEmbedUrl(youtubeUrl)
 
   // Track form changes
@@ -460,6 +467,57 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
                   <span className="text-sm text-gray-500">(Placeholder - will be calculated from reviews)</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-4">DJ</h3>
+            <div className="space-y-4">
+              <label className="flex items-start">
+                <input
+                  type="checkbox"
+                  {...register('isDJ')}
+                  className="mt-1 mr-3 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <div>
+                  <span className="text-sm font-medium">I also DJ</span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Check if you DJ socials/events
+                  </p>
+                </div>
+              </label>
+
+              {isDJ && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">DJ Styles (select all that apply)</label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {DANCE_STYLES.filter((s) => s !== 'Other').map((style) => (
+                      <Controller
+                        key={`dj-${style}`}
+                        name="djStyles"
+                        control={control}
+                        render={({ field }) => (
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              value={style}
+                              checked={field.value?.includes(style)}
+                              onChange={(e) => {
+                                const newValue = e.target.checked
+                                  ? [...(field.value || []), style]
+                                  : field.value?.filter((s) => s !== style) || []
+                                field.onChange(newValue)
+                              }}
+                              className="mr-2 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm">{style}</span>
+                          </label>
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

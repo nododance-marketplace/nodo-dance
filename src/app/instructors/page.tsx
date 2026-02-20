@@ -9,7 +9,7 @@ import { useViewMode } from '@/lib/useViewMode'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Search, Filter, X } from 'lucide-react'
+import { Search, Filter, X, Disc3 } from 'lucide-react'
 import { DANCE_STYLES, LESSON_TYPES, LOCATION_TYPES } from '@/lib/constants'
 
 export default function InstructorsPage() {
@@ -20,12 +20,13 @@ export default function InstructorsPage() {
   const [lessonType, setLessonType] = useState('')
   const [locationType, setLocationType] = useState('')
   const [sortBy, setSortBy] = useState('recommended')
+  const [djOnly, setDjOnly] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const { mode: density, setMode: setDensity } = useViewMode('nodo-instructors-density')
 
   useEffect(() => {
     fetchInstructors()
-  }, [search, selectedStyles, lessonType, locationType, sortBy])
+  }, [search, selectedStyles, lessonType, locationType, sortBy, djOnly])
 
   async function fetchInstructors() {
     setLoading(true)
@@ -34,6 +35,7 @@ export default function InstructorsPage() {
     if (selectedStyles.length > 0) params.set('styles', selectedStyles.join(','))
     if (lessonType) params.set('lessonType', lessonType)
     if (locationType) params.set('locationType', locationType)
+    if (djOnly) params.set('djOnly', '1')
     params.set('sortBy', sortBy)
 
     try {
@@ -62,10 +64,11 @@ export default function InstructorsPage() {
     setSelectedStyles([])
     setLessonType('')
     setLocationType('')
+    setDjOnly(false)
     setSortBy('recommended')
   }
 
-  const hasFilters = selectedStyles.length > 0 || lessonType || locationType
+  const hasFilters = selectedStyles.length > 0 || lessonType || locationType || djOnly
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -99,7 +102,7 @@ export default function InstructorsPage() {
             Filters
             {hasFilters && (
               <Badge variant="primary" className="ml-1">
-                {selectedStyles.length + (lessonType ? 1 : 0) + (locationType ? 1 : 0)}
+                {selectedStyles.length + (lessonType ? 1 : 0) + (locationType ? 1 : 0) + (djOnly ? 1 : 0)}
               </Badge>
             )}
           </button>
@@ -109,6 +112,18 @@ export default function InstructorsPage() {
             <option value="price-high">Price: High to Low</option>
             <option value="most-styles">Most Styles</option>
           </Select>
+          <button
+            onClick={() => setDjOnly(!djOnly)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              djOnly
+                ? 'bg-primary/10 border-primary text-primary'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
+            aria-pressed={djOnly}
+          >
+            <Disc3 className="w-4 h-4" />
+            DJs
+          </button>
           <ViewModeToggle mode={density} onChange={setDensity} />
         </div>
       </div>

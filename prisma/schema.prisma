@@ -107,6 +107,10 @@ model InstructorProfile {
   preferredContactMethod String?  // "Email", "Instagram DM", "Website Form", "Text"
   contactNotes           String?  // e.g. "Best time to reach me: evenings"
 
+  // DJ
+  isDJ      Boolean @default(false)
+  djStyles  String? // JSON array of DJ styles (uses same DANCE_STYLES)
+
   // Social
   instagramUrl String?
   websiteUrl   String?

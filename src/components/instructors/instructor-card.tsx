@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MapPin, DollarSign, Instagram, Star, Award, Globe, Video } from 'lucide-react'
+import { MapPin, DollarSign, Instagram, Star, Award, Globe, Video, Disc3 } from 'lucide-react'
 import { parseJsonArray, formatCurrency, extractInstagramHandle } from '@/lib/utils'
 import { SaveButton } from '@/components/auth/save-button'
 
@@ -26,6 +26,7 @@ interface InstructorCardProps {
     youtubeUrl: string | null
     tiktokUrl: string | null
     websiteUrl: string | null
+    isDJ?: boolean
   }
 }
 
@@ -53,7 +54,14 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
           </div>
         </div>
         <div className="p-4">
-          <h3 className="text-xl font-semibold mb-1">{instructor.displayName}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-xl font-semibold">{instructor.displayName}</h3>
+            {instructor.isDJ && (
+              <Badge variant="primary" className="flex items-center gap-0.5 text-[10px] px-1.5 py-0">
+                <Disc3 className="w-3 h-3" /> DJ
+              </Badge>
+            )}
+          </div>
 
           {instructor.headline && (
             <p className="text-sm text-gray-600 mb-3 line-clamp-1">

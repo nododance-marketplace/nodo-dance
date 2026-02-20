@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Star, Award } from 'lucide-react'
+import { MapPin, Star, Disc3 } from 'lucide-react'
 import { parseJsonArray } from '@/lib/utils'
 import { SaveButton } from '@/components/auth/save-button'
 
@@ -16,6 +16,7 @@ interface InstructorCardCompactProps {
     neighborhood: string | null
     rating: number | null
     yearsTeaching: number | null
+    isDJ?: boolean
   }
 }
 
@@ -42,7 +43,12 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
           </div>
         </div>
         <div className="p-3">
-          <h3 className="text-sm font-semibold mb-1 line-clamp-1">{instructor.displayName}</h3>
+          <div className="flex items-center gap-1 mb-1">
+            <h3 className="text-sm font-semibold line-clamp-1">{instructor.displayName}</h3>
+            {instructor.isDJ && (
+              <span title="DJ"><Disc3 className="w-3 h-3 text-primary flex-shrink-0" /></span>
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-1 mb-2">
             {styles.slice(0, 2).map((style) => (

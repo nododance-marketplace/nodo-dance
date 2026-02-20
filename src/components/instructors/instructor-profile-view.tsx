@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { MapPin, DollarSign, Instagram, Globe, Mail, Calendar, Star, Users, Award, Video, Lock, Copy, Check } from 'lucide-react'
+import { MapPin, DollarSign, Instagram, Globe, Mail, Calendar, Star, Users, Award, Video, Lock, Copy, Check, Disc3 } from 'lucide-react'
 import { parseJsonArray, formatCurrency, getYouTubeEmbedUrl } from '@/lib/utils'
 import { LessonRequestModal } from './lesson-request-modal'
 import { SaveButton } from '@/components/auth/save-button'
@@ -29,6 +29,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
     : styles
   const skillLevels = parseJsonArray(instructor.skillLevels)
   const offerings = parseJsonArray(instructor.offerings)
+  const djStyles = parseJsonArray(instructor.djStyles)
   const languages = parseJsonArray(instructor.languages)
   const locationType = LOCATION_TYPES.find((t) => t.value === instructor.locationType)
   const embedUrl = getYouTubeEmbedUrl(instructor.youtubeUrl || instructor.youtubeVideoUrl)
@@ -65,7 +66,14 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
 
               <div className="flex-1">
                 <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-3xl font-bold mb-2">{instructor.displayName}</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-3xl font-bold mb-2">{instructor.displayName}</h1>
+                    {instructor.isDJ && (
+                      <Badge variant="primary" className="flex items-center gap-1 mb-2">
+                        <Disc3 className="w-3 h-3" /> DJ
+                      </Badge>
+                    )}
+                  </div>
                   <SaveButton itemId={instructor.id} type="instructor" />
                 </div>
 
@@ -314,6 +322,24 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       </Badge>
                     ))}
                   </div>
+                </div>
+              )}
+              {instructor.isDJ && (
+                <div>
+                  <h3 className="font-semibold mb-2 flex items-center gap-1.5">
+                    <Disc3 className="w-4 h-4" /> DJ
+                  </h3>
+                  {djStyles.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {djStyles.map((style: string) => (
+                        <Badge key={style} variant="primary">
+                          {style}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">Available for DJ bookings</p>
+                  )}
                 </div>
               )}
               {languages.length > 0 && (

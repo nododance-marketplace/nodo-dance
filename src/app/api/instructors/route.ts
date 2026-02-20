@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const minPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!) : undefined
   const maxPrice = searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!) : undefined
   const sortBy = searchParams.get('sortBy') || 'recommended'
+  const djOnly = searchParams.get('djOnly') === '1'
 
   try {
     const session = await getServerSession(authOptions)
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
           lessonType === 'PRIVATE' ? { offersPrivate: true } : {},
           lessonType === 'GROUP' ? { offersGroup: true } : {},
           locationType ? { locationType: locationType as any } : {},
+          djOnly ? { isDJ: true } : {},
           minPrice !== undefined ? { privateRateHourly: { gte: minPrice } } : {},
           maxPrice !== undefined ? { privateRateHourly: { lte: maxPrice } } : {},
         ],
@@ -67,6 +69,8 @@ export async function GET(request: NextRequest) {
         paymentVenmo: true,
         paymentCashApp: true,
         paymentPayPal: true,
+        isDJ: true,
+        djStyles: true,
         contactEmail: isLoggedIn,
         preferredContactMethod: true,
         contactNotes: isLoggedIn,
