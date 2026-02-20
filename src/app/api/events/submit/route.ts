@@ -24,6 +24,7 @@ const schema = z.object({
   title: z.string().min(1),
   eventType: z.enum(['SOCIAL', 'TANGO_MILONGA', 'GROUP_CLASS', 'WORKSHOP', 'FESTIVAL']),
   styles: z.array(z.string()),
+  otherStyle: z.string().optional().or(z.literal('')),
   startDate: z.string(),
   startTime: z.string(),
   endTime: z.string().optional(),
@@ -106,6 +107,7 @@ export async function POST(request: NextRequest) {
       title: data.title,
       eventType: data.eventType,
       styles: JSON.stringify(data.styles),
+      otherStyle: data.otherStyle || null,
       venueName: data.venueName || '',
       address: data.address,
       lat: coords?.lat ?? null,
@@ -223,6 +225,7 @@ export async function PUT(request: NextRequest) {
     if (data.title) update.title = data.title
     if (data.eventType) update.eventType = data.eventType
     if (data.styles) update.styles = JSON.stringify(data.styles)
+    if (data.otherStyle !== undefined) update.otherStyle = data.otherStyle || null
     if (data.startDate && data.startTime) {
       update.startDateTime = parseAsET(data.startDate, data.startTime)
     }

@@ -9,7 +9,10 @@ import { EVENT_TYPES } from '@/lib/constants'
 import { SaveButton } from '@/components/auth/save-button'
 
 export function EventDetailsView({ event, isLoggedIn = false }: { event: any; isLoggedIn?: boolean }) {
-  const styles = parseJsonArray(event.styles)
+  const rawStyles = parseJsonArray(event.styles)
+  const styles = event.otherStyle
+    ? rawStyles.map((s: string) => s === 'Other' ? event.otherStyle : s)
+    : rawStyles
   const eventTypeValue = getEventTypeValue(event.eventType, event.styles)
   const eventType = EVENT_TYPES.find((t) => t.value === eventTypeValue)
   const startDate = new Date(event.startDateTime)

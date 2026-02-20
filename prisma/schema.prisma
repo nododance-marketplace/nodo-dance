@@ -177,6 +177,7 @@ model Event {
   title       String
   eventType   String
   styles      String    // JSON array
+  otherStyle  String?   // Free text for "Other" dance style
 
   startDateTime DateTime
   endDateTime   DateTime?

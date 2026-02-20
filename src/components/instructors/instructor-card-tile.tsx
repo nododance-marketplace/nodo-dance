@@ -16,11 +16,15 @@ interface InstructorCardTileProps {
     rating: number | null
     yearsTeaching: number | null
     isDJ?: boolean
+    otherStyle?: string | null
   }
 }
 
 export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
-  const styles = parseJsonArray(instructor.styles)
+  const rawStyles = parseJsonArray(instructor.styles)
+  const styles = instructor.otherStyle
+    ? rawStyles.map((s) => s === 'Other' ? instructor.otherStyle! : s)
+    : rawStyles
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">

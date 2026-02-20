@@ -20,11 +20,15 @@ interface EventCardCompactProps {
     imageUrl?: string | null
     isRecurring?: boolean
     recurrenceInterval?: number | null
+    otherStyle?: string | null
   }
 }
 
 export function EventCardCompact({ event }: EventCardCompactProps) {
-  const styles = parseJsonArray(event.styles)
+  const rawStyles = parseJsonArray(event.styles)
+  const styles = event.otherStyle
+    ? rawStyles.map((s) => s === 'Other' ? event.otherStyle! : s)
+    : rawStyles
   const styleColor = getStyleColor(event.styles)
   const eventTypeValue = getEventTypeValue(event.eventType, event.styles)
   const eventType = EVENT_TYPES.find((t) => t.value === eventTypeValue)

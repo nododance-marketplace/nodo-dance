@@ -23,6 +23,7 @@ const schema = z.object({
   title: z.string().min(1, 'Title is required'),
   eventType: z.enum(['SOCIAL', 'TANGO_MILONGA', 'GROUP_CLASS', 'WORKSHOP', 'FESTIVAL']),
   styles: z.array(z.string()).min(1, 'Select at least one style'),
+  otherStyle: z.string().optional().or(z.literal('')),
   startDate: z.string().min(1, 'Start date is required'),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().optional(),
@@ -38,7 +39,10 @@ const schema = z.object({
   isRecurring: z.boolean().default(false),
   recurrenceWeeks: z.string().optional(),
   recurrenceInterval: z.string().optional(),
-})
+}).refine(
+  (data) => !data.styles?.includes('Other') || (data.otherStyle && data.otherStyle.trim().length >= 2),
+  { message: 'Please specify the style (min 2 characters)', path: ['otherStyle'] }
+)
 
 type FormData = z.infer<typeof schema>
 
@@ -67,6 +71,7 @@ function clearDraft() {
 const DEFAULT_VALUES: Partial<FormData> = {
   eventType: 'SOCIAL',
   styles: [],
+  otherStyle: '',
   honeypot: '',
   isRecurring: false,
   recurrenceWeeks: '',
@@ -130,6 +135,7 @@ function SubmitEventContent() {
               title: event.title,
               eventType: event.eventType,
               styles,
+              otherStyle: event.otherStyle || '',
               startDate: toDateInputValue(start),
               startTime: toTimeInputValue(start),
               endTime: end ? toTimeInputValue(end) : '',
@@ -474,6 +480,14 @@ function SubmitEventContent() {
               </div>
               {errors.styles && <p className="mt-1 text-sm text-red-500">{errors.styles.message}</p>}
             </div>
+
+            {/* Other Style (conditional) */}
+            {selectedStyles.includes('Other') && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Please specify other style *</label>
+                <Input {...register('otherStyle')} placeholder="e.g., Hip Hop, Contemporary, etc." error={errors.otherStyle?.message} />
+              </div>
+            )}
 
             {/* Date & Time */}
             <div className="grid md:grid-cols-2 gap-4">

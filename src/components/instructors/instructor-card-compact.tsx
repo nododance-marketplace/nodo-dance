@@ -17,11 +17,15 @@ interface InstructorCardCompactProps {
     rating: number | null
     yearsTeaching: number | null
     isDJ?: boolean
+    otherStyle?: string | null
   }
 }
 
 export function InstructorCardCompact({ instructor }: InstructorCardCompactProps) {
-  const styles = parseJsonArray(instructor.styles)
+  const rawStyles = parseJsonArray(instructor.styles)
+  const styles = instructor.otherStyle
+    ? rawStyles.map((s) => s === 'Other' ? instructor.otherStyle! : s)
+    : rawStyles
 
   return (
     <Card className="hover:shadow-md transition-shadow h-full">

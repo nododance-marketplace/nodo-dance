@@ -52,7 +52,10 @@ const schema = z.object({
   youtubeUrl: z.string().optional().or(z.literal('')),
   tiktokUrl: z.string().optional().or(z.literal('')),
   isPublished: z.boolean(),
-})
+}).refine(
+  (data) => !data.styles?.includes('Other') || (data.otherStyle && data.otherStyle.trim().length >= 2),
+  { message: 'Please specify the style (min 2 characters)', path: ['otherStyle'] }
+)
 
 type FormData = z.infer<typeof schema>
 
@@ -359,8 +362,8 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
 
               {showOtherStyle && (
                 <div>
-                  <label className="block text-sm font-medium mb-1">Please specify other style</label>
-                  <Input {...register('otherStyle')} placeholder="e.g., Hip Hop, Contemporary, etc." />
+                  <label className="block text-sm font-medium mb-1">Please specify other style *</label>
+                  <Input {...register('otherStyle')} placeholder="e.g., Hip Hop, Contemporary, etc." error={errors.otherStyle?.message} />
                 </div>
               )}
 

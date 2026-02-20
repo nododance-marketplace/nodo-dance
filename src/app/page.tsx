@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AnimatedNodes } from '@/components/ui/animated-nodes'
 import { Users, Calendar, Heart, MapPin } from 'lucide-react'
+import { DANCE_STYLES } from '@/lib/constants'
+import { DANCE_STYLE_COLORS } from '@/lib/styleColors'
 
 export default function HomePage() {
   const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte, NC'
@@ -107,11 +109,14 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {['Salsa', 'Bachata', 'Kizomba', 'Tango', 'Zouk'].map((style) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {DANCE_STYLES.filter((s) => s !== 'Other').map((style) => (
               <Card key={style} className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardContent className="pt-6 text-center">
-                  <Heart className="w-10 h-10 text-accent-coral mx-auto mb-3" />
+                  <Heart
+                    className="w-10 h-10 mx-auto mb-3"
+                    style={{ color: DANCE_STYLE_COLORS[style] || DANCE_STYLE_COLORS.Other }}
+                  />
                   <h3 className="text-lg font-display font-semibold">{style}</h3>
                 </CardContent>
               </Card>

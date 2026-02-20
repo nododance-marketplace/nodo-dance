@@ -27,11 +27,15 @@ interface InstructorCardProps {
     tiktokUrl: string | null
     websiteUrl: string | null
     isDJ?: boolean
+    otherStyle?: string | null
   }
 }
 
 export function InstructorCard({ instructor }: InstructorCardProps) {
-  const styles = parseJsonArray(instructor.styles)
+  const rawStyles = parseJsonArray(instructor.styles)
+  const styles = instructor.otherStyle
+    ? rawStyles.map((s) => s === 'Other' ? instructor.otherStyle! : s)
+    : rawStyles
   const instagramHandle = extractInstagramHandle(instructor.instagramUrl)
 
   return (
