@@ -364,7 +364,7 @@ export default function LaunchPage() {
                     <GradientText>$249</GradientText>
                   </span>
                   <span className="text-sm text-gray-500">
-                    + $19/mo Care Plan (optional)
+                    + $9/mo Care Plan (optional)
                   </span>
                 </div>
 
@@ -462,7 +462,7 @@ export default function LaunchPage() {
                 </span>
                 <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight leading-tight">
                   Keep Your Site Running —{' '}
-                  <GradientText>$19/month</GradientText>
+                  <GradientText>$9/month</GradientText>
                 </h2>
                 <p className="mt-5 text-lg text-gray-600 max-w-lg">
                   Optional monthly plan to keep your website maintained, backed
