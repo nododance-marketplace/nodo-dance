@@ -42,6 +42,9 @@ export function Header() {
             <Link href="/submit-event" className="text-gray-700 hover:text-primary transition-colors">
               Submit Event
             </Link>
+            <Link href="/launch" className="text-gray-700 hover:text-primary transition-colors">
+              Websites
+            </Link>
             {!session ? (
               <>
                 <Link href="/become-an-instructor" className="text-gray-700 hover:text-primary transition-colors">
@@ -113,6 +116,13 @@ export function Header() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Submit Event
+              </Link>
+              <Link
+                href="/launch"
+                className="text-gray-700 hover:text-primary transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Websites
               </Link>
               {!session ? (
                 <>
