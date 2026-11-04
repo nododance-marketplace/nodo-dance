@@ -10,7 +10,7 @@ import { Mail } from 'lucide-react'
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+    <Suspense fallback={<div className="min-h-[70svh] flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
       <SignInContent />
     </Suspense>
   )
@@ -63,13 +63,13 @@ function SignInContent() {
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <Card className="max-w-md w-full">
-        <CardContent className="p-8">
+    <div className="min-h-[70svh] flex items-center justify-center px-4 py-12 sm:py-16">
+      <Card className="max-w-lg w-full">
+        <CardContent className="p-6 sm:p-10">
           {sent ? (
-            <div className="text-center">
-              <Mail className="w-16 h-16 text-accent-coral mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-4">Check Your Email</h1>
+            <div className="text-left">
+              <Mail className="w-16 h-16 text-accent-coral mb-6" />
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">Check Your Email</h1>
               <p className="text-gray-600">
                 We&apos;ve sent you a magic link to <strong>{email}</strong>.
                 Click the link in the email to sign in.
@@ -77,7 +77,7 @@ function SignInContent() {
             </div>
           ) : (
             <>
-              <h1 className="text-2xl font-bold mb-6 text-center">Sign In to Nodo Dance</h1>
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-8">Sign In to Nodo Dance</h1>
 
               {/* Google Sign-In */}
               <Button
@@ -94,7 +94,7 @@ function SignInContent() {
                 Continue with Google
               </Button>
 
-              <div className="relative mb-4">
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300" />
                 </div>
@@ -103,7 +103,7 @@ function SignInContent() {
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium mb-1">Email Address</label>
                   <Input

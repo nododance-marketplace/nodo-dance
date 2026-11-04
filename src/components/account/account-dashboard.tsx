@@ -56,20 +56,20 @@ export function AccountDashboard({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="page-shell">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">My Account</h1>
-          <p className="text-sm text-gray-500 mt-1">{user.email}</p>
+          <h1 className="page-heading">My Account</h1>
+          <p className="text-sm text-gray-500 mt-3 break-all">{user.email}</p>
         </div>
         <Badge variant="primary">Dancer</Badge>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex flex-wrap gap-2 mb-8 border-b border-gray-200">
         <button
           onClick={() => setActiveTab('instructors')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'instructors'
               ? 'text-primary border-b-2 border-primary'
               : 'text-gray-600 hover:text-primary'
@@ -83,7 +83,7 @@ export function AccountDashboard({
         </button>
         <button
           onClick={() => setActiveTab('events')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'events'
               ? 'text-primary border-b-2 border-primary'
               : 'text-gray-600 hover:text-primary'
@@ -97,7 +97,7 @@ export function AccountDashboard({
         </button>
         <button
           onClick={() => setActiveTab('myevents')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'myevents'
               ? 'text-primary border-b-2 border-primary'
               : 'text-gray-600 hover:text-primary'
@@ -111,7 +111,7 @@ export function AccountDashboard({
         </button>
         <button
           onClick={() => setActiveTab('settings')}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={`px-4 py-3 font-medium transition-colors ${
             activeTab === 'settings'
               ? 'text-primary border-b-2 border-primary'
               : 'text-gray-600 hover:text-primary'
@@ -242,10 +242,10 @@ export function AccountDashboard({
 
       {/* Settings Tab */}
       {activeTab === 'settings' && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {/* Upgrade to Instructor */}
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-5 sm:p-8">
               <div className="flex items-start gap-4">
                 <GraduationCap className="w-8 h-8 text-primary flex-shrink-0 mt-1" />
                 <div className="flex-1">
@@ -372,12 +372,12 @@ function MyEventsTab({ events }: { events: any[] }) {
         const status = STATUS_BADGE[first.status] || STATUS_BADGE.PENDING
 
         return (
-          <Card key={first.recurrenceGroupId} className="border-l-4 border-l-indigo-500">
+          <Card key={first.recurrenceGroupId} className="border-primary/20">
             <CardContent className="p-4">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
+                    <Badge variant="default" className="flex items-center gap-1 text-primary bg-primary/10">
                       <Repeat className="w-3 h-3" /> {first.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'} Series
                     </Badge>
                     <Badge variant={status.variant}>{status.label}</Badge>
@@ -391,7 +391,7 @@ function MyEventsTab({ events }: { events: any[] }) {
                     <p className="truncate">{first.venueName || first.address}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                   <Link href={`/submit-event?edit=${first.id}&series=true`}>
                     <Button variant="outline" size="sm">
                       <Pencil className="w-4 h-4 mr-1" />

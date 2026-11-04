@@ -372,12 +372,12 @@ function SubmitEventContent() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="form-page">
       {editLoading ? (
         <div className="bg-white rounded-xl h-96 animate-pulse" />
       ) : (<>
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
+        <h1 className="page-heading mb-4">
           {seriesMode ? 'Edit Series' : editId ? 'Edit Event' : 'Submit an Event'}
         </h1>
         <p className="text-lg text-gray-600">
@@ -386,8 +386,8 @@ function SubmitEventContent() {
       </div>
 
       <Card>
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <CardContent className="p-5 sm:p-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {/* Title */}
             <div>
               <label className="block text-sm font-medium mb-1">Event Title *</label>
@@ -514,11 +514,11 @@ function SubmitEventContent() {
 
             {/* Series Edit Banner */}
             {editId && seriesMode && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center gap-3">
-                <Repeat className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+              <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 flex items-center gap-3">
+                <Repeat className="w-5 h-5 text-primary flex-shrink-0" />
                 <div>
-                  <p className="font-medium text-indigo-700">Editing entire series</p>
-                  <p className="text-sm text-indigo-600">
+                  <p className="font-medium text-primary">Editing entire series</p>
+                  <p className="text-sm text-primary">
                     Changes will apply to all occurrences. Individual dates will not be changed.
                   </p>
                 </div>
@@ -556,7 +556,7 @@ function SubmitEventContent() {
                   <div className="mt-4 ml-8 space-y-3">
                     <div>
                       <label className="block text-sm font-medium mb-1">Repeat frequency</label>
-                      <div className="flex gap-4">
+                      <div className="flex flex-wrap gap-4">
                         <label className="flex items-center gap-2">
                           <input
                             type="radio"
@@ -590,7 +590,7 @@ function SubmitEventContent() {
                       />
                     </div>
                     {watchRecurrenceWeeks && parseInt(watchRecurrenceWeeks) >= 2 && (
-                      <p className="text-sm text-indigo-600 font-medium">
+                      <p className="text-sm text-primary font-medium">
                         This will create {parseInt(watchRecurrenceWeeks)} events,{' '}
                         {watch('recurrenceInterval') === '2' ? 'every 2 weeks' : 'every week'},{' '}
                         starting from your selected date.

@@ -28,9 +28,9 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
     : rawStyles
 
   return (
-    <Card className="hover:shadow-md transition-shadow h-full">
+    <Card className="data-card transition-colors h-full">
       <CardContent className="p-0">
-        <div className="aspect-[4/3] bg-gradient-to-br from-primary/10 to-accent-coral/10 flex items-center justify-center relative overflow-hidden">
+        <div className="aspect-[4/3] bg-primary/5 flex items-center justify-center relative overflow-hidden">
           {instructor.photoUrl ? (
             <img
               src={instructor.photoUrl}
@@ -38,7 +38,7 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="text-4xl font-bold text-primary/20">
+            <div className="text-4xl font-bold text-primary/60">
               {instructor.displayName.charAt(0)}
             </div>
           )}
@@ -46,7 +46,7 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
             <SaveButton itemId={instructor.id} type="instructor" size="sm" className="shadow-sm" />
           </div>
         </div>
-        <div className="p-3">
+        <div className="p-4">
           <div className="flex items-center gap-1 mb-1">
             <h3 className="text-sm font-semibold line-clamp-1">{instructor.displayName}</h3>
             {instructor.isDJ && (
@@ -56,12 +56,12 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
 
           <div className="flex flex-wrap gap-1 mb-2">
             {styles.slice(0, 2).map((style) => (
-              <Badge key={style} variant="primary" className="text-[10px] px-1.5 py-0">
+              <Badge key={style} variant="primary" className="text-xs px-1.5 py-0">
                 {style}
               </Badge>
             ))}
             {styles.length > 2 && (
-              <Badge variant="default" className="text-[10px] px-1.5 py-0">
+              <Badge variant="default" className="text-xs px-1.5 py-0">
                 +{styles.length - 2}
               </Badge>
             )}

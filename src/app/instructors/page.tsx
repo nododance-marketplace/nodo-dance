@@ -71,32 +71,33 @@ export default function InstructorsPage() {
   const hasFilters = selectedStyles.length > 0 || lessonType || locationType || djOnly
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="page-shell">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
+      <div className="page-header block">
+        <h1 className="page-heading">
           Find Your Instructor
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="page-intro">
           Browse experienced dance instructors in {process.env.NEXT_PUBLIC_CITY || 'Charlotte'}
         </p>
       </div>
 
       {/* Search and Sort */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
+      <div className="mb-8 flex flex-col xl:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
+            aria-label="Search instructors"
             placeholder="Search by name or neighborhood..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="md:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="lg:hidden flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Filter className="w-4 h-4" />
             Filters
@@ -106,7 +107,7 @@ export default function InstructorsPage() {
               </Badge>
             )}
           </button>
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <Select aria-label="Sort instructors" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             <option value="recommended">Recommended</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
@@ -128,16 +129,16 @@ export default function InstructorsPage() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-[240px_minmax(0,1fr)] gap-8">
         {/* Filters Sidebar */}
-        <div className={`${showFilters ? 'block' : 'hidden'} md:block`}>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 sticky top-20">
+        <div className={`${showFilters ? 'block' : 'hidden'} lg:block`}>
+          <div className="filter-panel lg:sticky lg:top-28">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold">Filters</h3>
               {hasFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-accent-coral hover:underline flex items-center gap-1"
+                  className="text-sm text-accent-magenta hover:underline flex items-center gap-1"
                 >
                   <X className="w-4 h-4" />
                   Clear
@@ -150,7 +151,7 @@ export default function InstructorsPage() {
               <label className="block text-sm font-medium mb-2">Dance Styles</label>
               <div className="space-y-2">
                 {DANCE_STYLES.map((style) => (
-                  <label key={style} className="flex items-center">
+                  <label key={style} className="flex items-center min-h-9 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedStyles.includes(style)}
@@ -192,29 +193,29 @@ export default function InstructorsPage() {
         </div>
 
         {/* Results */}
-        <div className="md:col-span-3">
+        <div className="min-w-0">
           {loading ? (
             density === 'tile' ? (
               <div className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-lg h-14 animate-pulse" />
+                  <div key={i} className="bg-white rounded-lg h-14 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : density === 'compact' ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid min-[440px]:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-56 animate-pulse" />
+                  <div key={i} className="bg-white rounded-xl h-56 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-96 animate-pulse" />
+                  <div key={i} className="bg-white rounded-xl h-96 motion-safe:animate-pulse" />
                 ))}
               </div>
             )
           ) : instructors.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16 px-6 bg-white border border-gray-200 rounded-xl">
               <p className="text-xl text-gray-600 mb-4">No instructors found</p>
               <p className="text-gray-500">Try adjusting your filters</p>
             </div>
@@ -230,13 +231,13 @@ export default function InstructorsPage() {
                   ))}
                 </div>
               ) : density === 'compact' ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid min-[440px]:grid-cols-2 xl:grid-cols-3 gap-4">
                   {instructors.map((instructor) => (
                     <InstructorCardCompact key={instructor.id} instructor={instructor} />
                   ))}
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {instructors.map((instructor) => (
                     <InstructorCard key={instructor.id} instructor={instructor} />
                   ))}

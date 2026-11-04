@@ -37,8 +37,8 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
   return (
     <Link href={`/events/${event.id}`} className="block">
       <Card
-        className="hover:shadow-md transition-shadow h-full"
-        style={{ borderLeft: `3px solid ${styleColor}` }}
+        className="data-card transition-colors h-full"
+        style={{ borderTop: `2px solid ${styleColor}` }}
       >
         {event.imageUrl && (
           <div className="aspect-[2/1] overflow-hidden">
@@ -49,10 +49,10 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
             />
           </div>
         )}
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-2 mb-1.5">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-1.5 min-w-0">
-              <Badge variant="primary" className="text-[10px] px-1.5 py-0 whitespace-nowrap">
+              <Badge variant="primary" className="text-xs px-1.5 py-0 whitespace-nowrap">
                 {eventType?.label || event.eventType}
               </Badge>
               {event.isRecurring && (
@@ -67,7 +67,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
           <h3 className="text-sm font-semibold line-clamp-1 mb-1.5">{event.title}</h3>
 
           <div className="space-y-0.5 text-xs text-gray-500 mb-2">
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <Calendar className="w-3 h-3 flex-shrink-0" />
               <span>{formatDate(startDate)}</span>
               <span className="text-gray-300">·</span>
@@ -85,7 +85,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
             {styles.slice(0, 2).map((style) => (
               <span
                 key={style}
-                className="inline-flex items-center gap-1 text-[10px] text-gray-600 bg-gray-50 rounded-full px-1.5 py-0.5"
+                className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 rounded-full px-1.5 py-0.5"
               >
                 <span
                   className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -95,7 +95,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
               </span>
             ))}
             {styles.length > 2 && (
-              <span className="text-[10px] text-gray-400">+{styles.length - 2}</span>
+              <span className="text-xs text-gray-400">+{styles.length - 2}</span>
             )}
           </div>
         </CardContent>

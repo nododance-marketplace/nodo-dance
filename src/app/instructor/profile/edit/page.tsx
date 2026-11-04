@@ -24,8 +24,8 @@ export default async function ProfileEditPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold mb-6">
+    <div className="form-page">
+      <h1 className="page-heading mb-8">
         {user.instructorProfile ? 'Edit Profile' : 'Create Profile'}
       </h1>
       <InstructorProfileEditor user={user} profile={user.instructorProfile} redirectTo="/instructor/dashboard" />

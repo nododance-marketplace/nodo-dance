@@ -27,9 +27,9 @@ export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
     : rawStyles
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
+    <div className="flex items-center gap-3 px-4 py-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/10 to-accent-coral/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden flex-shrink-0">
         {instructor.photoUrl ? (
           <img
             src={instructor.photoUrl}
@@ -59,15 +59,15 @@ export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-1">
             {styles.slice(0, 3).map((style) => (
-              <Badge key={style} variant="primary" className="text-[10px] px-1.5 py-0">
+              <Badge key={style} variant="primary" className="text-xs px-1.5 py-0">
                 {style}
               </Badge>
             ))}
             {styles.length > 3 && (
-              <span className="text-[10px] text-gray-400">+{styles.length - 3}</span>
+              <span className="text-xs text-gray-400">+{styles.length - 3}</span>
             )}
           </div>
           {instructor.neighborhood && (
@@ -85,7 +85,7 @@ export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
       {/* Actions */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <SaveButton itemId={instructor.id} type="instructor" size="sm" />
-        <Link href={`/instructors/${instructor.slug}`}>
+        <Link href={`/instructors/${instructor.slug}`} aria-label={`View ${instructor.displayName} profile`} className="inline-flex min-h-11 min-w-8 items-center justify-center">
           <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
         </Link>
       </div>

@@ -37,8 +37,8 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <Card
-      className="hover:shadow-lg transition-shadow overflow-hidden"
-      style={{ borderLeft: `4px solid ${styleColor}` }}
+      className="data-card transition-colors overflow-hidden"
+      style={{ borderTop: `2px solid ${styleColor}` }}
     >
       {event.imageUrl && (
         <Link href={`/events/${event.id}`} className="block overflow-hidden">
@@ -46,14 +46,14 @@ export function EventCard({ event }: EventCardProps) {
             <img
               src={event.imageUrl}
               alt={event.title}
-              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              className="w-full h-full object-cover"
             />
           </div>
         </Link>
       )}
       <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="primary">{eventType?.label || event.eventType}</Badge>
             {event.isRecurring && (
               <Badge variant="default" className="flex items-center gap-1 text-indigo-700 bg-indigo-100">
@@ -66,7 +66,7 @@ export function EventCard({ event }: EventCardProps) {
           </Badge>
         </div>
 
-        <h3 className="text-xl font-semibold mb-3 line-clamp-2">{event.title}</h3>
+        <h3 className="text-2xl font-bold text-primary mb-4 line-clamp-2">{event.title}</h3>
 
         <div className="space-y-2 mb-4">
           <div className="flex items-center text-sm text-gray-600">

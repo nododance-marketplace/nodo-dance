@@ -10,16 +10,22 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#1B1F3B',
-          light: '#2D3354',
-          dark: '#0F1123',
+          DEFAULT: 'rgb(var(--primary-rgb) / <alpha-value>)',
+          light: 'rgb(var(--primary-light-rgb) / <alpha-value>)',
+          dark: 'rgb(var(--primary-dark-rgb) / <alpha-value>)',
         },
         accent: {
-          coral: '#FF6F61',
-          magenta: '#C2185B',
-          orange: '#FF8C42',
+          coral: 'rgb(var(--coral-rgb) / <alpha-value>)',
+          magenta: 'rgb(var(--magenta-rgb) / <alpha-value>)',
+          orange: 'rgb(var(--orange-rgb) / <alpha-value>)',
         },
-        background: '#F2F2F2',
+        background: 'var(--color-paper)',
+        white: 'rgb(var(--surface-rgb) / <alpha-value>)',
+        gray: {
+          50: '#f7f5f0', 100: '#eeece6', 200: '#dcd9d2', 300: '#c6c3bd',
+          400: '#898894', 500: '#717180', 600: '#656577', 700: '#484b60',
+          800: '#2d3354', 900: '#1b1f3b',
+        },
       },
       fontFamily: {
         sans: ['var(--font-satoshi)', 'system-ui', 'sans-serif'],

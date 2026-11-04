@@ -25,14 +25,14 @@ import {
 
 const EventsMapView = dynamic(
   () => import('@/components/events/events-map-view').then((m) => ({ default: m.EventsMapView })),
-  { ssr: false, loading: () => <div className="bg-white rounded-xl h-[600px] animate-pulse" /> }
+  { ssr: false, loading: () => <div className="bg-white rounded-xl h-[600px] motion-safe:animate-pulse" /> }
 )
 
 type ViewMode = 'calendar' | 'list' | 'map'
 
 export default function EventsPage() {
   return (
-    <Suspense fallback={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><div className="bg-white rounded-xl h-96 animate-pulse" /></div>}>
+    <Suspense fallback={<div className="page-shell"><div className="bg-white rounded-xl h-96 motion-safe:animate-pulse" /></div>}>
       <EventsContent />
     </Suspense>
   )
@@ -190,14 +190,14 @@ function EventsContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="page-shell">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-primary mb-4">
+          <h1 className="page-heading">
             Dance Events
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="page-intro">
             Discover socials, classes, and workshops near you
           </p>
         </div>
@@ -210,13 +210,13 @@ function EventsContent() {
       </div>
 
       {/* View Toggle */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1">
           <button
             onClick={() => setView('calendar')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
               view === 'calendar'
-                ? 'bg-white shadow-sm text-primary font-medium'
+                ? 'bg-primary text-white font-medium'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -227,7 +227,7 @@ function EventsContent() {
             onClick={() => setView('list')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
               view === 'list'
-                ? 'bg-white shadow-sm text-primary font-medium'
+                ? 'bg-primary text-white font-medium'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -238,7 +238,7 @@ function EventsContent() {
             onClick={() => setView('map')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
               view === 'map'
-                ? 'bg-white shadow-sm text-primary font-medium'
+                ? 'bg-primary text-white font-medium'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -251,6 +251,7 @@ function EventsContent() {
         <div className="flex-1 w-full sm:max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
+            aria-label="Search events"
             placeholder="Search events, venues, or addresses..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -260,7 +261,7 @@ function EventsContent() {
       </div>
 
       {/* Filters and Date Toggle */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -288,7 +289,7 @@ function EventsContent() {
 
         {/* Date Range - Map View */}
         {view === 'map' && (
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1">
             {[
               { value: 'today', label: 'Day' },
               { value: 'this-week', label: 'Week' },
@@ -299,7 +300,7 @@ function EventsContent() {
                 onClick={() => setMapRange(opt.value)}
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   mapRange === opt.value
-                    ? 'bg-white shadow-sm text-primary font-medium'
+                    ? 'bg-primary text-white font-medium'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
@@ -310,16 +311,16 @@ function EventsContent() {
         )}
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-[240px_minmax(0,1fr)] gap-8">
         {/* Filters Sidebar */}
-        <div className={`${showFilters ? 'block' : 'hidden'} md:block`}>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 sticky top-20">
+        <div className={`${showFilters ? 'block' : 'hidden'} lg:block`}>
+          <div className="filter-panel lg:sticky lg:top-28">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold">Filters</h3>
               {hasFilters && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-accent-coral hover:underline flex items-center gap-1"
+                  className="text-sm text-accent-magenta hover:underline flex items-center gap-1"
                 >
                   <X className="w-4 h-4" />
                   Clear
@@ -332,7 +333,7 @@ function EventsContent() {
               <label className="block text-sm font-medium mb-2">Event Type</label>
               <div className="space-y-2">
                 {EVENT_TYPES.map((type) => (
-                  <label key={type.value} className="flex items-center">
+                  <label key={type.value} className="flex items-center min-h-9 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedEventTypes.includes(type.value)}
@@ -350,7 +351,7 @@ function EventsContent() {
               <label className="block text-sm font-medium mb-2">Dance Styles</label>
               <div className="space-y-2">
                 {DANCE_STYLES.map((style) => (
-                  <label key={style} className="flex items-center">
+                  <label key={style} className="flex items-center min-h-9 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedStyles.includes(style)}
@@ -366,35 +367,35 @@ function EventsContent() {
         </div>
 
         {/* Results */}
-        <div className="md:col-span-3">
+        <div className="min-w-0">
           {loading ? (
             view === 'map' ? (
-              <div className="bg-white rounded-xl h-[600px] animate-pulse" />
+              <div className="bg-white rounded-xl h-[600px] motion-safe:animate-pulse" />
             ) : view === 'calendar' ? (
-              <div className="bg-white rounded-xl h-96 animate-pulse" />
+              <div className="bg-white rounded-xl h-96 motion-safe:animate-pulse" />
             ) : listDensity === 'tile' ? (
               <div className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-lg h-14 animate-pulse" />
+                  <div key={i} className="bg-white rounded-lg h-14 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : listDensity === 'compact' ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid min-[440px]:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-48 animate-pulse" />
+                  <div key={i} className="bg-white rounded-xl h-48 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid sm:grid-cols-2 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-80 animate-pulse" />
+                  <div key={i} className="bg-white rounded-xl h-80 motion-safe:animate-pulse" />
                 ))}
               </div>
             )
           ) : view === 'map' ? (
             <>
               {mapEvents.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+                <div className="text-center py-16 px-6 bg-white border border-gray-200 rounded-xl bg-white rounded-xl border border-gray-200">
                   <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-xl text-gray-600 mb-2">No mappable events found</p>
                   <p className="text-gray-500 text-sm mb-4">
@@ -427,8 +428,8 @@ function EventsContent() {
             <>
               {/* Empty state notice for calendar - shown above grid */}
               {events.length === 0 && (
-                <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-center">
-                  <p className="text-sm text-indigo-900 mb-3">
+                <div className="mb-4 bg-white border border-gray-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-primary mb-3">
                     {hasFilters
                       ? 'No events match your filters for this month.'
                       : 'No events posted yet for this month — be the first to submit one.'}
@@ -456,7 +457,7 @@ function EventsContent() {
               />
             </>
           ) : events.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16 px-6 bg-white border border-gray-200 rounded-xl">
               <p className="text-xl text-gray-600 mb-4">
                 {hasFilters ? 'No events match your filters' : 'No events found'}
               </p>
@@ -488,13 +489,13 @@ function EventsContent() {
                   ))}
                 </div>
               ) : listDensity === 'compact' ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid min-[440px]:grid-cols-2 xl:grid-cols-3 gap-4">
                   {events.map((event) => (
                     <EventCardCompact key={event.id} event={event} />
                   ))}
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid sm:grid-cols-2 gap-6">
                   {events.map((event) => (
                     <EventCard key={event.id} event={event} />
                   ))}

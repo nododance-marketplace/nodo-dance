@@ -34,9 +34,9 @@ export function OnboardingPicker() {
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <div className="max-w-2xl w-full text-center">
-        <h1 className="text-3xl md:text-4xl font-bold text-primary mb-3">
+    <div className="min-h-[70svh] flex items-center justify-center px-4 py-12 sm:py-16">
+      <div className="max-w-3xl w-full">
+        <h1 className="page-heading mb-4">
           Welcome to Nodo Dance
         </h1>
         <p className="text-lg text-gray-600 mb-10">
@@ -49,10 +49,10 @@ export function OnboardingPicker() {
             disabled={loading !== null}
             className="text-left group"
           >
-            <Card className={`h-full transition-all hover:shadow-lg hover:border-primary/40 ${loading === 'DANCER' ? 'border-primary ring-2 ring-primary/20' : ''} ${loading && loading !== 'DANCER' ? 'opacity-50' : ''}`}>
+            <Card className={`h-full transition-colors hover:border-primary/40 ${loading === 'DANCER' ? 'border-primary ring-2 ring-primary/20' : ''} ${loading && loading !== 'DANCER' ? 'opacity-50' : ''}`}>
               <CardContent className="p-8">
-                <Music className="w-12 h-12 text-accent-coral mb-4 group-hover:scale-110 transition-transform" />
-                <h2 className="text-xl font-bold mb-2">I&apos;m a Dancer</h2>
+                <Music className="w-8 h-8 text-accent-coral mb-8" />
+                <h2 className="text-2xl font-bold mb-3">I&apos;m a Dancer</h2>
                 <p className="text-gray-600 text-sm">
                   Find instructors, book lessons, discover events, and connect with the dance community.
                 </p>
@@ -68,10 +68,10 @@ export function OnboardingPicker() {
             disabled={loading !== null}
             className="text-left group"
           >
-            <Card className={`h-full transition-all hover:shadow-lg hover:border-primary/40 ${loading === 'INSTRUCTOR' ? 'border-primary ring-2 ring-primary/20' : ''} ${loading && loading !== 'INSTRUCTOR' ? 'opacity-50' : ''}`}>
+            <Card className={`h-full transition-colors hover:border-primary/40 ${loading === 'INSTRUCTOR' ? 'border-primary ring-2 ring-primary/20' : ''} ${loading && loading !== 'INSTRUCTOR' ? 'opacity-50' : ''}`}>
               <CardContent className="p-8">
-                <GraduationCap className="w-12 h-12 text-accent-coral mb-4 group-hover:scale-110 transition-transform" />
-                <h2 className="text-xl font-bold mb-2">I&apos;m an Instructor</h2>
+                <GraduationCap className="w-8 h-8 text-accent-coral mb-8" />
+                <h2 className="text-2xl font-bold mb-3">I&apos;m an Instructor</h2>
                 <p className="text-gray-600 text-sm">
                   Create your profile, receive lesson requests, and grow your dance teaching business.
                 </p>

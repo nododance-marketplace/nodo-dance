@@ -12,7 +12,7 @@ export function DangerZone() {
   return (
     <>
       <Card className="border-red-200">
-        <CardContent className="p-6">
+        <CardContent className="p-5 sm:p-8">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <h2 className="text-lg font-semibold text-red-900">Danger Zone</h2>

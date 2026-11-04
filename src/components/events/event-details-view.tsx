@@ -55,31 +55,31 @@ END:VCALENDAR`
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="page-shell !max-w-5xl">
       {/* Hero Image */}
       {event.imageUrl && (
-        <div className="relative mb-8 rounded-2xl overflow-hidden shadow-lg">
-          <div className="aspect-[21/9]">
+        <div className="relative mb-8 rounded-xl overflow-hidden bg-primary">
+          <div className="aspect-[4/3] sm:aspect-[21/9]">
             <img
               src={event.imageUrl}
               alt={event.title}
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6">
+          <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10">
             <Badge variant="primary" className="mb-2">{eventType?.label || event.eventType}</Badge>
-            <h1 className="text-3xl md:text-4xl font-bold text-white">{event.title}</h1>
+            <h1 className="text-3xl sm:text-5xl font-bold leading-tight text-white">{event.title}</h1>
           </div>
         </div>
       )}
 
       {/* Header */}
       <Card className="mb-8">
-        <CardContent className="p-6">
+        <CardContent className="p-6 sm:p-10">
           {!event.imageUrl && (
             <>
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <Badge variant="primary">{eventType?.label || event.eventType}</Badge>
                 <div className="flex items-center gap-3">
                   <SaveButton itemId={event.id} type="event" />
@@ -89,12 +89,12 @@ END:VCALENDAR`
                 </div>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{event.title}</h1>
+              <h1 className="page-heading mb-6">{event.title}</h1>
             </>
           )}
 
           {event.imageUrl && (
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
               <div className="flex flex-wrap gap-2">
                 {styles.map((style) => (
                   <Badge key={style}>{style}</Badge>
@@ -117,9 +117,9 @@ END:VCALENDAR`
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <div className="grid sm:grid-cols-2 gap-8 py-8 mb-6 border-y border-gray-200">
             <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-accent-coral mt-1" />
+              <Calendar className="w-5 h-5 text-accent-magenta mt-1" />
               <div>
                 <p className="font-semibold">Date</p>
                 <p className="text-gray-700">{formatDate(startDate)}</p>
@@ -127,7 +127,7 @@ END:VCALENDAR`
             </div>
 
             <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-accent-coral mt-1" />
+              <Clock className="w-5 h-5 text-accent-magenta mt-1" />
               <div>
                 <p className="font-semibold">Time</p>
                 <p className="text-gray-700">
@@ -138,7 +138,7 @@ END:VCALENDAR`
             </div>
 
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-accent-coral mt-1" />
+              <MapPin className="w-5 h-5 text-accent-magenta mt-1" />
               <div>
                 <p className="font-semibold">Venue</p>
                 {event.venueName && <p className="text-gray-700">{event.venueName}</p>}
@@ -149,7 +149,7 @@ END:VCALENDAR`
             </div>
 
             <div className="flex items-start gap-3">
-              <DollarSign className="w-5 h-5 text-accent-coral mt-1" />
+              <DollarSign className="w-5 h-5 text-accent-magenta mt-1" />
               <div>
                 <p className="font-semibold">Price</p>
                 <p className="text-gray-700">{formatCurrency(event.price)}</p>
@@ -158,7 +158,7 @@ END:VCALENDAR`
 
             {event.isRecurring && (
               <div className="flex items-start gap-3">
-                <Repeat className="w-5 h-5 text-accent-coral mt-1" />
+                <Repeat className="w-5 h-5 text-accent-magenta mt-1" />
                 <div>
                   <p className="font-semibold">Recurring</p>
                   <p className="text-gray-700">
@@ -209,23 +209,23 @@ END:VCALENDAR`
       {/* Description */}
       {event.description && (
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4">About This Event</h2>
-            <p className="text-gray-700 whitespace-pre-wrap">{event.description}</p>
+          <CardContent className="p-6 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">About This Event</h2>
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed max-w-prose">{event.description}</p>
           </CardContent>
         </Card>
       )}
 
       {/* Organizer */}
       <Card>
-        <CardContent className="p-6">
-          <h2 className="text-2xl font-bold mb-4">Organizer</h2>
+        <CardContent className="p-6 sm:p-10">
+          <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Organizer</h2>
           <p className="text-gray-700 mb-2">
             <strong>Name:</strong> {event.organizerName}
           </p>
           <p className="text-gray-700">
             <strong>Email:</strong>{' '}
-            <a href={`mailto:${event.organizerEmail}`} className="text-primary hover:underline">
+            <a href={`mailto:${event.organizerEmail}`} className="text-primary hover:underline break-all">
               {event.organizerEmail}
             </a>
           </p>

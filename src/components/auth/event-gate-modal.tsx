@@ -12,16 +12,16 @@ export function EventGateModal({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <Card className="relative z-10 w-full max-w-md shadow-2xl">
+      <Card className="relative z-10 w-full max-w-md max-h-[85svh] overflow-y-auto shadow-xl">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Close sign-in prompt" className="absolute top-3 right-3 p-3 text-gray-500 hover:text-primary transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <CardContent className="p-8">
-          <h2 className="text-2xl font-bold text-primary mb-6">
+        <CardContent className="p-6 sm:p-8">
+          <h2 className="text-2xl font-bold text-primary mb-6 pr-6">
             Create a free account to submit your event
           </h2>
 

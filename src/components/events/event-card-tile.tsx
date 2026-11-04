@@ -36,8 +36,8 @@ export function EventCardTile({ event }: EventCardTileProps) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group"
-      style={{ borderLeft: `3px solid ${styleColor}` }}
+      className="flex items-center gap-3 px-4 py-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group"
+      style={{ borderTop: `2px solid ${styleColor}` }}
     >
       {/* Date column */}
       <div className="flex-shrink-0 w-16 text-center">
@@ -60,18 +60,18 @@ export function EventCardTile({ event }: EventCardTileProps) {
             <Repeat className="w-3 h-3 text-indigo-500 flex-shrink-0" />
           )}
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
           {event.venueName && (
             <span className="truncate max-w-[140px]">{event.venueName}</span>
           )}
           {event.venueName && styles.length > 0 && (
             <span className="text-gray-300">·</span>
           )}
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {styles.slice(0, 2).map((style) => (
               <span
                 key={style}
-                className="inline-flex items-center gap-0.5 text-[10px]"
+                className="inline-flex items-center gap-0.5 text-xs"
               >
                 <span
                   className="inline-block w-1.5 h-1.5 rounded-full"
@@ -81,7 +81,7 @@ export function EventCardTile({ event }: EventCardTileProps) {
               </span>
             ))}
             {styles.length > 2 && (
-              <span className="text-[10px] text-gray-400">+{styles.length - 2}</span>
+              <span className="text-xs text-gray-400">+{styles.length - 2}</span>
             )}
           </div>
         </div>

@@ -77,10 +77,10 @@ export function EventsMonthCalendar({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {/* Calendar Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-primary">
           {formatMonthDisplay(year, month)}
         </h2>
         <div className="flex items-center gap-2">
@@ -89,6 +89,7 @@ export function EventsMonthCalendar({
             size="sm"
             onClick={handlePreviousMonth}
             className="px-3"
+            aria-label="Previous month"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -100,6 +101,7 @@ export function EventsMonthCalendar({
             size="sm"
             onClick={handleNextMonth}
             className="px-3"
+            aria-label="Next month"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -107,13 +109,13 @@ export function EventsMonthCalendar({
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
           {WEEKDAY_LABELS.map((day) => (
             <div
               key={day}
-              className="py-2 text-center text-xs font-semibold text-gray-700 uppercase"
+              className="py-3 text-center text-xs sm:text-sm font-medium text-gray-600"
             >
               {day}
             </div>
@@ -142,7 +144,7 @@ export function EventsMonthCalendar({
                   <div
                     className={`text-sm font-medium ${
                       day.isToday
-                        ? 'bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs'
+                        ? 'bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs'
                         : day.isCurrentMonth
                         ? 'text-gray-900'
                         : 'text-gray-400'
@@ -162,7 +164,7 @@ export function EventsMonthCalendar({
                   {hasMoreEvents && (
                     <button
                       onClick={() => toggleDayExpanded(day.dateKey)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium w-full text-left"
+                      className="text-xs text-primary hover:underline font-medium w-full text-left"
                     >
                       {isExpanded
                         ? 'Show less'
@@ -193,7 +195,7 @@ function EventChip({ event }: { event: Event }) {
         className="rounded px-1.5 py-1 cursor-pointer hover:opacity-80 transition-opacity"
         style={{
           backgroundColor: hexToRgba(color, 0.15),
-          borderLeft: `4px solid ${color}`,
+          borderLeft: `2px solid ${color}`,
         }}
       >
         <div className="flex items-start justify-between gap-1">
@@ -214,14 +216,14 @@ function EventChip({ event }: { event: Event }) {
           {styles.slice(0, 2).map((style) => (
             <span
               key={style}
-              className="text-[10px] px-1 py-0.5 rounded font-medium text-gray-600"
+              className="text-xs px-1 py-0.5 rounded font-medium text-gray-600"
               style={{ backgroundColor: hexToRgba(getStyleColor(JSON.stringify([style])), 0.25) }}
             >
               {style}
             </span>
           ))}
           {styles.length > 2 && (
-            <span className="text-[10px] px-1 py-0.5 rounded text-gray-500">
+            <span className="text-xs px-1 py-0.5 rounded text-gray-500">
               +{styles.length - 2}
             </span>
           )}

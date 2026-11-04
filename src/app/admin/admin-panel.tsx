@@ -240,13 +240,13 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
   }, [approvedEvents])
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="page-shell">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-sm text-gray-500 mt-1">Signed in as {adminEmail}</p>
+          <h1 className="page-heading">Admin Panel</h1>
+          <p className="text-sm text-gray-500 mt-3 break-all">Signed in as {adminEmail}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {missingCoords.length > 0 && (
             <Button variant="gradient" size="sm" onClick={geocodeAll}>
               <MapPin className="w-4 h-4 mr-2" />
@@ -294,7 +294,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                       <img src={first.imageUrl} alt={first.title} className="w-full h-full object-cover" />
                     </div>
                   )}
-                  <CardContent className="p-6">
+                  <CardContent className="p-5 sm:p-8">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -572,7 +572,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={profile.isPublished ? 'success' : 'warning'}>
                       {profile.isPublished ? 'Published' : 'Draft'}
                     </Badge>
@@ -620,7 +620,7 @@ function EventCard({
           />
         </div>
       )}
-      <CardContent className="p-6">
+      <CardContent className="p-5 sm:p-8">
         <div className="flex items-start justify-between mb-3">
           <div>
             <h3 className="text-xl font-semibold">{event.title}</h3>
@@ -628,7 +628,7 @@ function EventCard({
               by {event.organizerName} ({event.organizerEmail})
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge>{event.eventType}</Badge>
             {hasCoords ? (
               <Badge variant="success" className="flex items-center gap-1">

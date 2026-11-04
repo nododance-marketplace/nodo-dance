@@ -236,10 +236,10 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <CardContent className="p-5 sm:p-8">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-10">
           <div>
-            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Basic Information</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Display Name *</label>
@@ -297,7 +297,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Teaching Details</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Teaching Details</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Dance Styles * (select all you teach)</label>
@@ -332,7 +332,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
 
               <div>
                 <label className="block text-sm font-medium mb-2">Skill Levels (optional)</label>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   {SKILL_LEVELS.map((level) => (
                     <Controller
                       key={level}
@@ -474,7 +474,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">DJ</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">DJ</h3>
             <div className="space-y-4">
               <label className="flex items-start">
                 <input
@@ -525,7 +525,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Pricing</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Pricing</h3>
             <div className="space-y-4">
               <label className="flex items-center">
                 <input
@@ -581,7 +581,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Location</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Location</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Location Type</label>
@@ -613,7 +613,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Payment Methods</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Payment Methods</h3>
             <div className="space-y-4">
               <label className="flex items-center">
                 <input
@@ -642,7 +642,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Contact Information</h3>
             <p className="text-sm text-gray-500 mb-4">
               Your contact email is shown only to logged-in users so they can reach you for lessons.
             </p>
@@ -682,7 +682,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Social Links</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Social Links</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Instagram URL (optional)</label>
@@ -744,7 +744,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-4">Visibility</h3>
+            <h3 className="text-xl font-bold mb-6 border-b border-gray-200 pb-4">Visibility</h3>
             <label className="flex items-start">
               <input
                 type="checkbox"

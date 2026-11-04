@@ -42,9 +42,9 @@ export default async function InstructorDashboardPage() {
   const isDev = process.env.NODE_ENV === 'development'
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Instructor Dashboard</h1>
+    <div className="page-shell">
+      <div className="page-header">
+        <h1 className="page-heading">Instructor Dashboard</h1>
         <SignOutButton />
       </div>
 
@@ -56,7 +56,7 @@ export default async function InstructorDashboardPage() {
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className="font-semibold text-green-900 mb-2">✅ Signed In Successfully</h3>
-                <div className="text-sm text-green-800 space-y-1">
+                <div className="text-sm text-green-800 space-y-1 break-words">
                   <p><strong>Email:</strong> {session.user.email}</p>
                   <p><strong>User ID:</strong> {user.id}</p>
                   <p><strong>Role:</strong> {user.role}</p>
@@ -71,10 +71,10 @@ export default async function InstructorDashboardPage() {
       )}
 
       <Card className="mb-6">
-        <CardContent className="p-6">
+        <CardContent className="p-5 sm:p-8">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h2 className="text-xl font-semibold mb-2">
+              <h2 className="text-2xl font-bold mb-3">
                 {profile ? profile.displayName : 'Your Instructor Profile'}
               </h2>
               {profile && (
@@ -87,7 +87,7 @@ export default async function InstructorDashboardPage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
             <Link href="/instructor/profile/edit">
               <Button variant="gradient" size="lg">
                 <Edit className="w-4 h-4 mr-2" />

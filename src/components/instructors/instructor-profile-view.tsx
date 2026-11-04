@@ -45,12 +45,12 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
 
   return (
     <>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="page-shell !max-w-5xl">
         {/* Header */}
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-32 h-32 rounded-lg bg-gradient-to-br from-primary/10 to-accent-coral/10 flex items-center justify-center flex-shrink-0">
+          <CardContent className="p-6 sm:p-10">
+            <div className="flex flex-col md:flex-row gap-8 lg:gap-10">
+              <div className="w-40 h-40 md:w-56 md:h-64 rounded-xl bg-primary/5 flex items-center justify-center flex-shrink-0">
                 {instructor.photoUrl ? (
                   <img
                     src={instructor.photoUrl}
@@ -58,16 +58,16 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                     className="w-full h-full object-cover rounded-lg"
                   />
                 ) : (
-                  <div className="text-5xl font-bold text-primary/20">
+                  <div className="text-5xl font-bold text-primary/60">
                     {instructor.displayName.charAt(0)}
                   </div>
                 )}
               </div>
 
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-bold mb-2">{instructor.displayName}</h1>
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <h1 className="text-3xl sm:text-5xl font-bold text-primary mb-3">{instructor.displayName}</h1>
                     {instructor.isDJ && (
                       <Badge variant="primary" className="flex items-center gap-1 mb-2">
                         <Disc3 className="w-3 h-3" /> DJ
@@ -91,7 +91,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                   )}
                   {instructor.yearsTeaching && (
                     <div className="flex items-center gap-1">
-                      <Award className="w-4 h-4 text-accent-coral" />
+                      <Award className="w-4 h-4 text-accent-magenta" />
                       <span>{instructor.yearsTeaching} {instructor.yearsTeaching === 1 ? 'year' : 'years'} teaching</span>
                     </div>
                   )}
@@ -168,8 +168,8 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
 
         {/* Contact Section — Soft Gated */}
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Contact</h2>
+          <CardContent className="p-6 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Contact</h2>
             {isLoggedIn ? (
               <div className="space-y-4">
                 {instructor.contactEmail ? (
@@ -197,7 +197,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                         )}
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">{instructor.contactEmail}</p>
+                    <p className="text-sm text-gray-600 mt-2 break-all">{instructor.contactEmail}</p>
                     {instructor.preferredContactMethod && (
                       <p className="text-sm text-gray-500 mt-1">
                         Preferred: {instructor.preferredContactMethod}
@@ -234,7 +234,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                   <Link href={`/auth/signin?callbackUrl=${callbackUrl}`}>
                     <Button variant="gradient" size="sm">
                       <Mail className="w-4 h-4 mr-2" />
-                      Create Free Account to Unlock Contact
+                      Create Free Account to View Contact
                     </Button>
                   </Link>
                 </div>
@@ -246,8 +246,8 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
         {/* Introduction Video — Preply-style, above bio */}
         {embedUrl && (
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Introduction Video</h2>
+            <CardContent className="p-6 sm:p-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Introduction Video</h2>
               <div className="aspect-video rounded-lg overflow-hidden">
                 <iframe
                   src={embedUrl}
@@ -263,9 +263,9 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
         {/* About */}
         {instructor.bio && (
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">About</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{instructor.bio}</p>
+            <CardContent className="p-6 sm:p-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">About</h2>
+              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed max-w-prose">{instructor.bio}</p>
             </CardContent>
           </Card>
         )}
@@ -273,12 +273,12 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
         {/* Certifications */}
         {certificationsList.length > 0 && (
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Certifications</h2>
+            <CardContent className="p-6 sm:p-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Certifications</h2>
               <ul className="space-y-2">
                 {certificationsList.map((cert: string, index: number) => (
                   <li key={index} className="flex items-start gap-2">
-                    <Award className="w-5 h-5 text-accent-coral mt-0.5 flex-shrink-0" />
+                    <Award className="w-5 h-5 text-accent-magenta mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{cert}</span>
                   </li>
                 ))}
@@ -289,8 +289,8 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
 
         {/* What I Teach */}
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4">What I Teach</h2>
+          <CardContent className="p-6 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">What I Teach</h2>
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">Dance Styles</h3>
@@ -369,12 +369,12 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
         {/* Pricing */}
         {(instructor.offersPrivate || instructor.offersGroup) && (
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Pricing</h2>
+            <CardContent className="p-6 sm:p-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Pricing</h2>
               <div className="space-y-4">
                 {instructor.offersPrivate && (
                   <div className="flex items-start gap-3">
-                    <DollarSign className="w-5 h-5 text-accent-coral mt-1" />
+                    <DollarSign className="w-5 h-5 text-accent-magenta mt-1" />
                     <div>
                       <h3 className="font-semibold">Private Lessons</h3>
                       <p className="text-gray-700">
@@ -385,7 +385,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                 )}
                 {instructor.offersGroup && (
                   <div className="flex items-start gap-3">
-                    <DollarSign className="w-5 h-5 text-accent-coral mt-1" />
+                    <DollarSign className="w-5 h-5 text-accent-magenta mt-1" />
                     <div>
                       <h3 className="font-semibold">Group Classes</h3>
                       <p className="text-gray-700">
@@ -406,8 +406,8 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
 
         {/* Location & Travel */}
         <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Location & Travel</h2>
+          <CardContent className="p-6 sm:p-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Location & Travel</h2>
             <div className="space-y-3">
               {locationType && (
                 <p className="text-gray-700">
@@ -437,8 +437,8 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
         {/* Payment Methods - GATED: only show details to logged-in users */}
         {hasPaymentMethods && (
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Payment Methods</h2>
+            <CardContent className="p-6 sm:p-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-6">Payment Methods</h2>
               {isLoggedIn ? (
                 <div className="flex flex-wrap gap-3">
                   {instructor.paymentCash && <Badge>Cash</Badge>}
@@ -448,7 +448,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
                         Venmo: @{instructor.paymentVenmo}
                       </Badge>
                     </a>
@@ -459,7 +459,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
                         Cash App: ${instructor.paymentCashApp}
                       </Badge>
                     </a>
@@ -470,7 +470,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
                         PayPal: {instructor.paymentPayPal}
                       </Badge>
                     </a>

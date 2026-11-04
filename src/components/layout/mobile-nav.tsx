@@ -16,7 +16,7 @@ export function MobileNav() {
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+    <nav className="mobile-dock md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-200 z-50">
       <div className="grid grid-cols-4">
         {links.map((link) => {
           const Icon = link.icon
@@ -26,6 +26,7 @@ export function MobileNav() {
             <Link
               key={link.href}
               href={link.href}
+              aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center justify-center py-3 transition-colors',
                 isActive

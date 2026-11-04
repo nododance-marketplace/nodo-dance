@@ -11,8 +11,8 @@ export function LoginPromptCard() {
   const callbackUrl = encodeURIComponent(pathname)
 
   return (
-    <Card className="bg-gradient-to-br from-primary/5 to-accent-coral/5 border-primary/20">
-      <CardContent className="p-6">
+    <Card className="bg-primary/5 border-primary/15">
+      <CardContent className="p-5 sm:p-8">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <UserPlus className="w-5 h-5 text-primary" />

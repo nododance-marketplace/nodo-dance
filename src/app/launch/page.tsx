@@ -144,8 +144,8 @@ function Reveal({
     <div
       ref={ref}
       style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out ${
-        shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      className={`transition-transform duration-700 ease-out motion-reduce:transition-none ${
+        shown ? 'opacity-100 translate-y-0' : 'opacity-100 translate-y-2 motion-reduce:translate-y-0'
       } ${className}`}
     >
       {children}
@@ -163,7 +163,7 @@ function GradientText({
 }) {
   return (
     <span
-      className={`bg-gradient-to-r from-accent-coral via-accent-magenta to-accent-orange bg-clip-text text-transparent ${className}`}
+      className={`text-inherit ${className}`}
     >
       {children}
     </span>
@@ -199,7 +199,9 @@ function LazyVideo({
           // Set src lazily the first time the video enters viewport
           if (!v.src) v.src = src
           // play() may reject on user gesture policies — swallow
-          v.play().catch(() => {})
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            v.play().catch(() => {})
+          }
         } else {
           v.pause()
           // Intentionally do NOT unset src, so the video resumes cleanly if user scrolls back
@@ -217,6 +219,8 @@ function LazyVideo({
       ref={ref}
       poster={poster}
       preload="none"
+      controls
+      aria-label="Client website preview"
       loop
       muted
       playsInline
@@ -256,7 +260,7 @@ function FAQItem({
         />
       </button>
       <div
-        className={`grid transition-all duration-300 ease-out ${
+        className={`grid transition-opacity duration-300 ease-out motion-reduce:transition-none ${
           isOpen
             ? 'grid-rows-[1fr] opacity-100'
             : 'grid-rows-[0fr] opacity-0'
@@ -276,7 +280,7 @@ function scrollToId(id: string) {
     e.preventDefault()
     document
       .getElementById(id)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      ?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
   }
 }
 
@@ -288,32 +292,26 @@ export default function LaunchPage() {
   const [openFaq, setOpenFaq] = useState<number>(0)
 
   return (
-    <div className="bg-white text-primary">
+    <div className="bg-background text-primary">
       {/* ───────────────────────── Hero ───────────────────────── */}
       <section className="relative overflow-hidden">
-        {/* Ambient glows */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-20 left-1/4 w-[560px] h-[560px] rounded-full bg-accent-coral/15 blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-[520px] h-[520px] rounded-full bg-accent-magenta/15 blur-3xl" />
-          <div className="absolute top-40 right-10 w-[340px] h-[340px] rounded-full bg-accent-orange/10 blur-3xl" />
-        </div>
 
-        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <Reveal>
-            <div className="text-center max-w-4xl mx-auto">
-              <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                24-Hour Launch Service
-              </span>
-              <h1 className="mt-5 text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
+            <div className="text-left max-w-5xl">
+              <h1 className="mt-5 text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.02]">
                 Your Landing Page.
                 <br className="hidden sm:block" />{' '}
                 <GradientText>Live in 24 Hours.</GradientText>
               </h1>
-              <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+              <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                24-Hour Launch Service
+              </span>
+              <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-xl">
                 Professional landing pages from $249. No agencies. No 6-week
                 timelines. No surprises.
               </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <a href="#offer" onClick={scrollToId('offer')}>
                   <Button variant="gradient" size="lg" className="w-full sm:w-auto">
                     Start My Project
@@ -337,19 +335,19 @@ export default function LaunchPage() {
       {/* ───────────────────────── Offer ───────────────────────── */}
       <section
         id="offer"
-        className="border-t border-gray-200 py-24 md:py-32 bg-background"
+        className="border-t border-gray-200 py-16 md:py-24 bg-background"
       >
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
-            <div className="max-w-[560px] mx-auto">
-              <div className="relative bg-white rounded-2xl border border-gray-200 shadow-sm p-8 md:p-10">
+            <div className="max-w-4xl">
+              <div className="relative bg-white rounded-xl border border-gray-200 p-6 sm:p-10 md:p-12">
                 {/* Corner tag */}
-                <span className="absolute top-4 right-4 text-[10px] uppercase tracking-widest font-semibold text-accent-magenta bg-accent-magenta/10 rounded-full px-3 py-1">
+                <span className="inline-flex mb-6 text-sm font-medium text-primary border border-gray-200 rounded-full px-3 py-1">
                   Productized Service
                 </span>
 
                 {/* Icon */}
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent-coral to-accent-magenta flex items-center justify-center text-white mb-6">
+                <div className="w-14 h-14 flex items-center text-primary mb-6">
                   <AppWindow className="w-7 h-7" />
                 </div>
 
@@ -363,7 +361,7 @@ export default function LaunchPage() {
                   <span className="text-6xl md:text-7xl font-bold leading-none">
                     <GradientText>$249</GradientText>
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-600">
                     + $9/mo Care Plan (optional)
                   </span>
                 </div>
@@ -371,7 +369,7 @@ export default function LaunchPage() {
                 <div className="my-8 border-t border-gray-200" />
 
                 {/* Bullets */}
-                <ul className="space-y-3">
+                <ul className="grid sm:grid-cols-2 gap-5">
                   {[
                     'One high-converting landing page',
                     'Custom design matched to your brand',
@@ -407,36 +405,36 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── Add-Ons ───────────────────────── */}
-      <section className="border-t border-gray-200 py-24 md:py-32">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="border-t border-gray-200 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
-            <div className="text-center mb-14">
-              <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                Add-Ons
-              </span>
+            <div className="text-left mb-12">
               <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight">
                 Need More? Add-Ons Available.
               </h2>
-              <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+              <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                Add-Ons
+              </span>
+              <p className="mt-4 text-lg text-gray-600 max-w-2xl">
                 Layer on exactly what your launch needs — nothing you don&apos;t.
               </p>
             </div>
           </Reveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
             {ADD_ONS.map((item, i) => (
               <Reveal key={item.name} delay={i * 60}>
-                <div className="h-full bg-white rounded-xl border border-gray-200 p-5 hover:border-accent-magenta/40 hover:shadow-md transition-all">
+                <div className="h-full border-t border-gray-200 py-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs font-semibold text-gray-400 tracking-widest">
+                      <span className="text-sm font-medium text-gray-600 tabular-nums">
                         {String(i + 1).padStart(2, '0')}
                       </span>
                       <p className="mt-2 font-medium text-primary">
                         {item.name}
                       </p>
                     </div>
-                    <span className="font-mono text-sm text-accent-magenta bg-accent-magenta/10 rounded px-2 py-1 whitespace-nowrap">
+                    <span className="text-lg font-medium tabular-nums text-primary whitespace-nowrap">
                       {item.price}
                     </span>
                   </div>
@@ -448,27 +446,27 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── Care Plan ───────────────────────── */}
-      <section className="border-t border-gray-200 py-24 md:py-32 bg-background">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="border-t border-gray-200 py-16 md:py-24 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-start">
             {/* Left column */}
             <Reveal>
               <div>
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-accent-magenta to-accent-orange flex items-center justify-center text-white mb-6">
+                <div className="w-14 h-14 flex items-center text-primary mb-6">
                   <ShieldCheck className="w-7 h-7" />
                 </div>
-                <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                  Optional Care Plan
-                </span>
                 <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-                  Keep Your Site Running —{' '}
+                  Keep Your Site Running:{' '}
                   <GradientText>$9/month</GradientText>
                 </h2>
+                <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                  Optional Care Plan
+                </span>
                 <p className="mt-5 text-lg text-gray-600 max-w-lg">
                   Optional monthly plan to keep your website maintained, backed
                   up, and updated.
                 </p>
-                <p className="mt-4 text-sm text-gray-500">
+                <p className="mt-4 text-sm text-gray-600">
                   Cancel anytime. No contracts.
                 </p>
               </div>
@@ -478,9 +476,9 @@ export default function LaunchPage() {
             <div className="space-y-3">
               {CARE_PLAN_FEATURES.map((feat, i) => (
                 <Reveal key={feat} delay={i * 80}>
-                  <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-5 py-4">
-                    <span className="w-9 h-9 rounded-lg bg-gradient-to-br from-accent-coral/15 to-accent-magenta/15 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-5 h-5 text-accent-magenta" />
+                  <div className="flex items-center gap-4 border-b border-gray-200 py-5">
+                    <span className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-5 h-5 text-primary" />
                     </span>
                     <span className="text-gray-700">{feat}</span>
                   </div>
@@ -492,34 +490,29 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── How It Works ───────────────────────── */}
-      <section className="border-t border-gray-200 py-24 md:py-32">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="border-t border-gray-200 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
-            <div className="text-center mb-16">
-              <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                How It Works
-              </span>
+            <div className="text-left mb-12">
               <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight">
                 From brief to launch in three steps.
               </h2>
+              <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                How It Works
+              </span>
             </div>
           </Reveal>
 
           <div className="relative grid md:grid-cols-3 gap-10 md:gap-8">
-            {/* Desktop connector line */}
-            <div
-              aria-hidden
-              className="hidden md:block absolute top-7 left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"
-            />
 
             {STEPS.map((s, i) => (
               <Reveal key={s.num} delay={i * 120}>
-                <div className="relative text-center md:text-left">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-white border-2 border-accent-magenta/30 text-accent-magenta font-bold text-lg mb-5 relative z-10">
+                <div className="relative text-left border-t border-gray-200 pt-6">
+                  <div className="inline-flex items-center text-gray-600 font-medium text-3xl mb-6 tabular-nums">
                     {s.num}
                   </div>
                   <h3 className="text-xl font-semibold mb-2">
-                    {s.num} · {s.title}
+                    {s.title}
                   </h3>
                   <p className="text-gray-600 leading-relaxed">{s.body}</p>
                 </div>
@@ -530,19 +523,19 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── FAQ ───────────────────────── */}
-      <section className="border-t border-gray-200 py-24 md:py-32 bg-background">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-[1fr_1.4fr] gap-12 lg:gap-20">
+      <section className="border-t border-gray-200 py-16 md:py-24 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-12 lg:gap-20">
             {/* Sticky intro */}
             <div>
               <div className="lg:sticky lg:top-24">
                 <Reveal>
-                  <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                    FAQ
-                  </span>
                   <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight">
                     Answers before you ask.
                   </h2>
+                  <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                    FAQ
+                  </span>
                   <p className="mt-5 text-gray-600 leading-relaxed max-w-md">
                     If something isn&apos;t covered here, book a 15-minute call
                     and we&apos;ll walk through it directly.
@@ -561,7 +554,7 @@ export default function LaunchPage() {
 
             {/* Accordion */}
             <Reveal>
-              <div className="bg-white rounded-2xl border border-gray-200 px-6 md:px-8">
+              <div className="border-t border-gray-200">
                 {FAQS.map((item, i) => (
                   <FAQItem
                     key={item.q}
@@ -578,17 +571,17 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── Recent Work ───────────────────────── */}
-      <section className="border-t border-gray-200 py-24 md:py-32">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="border-t border-gray-200 py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
-            <div className="text-center mb-14">
-              <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                Recent Work
-              </span>
+            <div className="text-left mb-12">
               <h2 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight">
                 Real Projects. Real Results.
               </h2>
-              <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">
+              <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                Recent Work
+              </span>
+              <p className="mt-4 text-lg text-gray-600 max-w-2xl">
                 A selection of landing pages built for clients across industries.
               </p>
             </div>
@@ -597,15 +590,15 @@ export default function LaunchPage() {
           <div
             className={`grid gap-6 md:gap-8 ${
               WORK.length === 1
-                ? 'md:max-w-2xl md:mx-auto'
+                ? 'max-w-5xl'
                 : 'md:grid-cols-2'
             }`}
           >
             {WORK.map((item, i) => (
               <Reveal key={item.url + i} delay={i * 100}>
-                <article className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                <article className="group bg-white rounded-xl border border-gray-200 overflow-hidden">
                   {/* 16:10 video frame */}
-                  <div className="relative w-full aspect-[16/10] bg-gray-100 overflow-hidden">
+                  <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
                     <LazyVideo
                       src={item.video}
                       poster={item.poster}
@@ -616,7 +609,7 @@ export default function LaunchPage() {
                   <div className="p-6">
                     <div className="flex items-start justify-between gap-4 mb-2">
                       <h3 className="text-lg font-bold">{item.name}</h3>
-                      <span className="text-[10px] uppercase tracking-widest font-semibold text-accent-magenta bg-accent-magenta/10 rounded-full px-2.5 py-1 whitespace-nowrap">
+                      <span className="text-sm font-medium text-primary bg-background rounded-full px-3 py-1 whitespace-nowrap">
                         {item.danceGenre}
                       </span>
                     </div>
@@ -625,7 +618,7 @@ export default function LaunchPage() {
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-accent-magenta font-medium group/link"
+                      className="inline-flex items-center gap-1 text-primary font-medium group/link"
                     >
                       View Live Site
                       <ArrowUpRight className="w-4 h-4 transition-transform duration-200 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" />
@@ -639,27 +632,22 @@ export default function LaunchPage() {
       </section>
 
       {/* ───────────────────────── Final CTA ───────────────────────── */}
-      <section className="relative border-t border-gray-200 py-24 md:py-32 overflow-hidden">
-        {/* Ambient glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-accent-magenta/10 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-accent-coral/10 blur-3xl" />
-        </div>
+      <section className="relative border-t border-gray-200 py-16 md:py-24 overflow-hidden">
 
-        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
-            <div className="text-center max-w-3xl mx-auto">
-              <span className="inline-block uppercase tracking-[0.2em] text-xs font-semibold text-accent-magenta">
-                Launch Day
-              </span>
+            <div className="text-left max-w-3xl">
               <h2 className="mt-4 text-4xl md:text-6xl font-bold tracking-tight">
                 Ready to <GradientText>Launch?</GradientText>
               </h2>
+              <span className="inline-block mt-4 text-sm font-medium text-gray-600">
+                Launch Day
+              </span>
               <p className="mt-6 text-lg md:text-xl text-gray-600">
                 Pick a package, share your brief, and have your landing page
                 live within 24 hours — not weeks.
               </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <a href="#offer" onClick={scrollToId('offer')}>
                   <Button variant="gradient" size="lg" className="w-full sm:w-auto">
                     Start My Project
@@ -675,14 +663,14 @@ export default function LaunchPage() {
                   </Button>
                 </a>
               </div>
-              <p className="mt-6 text-sm text-gray-500">
-                24-hour delivery · Full ownership · No contracts.
+              <p className="mt-6 text-sm text-gray-600">
+                24-hour delivery. Full ownership. No contracts.
               </p>
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mt-3 text-sm text-gray-600">
                 Prefer email? Reach us at{' '}
                 <a
                   href={`mailto:${CONTACT_EMAIL}`}
-                  className="font-medium text-accent-magenta hover:underline"
+                  className="font-medium text-primary hover:underline"
                 >
                   {CONTACT_EMAIL}
                 </a>

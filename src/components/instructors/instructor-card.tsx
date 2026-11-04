@@ -39,9 +39,9 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
   const instagramHandle = extractInstagramHandle(instructor.instagramUrl)
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="data-card transition-colors">
       <CardContent className="p-0">
-        <div className="aspect-square bg-gradient-to-br from-primary/10 to-accent-coral/10 flex items-center justify-center relative overflow-hidden">
+        <div className="aspect-square bg-primary/5 flex items-center justify-center relative overflow-hidden">
           {instructor.photoUrl ? (
             <img
               src={instructor.photoUrl}
@@ -49,7 +49,7 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="text-6xl font-bold text-primary/20">
+            <div className="text-6xl font-bold text-primary/60">
               {instructor.displayName.charAt(0)}
             </div>
           )}
@@ -59,9 +59,9 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-xl font-semibold">{instructor.displayName}</h3>
+            <h3 className="text-xl font-bold text-primary">{instructor.displayName}</h3>
             {instructor.isDJ && (
-              <Badge variant="primary" className="flex items-center gap-0.5 text-[10px] px-1.5 py-0">
+              <Badge variant="primary" className="flex items-center gap-0.5 text-xs px-1.5 py-0">
                 <Disc3 className="w-3 h-3" /> DJ
               </Badge>
             )}

@@ -27,51 +27,51 @@ export default async function BecomeInstructorPage() {
   const isLoggedIn = !!session?.user?.email
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
+    <div className="page-shell">
+      <div className="mb-12 max-w-3xl">
+        <h1 className="page-heading mb-4">
           Become an Instructor
         </h1>
-        <p className="text-xl text-gray-600">
+        <p className="page-intro">
           Connect with students and grow your dance business
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-12">
-        <Card>
-          <CardContent className="p-6">
-            <Users className="w-12 h-12 text-accent-coral mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Reach More Students</h3>
+      <div className="grid md:grid-cols-2 gap-x-12 gap-y-4 mb-12">
+        <Card className="rounded-none border-0 border-t border-gray-200 bg-transparent shadow-none">
+          <CardContent className="px-0 py-8">
+            <Users className="w-7 h-7 text-accent-coral float-right ml-4" />
+            <h3 className="text-2xl font-bold mb-3">Reach More Students</h3>
             <p className="text-gray-600">
               Get discovered by students actively looking for dance instructors in Charlotte
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <DollarSign className="w-12 h-12 text-accent-coral mb-4" />
-            <h3 className="text-xl font-semibold mb-2">100% Free</h3>
+        <Card className="rounded-none border-0 border-t border-gray-200 bg-transparent shadow-none">
+          <CardContent className="px-0 py-8">
+            <DollarSign className="w-7 h-7 text-accent-coral float-right ml-4" />
+            <h3 className="text-2xl font-bold mb-3">100% Free</h3>
             <p className="text-gray-600">
               Create your profile, receive lesson requests, and keep all your earnings
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <Calendar className="w-12 h-12 text-accent-coral mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Manage Your Schedule</h3>
+        <Card className="rounded-none border-0 border-t border-gray-200 bg-transparent shadow-none">
+          <CardContent className="px-0 py-8">
+            <Calendar className="w-7 h-7 text-accent-coral float-right ml-4" />
+            <h3 className="text-2xl font-bold mb-3">Manage Your Schedule</h3>
             <p className="text-gray-600">
               Work on your own terms. Accept requests that fit your availability
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <Heart className="w-12 h-12 text-accent-coral mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Support the Community</h3>
+        <Card className="rounded-none border-0 border-t border-gray-200 bg-transparent shadow-none">
+          <CardContent className="px-0 py-8">
+            <Heart className="w-7 h-7 text-accent-coral float-right ml-4" />
+            <h3 className="text-2xl font-bold mb-3">Support the Community</h3>
             <p className="text-gray-600">
               Help grow Charlotte&apos;s partner dance scene and share your passion
             </p>
@@ -79,10 +79,10 @@ export default async function BecomeInstructorPage() {
         </Card>
       </div>
 
-      <Card className="bg-gradient-to-br from-primary to-primary-light text-white">
-        <CardContent className="p-8 text-center">
+      <Card className="bg-primary/5 border-primary/15">
+        <CardContent className="p-6 sm:p-10">
           <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-          <p className="text-xl mb-6 text-gray-200">
+          <p className="text-lg mb-6 text-gray-600">
             Create your instructor profile in minutes
           </p>
           {isLoggedIn ? (
@@ -95,7 +95,7 @@ export default async function BecomeInstructorPage() {
             </Link>
           )}
           {!isLoggedIn && (
-            <p className="text-sm mt-4 text-gray-300">
+            <p className="text-sm mt-4 text-gray-600">
               Already have an account? Sign in to manage your profile
             </p>
           )}

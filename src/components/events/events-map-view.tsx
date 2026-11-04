@@ -143,11 +143,11 @@ export function EventsMapView({ events }: EventsMapViewProps) {
   }, [events])
 
   return (
-    <div className="rounded-lg overflow-hidden border border-gray-200" style={{ height: '600px' }}>
+    <div className="rounded-xl overflow-hidden border border-gray-200">
       <MapContainer
         center={center}
         zoom={DEFAULT_ZOOM}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '520px', width: '100%' }}
         scrollWheelZoom={true}
       >
         <TileLayer
@@ -171,20 +171,20 @@ export function EventsMapView({ events }: EventsMapViewProps) {
                   <p className="text-xs font-medium flex items-center gap-1">
                     <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                     <span className="text-gray-500">{parseJsonArray(event.styles).join(', ') || 'Other'}</span>
-                    <span className="text-gray-300 mx-0.5">&middot;</span>
-                    <span className="text-indigo-600">{eventTypeLabel}</span>
+                    <span className="sr-only">,</span>
+                    <span className="text-primary">{eventTypeLabel}</span>
                   </p>
                   <p className="text-gray-600">{event.venueName}</p>
                   {event.address && (
                     <p className="text-gray-500 text-xs">{event.address}</p>
                   )}
                   {event.isRecurring && (
-                    <p className="text-indigo-600 text-xs font-medium mt-1">
+                    <p className="text-primary text-xs font-medium mt-1">
                       {event.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'} recurring
                     </p>
                   )}
                   <p className="text-gray-700 mt-1">
-                    {formatDate(startDate)} &middot; {formatTime(startDate)}
+                    {formatDate(startDate)} at {formatTime(startDate)}
                   </p>
                   {event.price != null && (
                     <p className="text-gray-600 mt-0.5">
@@ -194,7 +194,7 @@ export function EventsMapView({ events }: EventsMapViewProps) {
                   <div className="flex gap-2 mt-2">
                     <a
                       href={`/events/${event.id}`}
-                      className="text-indigo-600 hover:underline text-xs"
+                      className="text-primary hover:underline text-xs"
                     >
                       Details
                     </a>
@@ -202,7 +202,7 @@ export function EventsMapView({ events }: EventsMapViewProps) {
                       href={`https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-600 hover:underline text-xs"
+                      className="text-primary hover:underline text-xs"
                     >
                       Open in Google Maps
                     </a>
@@ -215,7 +215,7 @@ export function EventsMapView({ events }: EventsMapViewProps) {
       </MapContainer>
 
       {/* Legend */}
-      <div className="bg-white border-t border-gray-200 px-4 py-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
+      <div className="bg-white border-t border-gray-200 px-4 py-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
         <span className="font-medium mr-1">Shapes:</span>
         {SHAPE_LEGEND.map(({ label, unicode }) => (
           <span key={label} className="flex items-center gap-1">
