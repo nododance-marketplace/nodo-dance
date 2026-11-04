@@ -23,11 +23,11 @@ export function Footer() {
             <p className="text-[var(--color-on-dark-muted)] mb-4">
               {city}&apos;s hub for partner dance instructors and events.
             </p>
-            <div className="flex space-x-4">
-              <a aria-label="Nodo Dance on Instagram" href="https://www.instagram.com/nododance/" target="_blank" rel="noopener noreferrer" className="hover:text-accent-coral transition-colors">
+            <div className="flex space-x-2">
+              <a aria-label="Nodo Dance on Instagram" href="https://www.instagram.com/nododance/" target="_blank" rel="noopener noreferrer" className="footer-social text-[var(--color-on-dark-muted)]">
                 <Instagram className="w-6 h-6" />
               </a>
-              <a aria-label="Email Nodo Dance" href="mailto:nododance@gmail.com" className="hover:text-accent-coral transition-colors">
+              <a aria-label="Email Nodo Dance" href="mailto:nododance@gmail.com" className="footer-social text-[var(--color-on-dark-muted)]">
                 <Mail className="w-6 h-6" />
               </a>
             </div>
@@ -38,17 +38,17 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/instructors" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/instructors" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Find Instructors
                 </Link>
               </li>
               <li>
-                <Link href="/events" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/events" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Browse Events
                 </Link>
               </li>
               <li>
-                <Link href="/submit-event" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/submit-event" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Submit an Event
                 </Link>
               </li>
@@ -60,17 +60,17 @@ export function Footer() {
             <h3 className="font-semibold mb-4">For Instructors</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/become-an-instructor" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/become-an-instructor" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Join as Instructor
                 </Link>
               </li>
               <li>
-                <Link href="/auth/signin" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/auth/signin" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Sign In
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="text-[var(--color-on-dark-muted)] hover:text-white transition-colors">
+                <Link href="/dashboard" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Dashboard
                 </Link>
               </li>

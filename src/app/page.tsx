@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
+import { Reveal } from '@/components/ui/reveal'
 import { Heart, MapPin } from 'lucide-react'
 import { DANCE_STYLES } from '@/lib/constants'
 import { DANCE_STYLE_COLORS } from '@/lib/styleColors'
@@ -8,6 +9,7 @@ import type { CSSProperties } from 'react'
 
 export default function HomePage() {
   const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte, NC'
+  const marqueeStyles = DANCE_STYLES.filter(s => s !== 'Other')
 
   return (
     <div>
@@ -38,23 +40,48 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="style-marquee" aria-hidden="true">
+        <div className="style-marquee-track">
+          {[0, 1].map(track =>
+            marqueeStyles.map(style => (
+              <span key={`${track}-${style}`} className="style-marquee-item">{style}</span>
+            ))
+          )}
+        </div>
+      </section>
+
       <section className="home-section">
         <div className="home-container">
-          <div className="home-section-head"><h2>How It Works</h2><p>Get started in three simple steps.</p></div>
+          <Reveal>
+            <div className="home-section-head"><h2>How It Works</h2><p>Get started in three simple steps.</p></div>
+          </Reveal>
           <div className="home-steps">
-            <article className="home-step"><span>01</span><h3>Browse</h3><p>Explore our directory of experienced dance instructors and upcoming events.</p></article>
-            <article className="home-step"><span>02</span><h3>Connect</h3><p>Request lessons with instructors or register for events that interest you.</p></article>
-            <article className="home-step"><span>03</span><h3>Dance</h3><p>Start your dance journey and become part of our vibrant community.</p></article>
+            {[
+              { n: '01', title: 'Browse', copy: 'Explore our directory of experienced dance instructors and upcoming events.' },
+              { n: '02', title: 'Connect', copy: 'Request lessons with instructors or register for events that interest you.' },
+              { n: '03', title: 'Dance', copy: 'Start your dance journey and become part of our vibrant community.' },
+            ].map((step, i) => (
+              <Reveal key={step.n} as="article" className="home-step" delay={i * 110} y={28}>
+                <span>{step.n}</span>
+                <h3>{step.title}</h3>
+                <p>{step.copy}</p>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>
 
       <section className="home-section home-styles">
         <div className="home-container">
-          <div className="home-section-head"><h2>Dance Styles We Love</h2><p>Find instructors and events for your favorite partner dance.</p></div>
+          <Reveal>
+            <div className="home-section-head"><h2>Dance Styles We Love</h2><p>Find instructors and events for your favorite partner dance.</p></div>
+          </Reveal>
           <div className="style-index">
-            {DANCE_STYLES.filter(s => s !== 'Other').map(style => (
-              <div key={style} className="style-index-item" style={{ '--style-color': DANCE_STYLE_COLORS[style] } as CSSProperties}><h3>{style}</h3><Heart className="h-5 w-5" aria-hidden="true" /></div>
+            {DANCE_STYLES.filter(s => s !== 'Other').map((style, i) => (
+              <Reveal key={style} className="style-index-item" delay={(i % 3) * 90} y={20} style={{ '--style-color': DANCE_STYLE_COLORS[style] } as CSSProperties}>
+                <h3>{style}</h3>
+                <Heart className="h-5 w-5" aria-hidden="true" />
+              </Reveal>
             ))}
           </div>
         </div>
@@ -62,14 +89,24 @@ export default function HomePage() {
 
       <section className="home-section">
         <div className="home-container home-contribute">
-          <article><h2>Have an Event?</h2><p>Share your dance social, workshop, or festival with the community. It&apos;s free!</p><Link href="/submit-event"><Button variant="gradient">Submit an Event</Button></Link></article>
-          <article><h2>Teach Dance?</h2><p>Join our directory and connect with students looking for instructors like you.</p><Link href="/become-an-instructor"><Button variant="outline">Become an Instructor</Button></Link></article>
+          <Reveal as="article" y={28}>
+            <h2>Have an Event?</h2>
+            <p>Share your dance social, workshop, or festival with the community. It&apos;s free!</p>
+            <Link href="/submit-event"><Button variant="gradient">Submit an Event</Button></Link>
+          </Reveal>
+          <Reveal as="article" delay={120} y={28}>
+            <h2>Teach Dance?</h2>
+            <p>Join our directory and connect with students looking for instructors like you.</p>
+            <Link href="/become-an-instructor"><Button variant="outline">Become an Instructor</Button></Link>
+          </Reveal>
         </div>
       </section>
 
       <section className="home-community home-container">
-        <h2>Proudly Serving {city}</h2>
-        <p>Your city&apos;s dance scene, all in one place. Join the community.</p>
+        <Reveal>
+          <h2>Proudly Serving {city}</h2>
+          <p>Your city&apos;s dance scene, all in one place. Join the community.</p>
+        </Reveal>
       </section>
     </div>
   )

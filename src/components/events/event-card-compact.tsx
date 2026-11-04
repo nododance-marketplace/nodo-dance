@@ -37,7 +37,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
   return (
     <Link href={`/events/${event.id}`} className="block">
       <Card
-        className="data-card transition-colors h-full"
+        className="data-card h-full"
         style={{ borderTop: `2px solid ${styleColor}` }}
       >
         {event.imageUrl && (

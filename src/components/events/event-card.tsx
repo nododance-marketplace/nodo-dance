@@ -37,7 +37,7 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <Card
-      className="data-card transition-colors overflow-hidden"
+      className="data-card overflow-hidden"
       style={{ borderTop: `2px solid ${styleColor}` }}
     >
       {event.imageUrl && (

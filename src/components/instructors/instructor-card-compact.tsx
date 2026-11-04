@@ -28,7 +28,7 @@ export function InstructorCardCompact({ instructor }: InstructorCardCompactProps
     : rawStyles
 
   return (
-    <Card className="data-card transition-colors h-full">
+    <Card className="data-card h-full">
       <CardContent className="p-0">
         <div className="aspect-[4/3] bg-primary/5 flex items-center justify-center relative overflow-hidden">
           {instructor.photoUrl ? (

@@ -9,6 +9,7 @@ import { useViewMode } from '@/lib/useViewMode'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Search, Filter, X, Disc3 } from 'lucide-react'
 import { DANCE_STYLES, LESSON_TYPES, LOCATION_TYPES } from '@/lib/constants'
 
@@ -73,14 +74,16 @@ export default function InstructorsPage() {
   return (
     <div className="page-shell">
       {/* Header */}
-      <div className="page-header block">
-        <h1 className="page-heading">
-          Find Your Instructor
-        </h1>
-        <p className="page-intro">
-          Browse experienced dance instructors in {process.env.NEXT_PUBLIC_CITY || 'Charlotte'}
-        </p>
-      </div>
+      <Reveal>
+        <div className="page-header block">
+          <h1 className="page-heading">
+            Find Your Instructor
+          </h1>
+          <p className="page-intro">
+            Browse experienced dance instructors in {process.env.NEXT_PUBLIC_CITY || 'Charlotte'}
+          </p>
+        </div>
+      </Reveal>
 
       {/* Search and Sort */}
       <div className="mb-8 flex flex-col xl:flex-row gap-4">

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Reveal } from '@/components/ui/reveal'
 import { Search, Filter, X, Plus, Calendar as CalendarIcon, List, MapPin } from 'lucide-react'
 import { DANCE_STYLES, EVENT_TYPES } from '@/lib/constants'
 import {
@@ -192,22 +193,24 @@ function EventsContent() {
   return (
     <div className="page-shell">
       {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-heading">
-            Dance Events
-          </h1>
-          <p className="page-intro">
-            Discover socials, classes, and workshops near you
-          </p>
+      <Reveal>
+        <div className="page-header">
+          <div>
+            <h1 className="page-heading">
+              Dance Events
+            </h1>
+            <p className="page-intro">
+              Discover socials, classes, and workshops near you
+            </p>
+          </div>
+          <Link href="/submit-event">
+            <Button variant="gradient">
+              <Plus className="w-4 h-4 mr-2" />
+              Submit Event
+            </Button>
+          </Link>
         </div>
-        <Link href="/submit-event">
-          <Button variant="gradient">
-            <Plus className="w-4 h-4 mr-2" />
-            Submit Event
-          </Button>
-        </Link>
-      </div>
+      </Reveal>
 
       {/* View Toggle */}
       <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

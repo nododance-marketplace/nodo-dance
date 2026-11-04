@@ -39,7 +39,7 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
   const instagramHandle = extractInstagramHandle(instructor.instagramUrl)
 
   return (
-    <Card className="data-card transition-colors">
+    <Card className="data-card">
       <CardContent className="p-0">
         <div className="aspect-square bg-primary/5 flex items-center justify-center relative overflow-hidden">
           {instructor.photoUrl ? (
