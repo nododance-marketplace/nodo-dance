@@ -686,14 +686,20 @@ export class Atlas {
 
     // Proposed matches — never auto-merged
     for (const m of matches) {
+      // The EntityMatch table only has a column for published events, so a
+      // match against another candidate would otherwise lose the reference
+      // and nobody could tell what it matched. It is kept in the reason.
+      const isEvent = m.existingId.startsWith('event:')
+      const isCandidate = m.existingId.startsWith('candidate:')
+      const reference = isCandidate ? m.existingId.slice('candidate:'.length) : null
       await this.prisma.entityMatch.create({
         data: {
           candidateEventId: candidate.id,
-          existingEventId: m.existingId.startsWith('event:') ? m.existingId.slice(6) : null,
+          existingEventId: isEvent ? m.existingId.slice('event:'.length) : null,
           matchType: m.matchType,
           score: m.score,
           status: m.deterministic ? 'PROPOSED' : 'PROPOSED',
-          reason: sanitizeForDb(m.reason) ?? null,
+          reason: sanitizeForDb(reference ? `${m.reason} [ref: ${reference}]` : m.reason) ?? null,
         },
       })
     }

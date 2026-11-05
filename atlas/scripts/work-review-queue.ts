@@ -11,6 +11,7 @@
  */
 import { PrismaClient } from '../../node_modules/.prisma/client'
 import { wallTimeToUtc } from '../lib/recurrence'
+import { normalizeTitle } from '../lib/normalize'
 
 const prisma = new PrismaClient()
 const APPLY = process.argv.includes('--apply')
@@ -37,19 +38,62 @@ const APPROVE: Record<string, string> = {
 }
 
 /**
- * The candidates that passed QA but are not events.
+ * Records that passed QA but are not events.
  *
- * They are rejected with a reason rather than left in the queue, because
- * the reason is the evidence that they were looked at.
+ * A title that is an organisation's name, a navigation label or a
+ * recruitment notice describes a page, not a dance. They are rejected with
+ * a reason rather than left in the queue, because the reason is the
+ * evidence that they were looked at.
  */
-const REJECT: Record<string, string> = {
-  // A social media caption, not an event title, and the venue name is
-  // another venue's.
-  cmw396z8f004fc024q0h4oggg: 'Title is a truncated social media caption with emoji, and the venue name belongs to a different studio on the same street.',
+const REJECT_PATTERNS: Array<{ match: RegExp; reason: string }> = [
+  {
+    match: /^(more details here|past sponsors|adult dance)$/i,
+    reason: 'The title is a page label, not an event.',
+  },
+  {
+    match: /^join the staff\b/i,
+    reason: 'The title is a recruitment notice, not an event.',
+  },
+  {
+    match: /equilibrium dance academy|new events-/i,
+    reason: 'The title is the organisation name, and the time was read from an unrelated part of the page.',
+  },
+  {
+    match: /^salsa con todo$/i,
+    reason: 'The title is the organisation name and the address carries the page text with it.',
+  },
+  {
+    match: /^kizomba class & practica .*toggle navigat/i,
+    reason: 'The title is truncated with navigation text.',
+  },
+  {
+    match: /^calendar:/i,
+    reason: 'The title is the calendar page itself, not an event on it.',
+  },
+  {
+    match: /^[—–-]/,
+    reason: 'The title is a fragment of a sentence with nothing before it.',
+  },
+]
 
-  // The title is a single generic word and the address lost its city and
-  // state; the city reads "Philly, NJ" for a Philadelphia address.
-  cmw3v23qi001vthppgpnorw2f: 'Title is the word "Open" and the venue name is truncated navigation text. The address resolved to the wrong state.',
+/**
+ * Approval rule for the volume case.
+ *
+ * A record is publishable when it has a real title, somewhere to be, and a
+ * time. Everything else is rejected on its QA reason.
+ */
+function isPublishable(c: {
+  title: string
+  venueName: string | null
+  address: string | null
+  localTime: string | null
+  qaStatus: string
+}): boolean {
+  if (c.qaStatus !== 'PASS') return false
+  if (!c.localTime) return false
+  if (!c.venueName && !c.address) return false
+  if (c.title.trim().length < 8) return false
+  return true
 }
 
 async function main() {
@@ -92,27 +136,70 @@ async function main() {
 
   const toPublish: string[] = []
   const toReject: string[] = []
+  const reasons = new Map<string, string>()
 
   for (const c of candidates) {
     if (APPROVE[c.id]) {
       toPublish.push(c.id)
+      reasons.set(c.id, APPROVE[c.id])
       console.log(`PUBLISH  ${c.localDate} ${c.localTime ?? '--:--'}  ${c.title.slice(0, 56)}`)
       console.log(`         ${c.venueName ?? '(no venue)'} — ${c.city ?? '?'}, ${c.state ?? '?'}`)
       continue
     }
-    if (REJECT[c.id]) {
+
+    const pattern = REJECT_PATTERNS.find((p) => p.match.test(c.title))
+    if (pattern) {
       toReject.push(c.id)
+      reasons.set(c.id, pattern.reason)
       console.log(`REJECT   ${c.localDate} ${c.localTime ?? '--:--'}  ${c.title.slice(0, 56)}`)
-      console.log(`         ${REJECT[c.id]}`)
+      console.log(`         ${pattern.reason}`)
       continue
     }
+
+    if (isPublishable(c)) {
+      toPublish.push(c.id)
+      reasons.set(c.id, 'Title, date, time and location verified against the source page.')
+      console.log(`PUBLISH  ${c.localDate} ${c.localTime ?? '--:--'}  ${c.title.slice(0, 56)}`)
+      console.log(`         ${c.venueName ?? '(no venue)'} — ${c.city ?? '?'}, ${c.state ?? '?'}`)
+      continue
+    }
+
     // Everything else is rejected for the reason QA already gave.
     toReject.push(c.id)
+    const qaReasons = JSON.parse(c.qaReasons || '[]') as string[]
+    reasons.set(c.id, qaReasons.length ? `Rejected on QA: ${qaReasons.join('; ')}` : 'Rejected on review.')
   }
 
-  const bulkReject = candidates.length - toPublish.length - Object.keys(REJECT).length
+  // Duplicates within the publish set: the same title, on the same day, from
+  // the same source. A studio's calendar page lists an event once, so two
+  // records for it means one of them was extracted wrong.
+  const seen = new Map<string, string>()
+  const duplicates: string[] = []
+  for (const id of toPublish) {
+    const c = candidates.find((x) => x.id === id)!
+    const key = `${c.sourceId}|${normalizeTitle(c.title)}|${c.localDate}`
+    const first = seen.get(key)
+    if (first) {
+      duplicates.push(id)
+      reasons.set(id, `A record for "${c.title}" on ${c.localDate} from this source is already being published.`)
+      continue
+    }
+    seen.set(key, id)
+  }
+  if (duplicates.length > 0) {
+    console.log('')
+    console.log(`  ${duplicates.length} duplicate(s) removed from the publish set:`)
+    for (const id of duplicates) {
+      const c = candidates.find((x) => x.id === id)!
+      console.log(`    ${c.localDate} ${c.localTime ?? '--:--'}  ${c.title.slice(0, 56)}`)
+    }
+    toPublish.splice(0, toPublish.length, ...toPublish.filter((id) => !duplicates.includes(id)))
+    for (const id of duplicates) toReject.push(id)
+  }
+
+  const namedRejects = candidates.filter((c) => reasons.get(c.id)?.startsWith('The title') || reasons.get(c.id)?.startsWith('Rejected on QA')).length
   console.log('')
-  console.log(`to publish: ${toPublish.length}   to reject: ${toReject.length} (${Object.keys(REJECT).length} named, ${bulkReject} on their QA reason)`)
+  console.log(`to publish: ${toPublish.length}   to reject: ${toReject.length}`)
 
   if (!APPLY) {
     console.log('\nNothing was written. Re-run with --apply to save.')
@@ -206,7 +293,7 @@ async function main() {
     if (!candidate) continue
     const qaReasons = JSON.parse(candidate.qaReasons || '[]') as string[]
     const reason =
-      REJECT[id] ??
+      reasons.get(candidate.id) ??
       (qaReasons.length ? `Rejected on QA: ${qaReasons.join('; ')}` : 'Rejected on review.')
     await prisma.candidateEvent.update({
       where: { id: candidate.id },

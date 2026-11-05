@@ -164,7 +164,22 @@ export function parseTime(text: string): { time?: string; endTime?: string; raw?
 
   const twentyFour = /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(text)
   if (twentyFour) {
-    return { time: `${twentyFour[1].padStart(2, '0')}:${twentyFour[2]}`, raw: twentyFour[0] }
+    const raw = twentyFour[1]
+    const hour = Number(raw)
+    const index = twentyFour.index ?? 0
+    // "19:30" and "09:30" are a 24-hour clock: "09" is padded, "19" is
+    // past noon. But "7:45" is a 12-hour clock, and without a meridiem it
+    // could be morning or evening. A dance class at "7:45" is at 19:45;
+    // reading it as 07:45 would publish an event twelve hours early.
+    const isUnpaddedTwelveHour = hour <= 12 && !(raw.length === 2 && raw.startsWith('0'))
+    if (isUnpaddedTwelveHour) {
+      const near = text.slice(Math.max(0, index - 40), index + twentyFour[0].length + 40)
+      const meridiem = /\b(am|pm)\b/i.exec(near)
+      if (!meridiem) return {}
+      const t = to24(hour, Number(twentyFour[2]), meridiem[1].toLowerCase(), 0)
+      return { time: t ?? undefined, raw: twentyFour[0] }
+    }
+    return { time: `${raw.padStart(2, '0')}:${twentyFour[2]}`, raw: twentyFour[0] }
   }
 
   return {}
