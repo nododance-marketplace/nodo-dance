@@ -4,9 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useSession, signOut } from 'next-auth/react'
 import { Menu, X, User, Shield } from 'lucide-react'
-import { useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useState, type CSSProperties } from 'react'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { CitySwitcher } from '@/components/layout/city-switcher'
 
 export function Header() {
   const pathname = usePathname()
@@ -42,7 +43,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center mr-8 flex-shrink-0" aria-label="Nodo Dance home">
+          <Link href="/" className="flex items-center mr-4 md:mr-6 flex-shrink-0" aria-label="Nodo Dance home">
             <Image
               src="/Title.png"
               alt="Nodo Dance"
@@ -53,13 +54,21 @@ export function Header() {
             />
           </Link>
 
+          {/* City switcher */}
+          <Suspense fallback={<div className="h-9 w-24" />}>
+            <CitySwitcher />
+          </Suspense>
+
           {/* Desktop Navigation */}
-          <nav className="hidden xl:flex items-center gap-7">
+          <nav className="hidden xl:flex items-center gap-7 ml-8">
             <Link href="/instructors" aria-current={pathname.startsWith('/instructors') ? 'page' : undefined} className="nav-link">
               Instructors
             </Link>
             <Link href="/events" aria-current={pathname.startsWith('/events') ? 'page' : undefined} className="nav-link">
               Events
+            </Link>
+            <Link href="/cities" aria-current={pathname.startsWith('/cities') ? 'page' : undefined} className="nav-link">
+              Cities
             </Link>
             <Link href="/submit-event" aria-current={pathname.startsWith('/submit-event') ? 'page' : undefined} className="nav-link">
               Submit Event
@@ -124,6 +133,12 @@ export function Header() {
           className={`mobile-panel xl:hidden ${mobileMenuOpen ? 'is-open' : ''}`}
         >
           <div className="flex flex-col space-y-1 pb-4">
+            <div className="flex items-center justify-between gap-3 px-3 py-2">
+              <span className="text-sm text-gray-500">Browsing city</span>
+              <Suspense fallback={null}>
+                <CitySwitcher />
+              </Suspense>
+            </div>
             <Link
               href="/instructors" aria-current={pathname.startsWith('/instructors') ? 'page' : undefined}
               className="mobile-panel-link"
@@ -141,9 +156,17 @@ export function Header() {
               Events
             </Link>
             <Link
-              href="/submit-event" aria-current={pathname.startsWith('/submit-event') ? 'page' : undefined}
+              href="/cities" aria-current={pathname.startsWith('/cities') ? 'page' : undefined}
               className="mobile-panel-link"
               style={{ '--i': 2 } as CSSProperties}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Cities
+            </Link>
+            <Link
+              href="/submit-event" aria-current={pathname.startsWith('/submit-event') ? 'page' : undefined}
+              className="mobile-panel-link"
+              style={{ '--i': 3 } as CSSProperties}
               onClick={() => setMobileMenuOpen(false)}
             >
               Submit Event
@@ -151,7 +174,7 @@ export function Header() {
             <Link
               href="/launch" aria-current={pathname.startsWith('/launch') ? 'page' : undefined}
               className="mobile-panel-link"
-              style={{ '--i': 3 } as CSSProperties}
+              style={{ '--i': 4 } as CSSProperties}
               onClick={() => setMobileMenuOpen(false)}
             >
               Websites

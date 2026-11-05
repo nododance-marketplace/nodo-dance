@@ -23,6 +23,7 @@ import {
   formatMonthString,
   getMonthRange,
 } from '@/lib/calendar-utils'
+import { marketBySlug } from '@/lib/markets'
 
 const EventsMapView = dynamic(
   () => import('@/components/events/events-map-view').then((m) => ({ default: m.EventsMapView })),
@@ -51,6 +52,7 @@ function EventsContent() {
   const urlEventTypes = searchParams.get('eventTypes')?.split(',').filter(Boolean) || []
   const urlDateFilter = searchParams.get('dateFilter') || 'this-week'
   const urlMapRange = searchParams.get('range') || 'this-week'
+  const urlMarket = searchParams.get('market') || ''
 
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,9 +89,10 @@ function EventsContent() {
     if (view === 'map') {
       params.set('range', mapRange)
     }
+    if (urlMarket) params.set('market', urlMarket)
 
     router.replace(`/events?${params.toString()}`, { scroll: false })
-  }, [view, calendarYear, calendarMonth, search, selectedStyles, selectedEventTypes, dateFilter, mapRange, router])
+  }, [view, calendarYear, calendarMonth, search, selectedStyles, selectedEventTypes, dateFilter, mapRange, urlMarket, router])
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
@@ -97,6 +100,7 @@ function EventsContent() {
     if (search) params.set('search', search)
     if (selectedStyles.length > 0) params.set('styles', selectedStyles.join(','))
     if (selectedEventTypes.length > 0) params.set('eventTypes', selectedEventTypes.join(','))
+    if (urlMarket) params.set('market', urlMarket)
 
     if (view === 'calendar') {
       // Calendar view: fetch events for the entire month
@@ -132,7 +136,7 @@ function EventsContent() {
     } finally {
       setLoading(false)
     }
-  }, [search, selectedStyles, selectedEventTypes, dateFilter, calendarYear, calendarMonth, view, mapRange])
+  }, [search, selectedStyles, selectedEventTypes, dateFilter, calendarYear, calendarMonth, view, mapRange, urlMarket])
 
   // Fetch events when filters or view changes
   useEffect(() => {
@@ -179,6 +183,10 @@ function EventsContent() {
     ? events.filter((e) => e.lat != null && e.lng != null)
     : []
 
+  // When one market is selected the map opens on that city rather than
+  // wherever the pins happen to average out.
+  const selectedMarket = marketBySlug(urlMarket)
+
   // Dev-only: warn about events that were dropped from map due to missing coords
   if (view === 'map' && process.env.NODE_ENV !== 'production') {
     const dropped = events.filter((e) => e.lat == null || e.lng == null)
@@ -197,10 +205,12 @@ function EventsContent() {
         <div className="page-header">
           <div>
             <h1 className="page-heading">
-              Dance Events
+              {selectedMarket ? `Dance Events in ${selectedMarket.name}` : 'Dance Events'}
             </h1>
             <p className="page-intro">
-              Discover socials, classes, and workshops near you
+              {selectedMarket
+                ? selectedMarket.tagline
+                : 'Discover socials, classes, and workshops near you'}
             </p>
           </div>
           <Link href="/submit-event">
@@ -423,7 +433,11 @@ function EventsContent() {
                   <p className="text-sm text-gray-600 mb-3">
                     {mapEvents.length} event{mapEvents.length !== 1 ? 's' : ''} on map
                   </p>
-                  <EventsMapView events={mapEvents} />
+                  <EventsMapView
+                    events={mapEvents}
+                    center={selectedMarket?.center}
+                    zoom={selectedMarket?.zoom}
+                  />
                 </>
               )}
             </>

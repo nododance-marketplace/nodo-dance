@@ -30,8 +30,9 @@ const satoshi = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Nodo Dance - Charlotte\'s Partner Dance Hub',
-  description: 'Find dance instructors and events in Charlotte, NC. Salsa, Bachata, Kizomba, Tango, and Zouk.',
+  title: "Nodo Dance - Partner Dance Events & Instructors",
+  description:
+    'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
   manifest: '/manifest.json',
   themeColor: '#1B1F3B',
   appleWebApp: {
@@ -40,16 +41,18 @@ export const metadata: Metadata = {
     title: 'Nodo Dance',
   },
   openGraph: {
-    title: 'Nodo Dance - Charlotte\'s Partner Dance Hub',
-    description: 'Find dance instructors and events in Charlotte, NC. Salsa, Bachata, Kizomba, Tango, and Zouk.',
+    title: 'Nodo Dance - Partner Dance Events & Instructors',
+    description:
+      'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
     siteName: 'Nodo Dance',
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Nodo Dance - Charlotte\'s Partner Dance Hub',
-    description: 'Find dance instructors and events in Charlotte, NC. Salsa, Bachata, Kizomba, Tango, and Zouk.',
+    title: 'Nodo Dance - Partner Dance Events & Instructors',
+    description:
+      'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
   },
 }
 

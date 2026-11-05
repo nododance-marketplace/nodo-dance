@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Instagram, Mail } from 'lucide-react'
+import { MARKETS } from '@/lib/markets'
 
 export function Footer() {
-  const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte, NC'
+  const markets = MARKETS.slice(0, 8)
 
   return (
     <footer className="site-footer">
@@ -21,7 +22,7 @@ export function Footer() {
               />
             </div>
             <p className="text-[var(--color-on-dark-muted)] mb-4">
-              {city}&apos;s hub for partner dance instructors and events.
+              Your city&apos;s hub for partner dance instructors and events.
             </p>
             <div className="flex space-x-2">
               <a aria-label="Nodo Dance on Instagram" href="https://www.instagram.com/nododance/" target="_blank" rel="noopener noreferrer" className="footer-social text-[var(--color-on-dark-muted)]">
@@ -33,23 +34,20 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Cities */}
           <div>
-            <h3 className="font-semibold mb-4">Quick Links</h3>
+            <h3 className="font-semibold mb-4">Cities</h3>
             <ul className="space-y-2">
+              {markets.map((m) => (
+                <li key={m.slug}>
+                  <Link href={`/cities/${m.slug}`} className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
+                    {m.name}, {m.state}
+                  </Link>
+                </li>
+              ))}
               <li>
-                <Link href="/instructors" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
-                  Find Instructors
-                </Link>
-              </li>
-              <li>
-                <Link href="/events" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
-                  Browse Events
-                </Link>
-              </li>
-              <li>
-                <Link href="/submit-event" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
-                  Submit an Event
+                <Link href="/cities" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
+                  All cities →
                 </Link>
               </li>
             </ul>
@@ -72,6 +70,11 @@ export function Footer() {
               <li>
                 <Link href="/dashboard" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
                   Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link href="/events" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
+                  Browse Events
                 </Link>
               </li>
             </ul>

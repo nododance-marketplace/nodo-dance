@@ -5,11 +5,31 @@ import { Reveal } from '@/components/ui/reveal'
 import { Heart, MapPin } from 'lucide-react'
 import { DANCE_STYLES } from '@/lib/constants'
 import { DANCE_STYLE_COLORS } from '@/lib/styleColors'
+import { prisma } from '@/lib/prisma'
+import { MARKETS } from '@/lib/markets'
 import type { CSSProperties } from 'react'
 
-export default function HomePage() {
-  const city = process.env.NEXT_PUBLIC_CITY || 'Charlotte, NC'
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
   const marqueeStyles = DANCE_STYLES.filter(s => s !== 'Other')
+
+  // The cities that actually have something on right now. A city with no
+  // events yet is still coming, but it is not somewhere to send a visitor.
+  const counts = await prisma.event.groupBy({
+    by: ['city'],
+    where: { status: 'APPROVED', startDateTime: { gte: new Date() } },
+    _count: { _all: true },
+  })
+  const byCity = new Map(counts.map((c) => [c.city ?? '', c._count._all]))
+  const liveMarkets = MARKETS.map((m) => ({
+    ...m,
+    events: m.cities.reduce((sum, city) => sum + (byCity.get(city) ?? 0), 0),
+  }))
+    .filter((m) => m.events > 0)
+    .sort((a, b) => b.events - a.events)
+
+  const totalEvents = liveMarkets.reduce((sum, m) => sum + m.events, 0)
 
   return (
     <div>
@@ -18,7 +38,7 @@ export default function HomePage() {
           <div className="home-hero-grid">
             <div className="home-hero-copy">
               <h1>Find your<br />next dance.</h1>
-              <p>Find instructors, discover events, and join {city}&apos;s partner dance community.</p>
+              <p>Find instructors, discover events, and join your city&apos;s partner dance community.</p>
               <div className="home-actions">
                 <Link href="/events"><Button variant="gradient" size="lg">Explore Events</Button></Link>
                 <Link href="/instructors"><Button variant="outline" size="lg">Find Instructors</Button></Link>
@@ -36,7 +56,7 @@ export default function HomePage() {
               <p className="community-caption">Connecting the Dance Community.</p>
             </div>
           </div>
-          <div className="home-location"><MapPin className="h-4 w-4" aria-hidden="true" /><span>Rooted in {city}</span></div>
+          <div className="home-location"><MapPin className="h-4 w-4" aria-hidden="true" /><span>Rooted in {liveMarkets.length} dance {liveMarkets.length === 1 ? 'community' : 'communities'}</span></div>
         </div>
       </section>
 
@@ -67,6 +87,37 @@ export default function HomePage() {
                 <p>{step.copy}</p>
               </Reveal>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <div className="home-container">
+          <Reveal>
+            <div className="home-section-head"><h2>Find Your City</h2><p>{totalEvents} upcoming events across {liveMarkets.length} partner dance {liveMarkets.length === 1 ? 'community' : 'communities'}.</p></div>
+          </Reveal>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {liveMarkets.map((m, i) => (
+              <Reveal key={m.slug} as="article" delay={(i % 3) * 90} y={20}>
+                <Link
+                  href={`/cities/${m.slug}`}
+                  className="block bg-white border border-gray-200 rounded-xl p-5 h-full hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                    <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
+                    {m.state}
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">{m.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{m.tagline}</p>
+                  <span className="text-sm font-medium text-primary">
+                    {m.events} upcoming event{m.events === 1 ? '' : 's'}
+                  </span>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+          <div className="mt-6">
+            <Link href="/cities" className="text-accent-magenta font-medium hover:underline">See every city we cover</Link>
           </div>
         </div>
       </section>
@@ -104,7 +155,7 @@ export default function HomePage() {
 
       <section className="home-community home-container">
         <Reveal>
-          <h2>Proudly Serving {city}</h2>
+          <h2>Every City&apos;s Scene, In One Place</h2>
           <p>Your city&apos;s dance scene, all in one place. Join the community.</p>
         </Reveal>
       </section>

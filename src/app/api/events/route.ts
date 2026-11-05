@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
-import { siteState, stateAbbreviation } from '@/lib/us-states'
+import { stateAbbreviation } from '@/lib/us-states'
+import { marketBySlug } from '@/lib/markets'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -15,13 +16,12 @@ export async function GET(request: NextRequest) {
   const monthStart = searchParams.get('monthStart')
   const monthEnd = searchParams.get('monthEnd')
 
-  // The marketplace is scoped to one city. NEXT_PUBLIC_CITY holds
-  // "Charlotte, NC", so the site shows that state and nothing else — an
-  // event that belongs to another market should not appear on this map.
-  // Events with no known location are kept: an unknown city is assumed
-  // local rather than silently dropped.
+  // Nodo serves more than one market now. The market decides which city and
+  // its neighbours are shown; without one, every market is shown.
+  const marketParam = searchParams.get('market')
+  const market = marketParam && marketParam !== 'all' ? marketBySlug(marketParam) : null
   const cityFilter = searchParams.get('city')
-  const stateFilter = stateAbbreviation(searchParams.get('state')) ?? siteState()
+  const stateFilter = stateAbbreviation(searchParams.get('state'))
 
   try {
     const now = new Date()
@@ -72,11 +72,13 @@ export async function GET(request: NextRequest) {
           // Map mode: only return events with valid coordinates
           ...(mapMode ? [{ lat: { not: null } }, { lng: { not: null } }] : []),
           // Location scoping
-          cityFilter
-            ? { city: { equals: cityFilter, mode: 'insensitive' as const } }
-            : stateFilter
-              ? { OR: [{ state: stateFilter }, { state: null }] }
-              : {},
+          market
+            ? { city: { in: market.cities, mode: 'insensitive' as const } }
+            : cityFilter
+              ? { city: { equals: cityFilter, mode: 'insensitive' as const } }
+              : stateFilter
+                ? { OR: [{ state: stateFilter }, { state: null }] }
+                : {},
         ],
       },
       orderBy: {

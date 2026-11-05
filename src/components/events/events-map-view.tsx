@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { useEffect, useMemo } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { parseJsonArray, formatDate, formatTime } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
@@ -125,31 +125,49 @@ export interface MapEvent {
 
 interface EventsMapViewProps {
   events: MapEvent[]
+  /** Where the map opens when there is nothing to fit to. */
+  center?: [number, number]
+  zoom?: number
 }
 
 // Charlotte, NC center
 const DEFAULT_CENTER: [number, number] = [35.2271, -80.8431]
 const DEFAULT_ZOOM = 11
 
-export function EventsMapView({ events }: EventsMapViewProps) {
+/**
+ * Fit the map to the events on it.
+ *
+ * With every market on the map at once the pins are thousands of miles
+ * apart, so the map has to zoom out to hold them rather than sit on one
+ * city's centre.
+ */
+function FitToEvents({ events }: { events: MapEvent[] }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (events.length === 0) return
+    const bounds = L.latLngBounds(events.map((e) => [e.lat, e.lng] as [number, number]))
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 13 })
+  }, [events, map])
+
+  return null
+}
+
+export function EventsMapView({ events, center, zoom }: EventsMapViewProps) {
   const jitteredEvents = useMemo(() => applyJitter(events), [events])
 
-  const center = useMemo<[number, number]>(() => {
-    if (events.length === 0) return DEFAULT_CENTER
-
-    const sumLat = events.reduce((s, e) => s + e.lat, 0)
-    const sumLng = events.reduce((s, e) => s + e.lng, 0)
-    return [sumLat / events.length, sumLng / events.length]
-  }, [events])
+  const initialCenter = center ?? DEFAULT_CENTER
+  const initialZoom = zoom ?? DEFAULT_ZOOM
 
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200">
       <MapContainer
-        center={center}
-        zoom={DEFAULT_ZOOM}
+        center={initialCenter}
+        zoom={initialZoom}
         style={{ height: '520px', width: '100%' }}
         scrollWheelZoom={true}
       >
+        <FitToEvents events={events} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
