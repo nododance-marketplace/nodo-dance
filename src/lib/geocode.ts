@@ -2,11 +2,49 @@
  * Server-side geocoding using OpenStreetMap Nominatim (free, no API key).
  * Only call on event submission, never on page render.
  */
+import { stateAbbreviation } from './us-states'
 
 interface NominatimResult {
   lat: string
   lon: string
   display_name: string
+  address?: {
+    city?: string
+    town?: string
+    village?: string
+    municipality?: string
+    hamlet?: string
+    suburb?: string
+    state?: string
+    postcode?: string
+    'ISO3166-2-lvl4'?: string
+  }
+}
+
+export interface GeoLocation {
+  lat: number
+  lng: number
+  city: string | null
+  state: string | null
+  zip: string | null
+}
+
+/**
+ * Nominatim returns the city under different keys depending on what kind of
+ * place it matched: a city, a town, a village, a municipality. A suburb is
+ * not a city, so it is only used when nothing better is available.
+ */
+function cityFrom(address: NominatimResult['address']): string | null {
+  if (!address) return null
+  return (
+    address.city ??
+    address.town ??
+    address.village ??
+    address.municipality ??
+    address.hamlet ??
+    address.suburb ??
+    null
+  )
 }
 
 /**
@@ -35,15 +73,17 @@ export function sanitizeAddress(address: string): string {
 }
 
 /**
- * Single Nominatim lookup. Returns coords or null.
+ * Single Nominatim lookup. Returns coords and the resolved city/state/zip,
+ * or null.
  */
 async function nominatimLookup(
   query: string
-): Promise<{ lat: number; lng: number } | null> {
+): Promise<GeoLocation | null> {
   try {
     const url = new URL('https://nominatim.openstreetmap.org/search')
     url.searchParams.set('format', 'json')
     url.searchParams.set('limit', '1')
+    url.searchParams.set('addressdetails', '1')
     url.searchParams.set('q', query)
 
     const res = await fetch(url.toString(), {
@@ -71,7 +111,15 @@ async function nominatimLookup(
       return null
     }
 
-    return { lat, lng }
+    const address = results[0].address
+    return {
+      lat,
+      lng,
+      city: cityFrom(address),
+      // Nominatim gives the full state name; the database stores "NC".
+      state: stateAbbreviation(address?.state) ?? stateAbbreviation(address?.['ISO3166-2-lvl4']),
+      zip: address?.postcode ?? null,
+    }
   } catch (error) {
     console.error('[Geocode] Fetch error:', error)
     return null
@@ -84,9 +132,7 @@ async function nominatimLookup(
  * 2. If no results, retry with suite/unit tokens stripped.
  * 3. If both fail, return null (event saves without coords).
  */
-export async function geocodeAddress(
-  query: string
-): Promise<{ lat: number; lng: number } | null> {
+export async function geocodeAddress(query: string): Promise<GeoLocation | null> {
   if (!query.trim()) {
     console.log('[Geocode] Empty query, skipping')
     return null

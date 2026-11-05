@@ -96,7 +96,13 @@ export async function PUT(request: NextRequest) {
         if (coords) {
           await prisma.event.updateMany({
             where: { recurrenceGroupId: event.recurrenceGroupId },
-            data: { lat: coords.lat, lng: coords.lng },
+            data: {
+              lat: coords.lat,
+              lng: coords.lng,
+              city: coords.city,
+              state: coords.state,
+              zip: coords.zip,
+            },
           })
           console.log(`[Admin] Series geocoded "${event.title}" → ${coords.lat}, ${coords.lng}`)
         }
@@ -125,7 +131,13 @@ export async function PUT(request: NextRequest) {
         if (coords) {
           await prisma.event.update({
             where: { id: ev.id },
-            data: { lat: coords.lat, lng: coords.lng },
+            data: {
+              lat: coords.lat,
+              lng: coords.lng,
+              city: coords.city,
+              state: coords.state,
+              zip: coords.zip,
+            },
           })
           success++
           console.log(`[Admin] Bulk geocoded "${ev.title}" → ${coords.lat}, ${coords.lng}`)

@@ -92,7 +92,9 @@ export async function POST(request: NextRequest) {
       ? parseAsET(data.startDate, data.endTime)
       : null
 
-    // Geocode the venue address for map view
+    // Geocode the venue address for map view, and resolve the city it sits in.
+    // The city is what makes an event findable: the site is scoped to one
+    // city, so an event without one would never be shown.
     const geoQuery = buildGeoQuery(data.venueName || '', data.address)
     const coords = await geocodeAddress(geoQuery)
 
@@ -110,6 +112,9 @@ export async function POST(request: NextRequest) {
       otherStyle: data.otherStyle || null,
       venueName: data.venueName || '',
       address: data.address,
+      city: coords?.city ?? null,
+      state: coords?.state ?? null,
+      zip: coords?.zip ?? null,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
       price: data.price ? parseInt(data.price) : null,
@@ -256,6 +261,9 @@ export async function PUT(request: NextRequest) {
         const coords = await geocodeAddress(geoQuery)
         update.lat = coords?.lat ?? null
         update.lng = coords?.lng ?? null
+        update.city = coords?.city ?? null
+        update.state = coords?.state ?? null
+        update.zip = coords?.zip ?? null
       }
 
       await prisma.event.updateMany({
@@ -272,6 +280,9 @@ export async function PUT(request: NextRequest) {
       const coords = await geocodeAddress(geoQuery)
       update.lat = coords?.lat ?? null
       update.lng = coords?.lng ?? null
+      update.city = coords?.city ?? null
+      update.state = coords?.state ?? null
+      update.zip = coords?.zip ?? null
     }
 
     const event = await prisma.event.update({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
+import { siteState, stateAbbreviation } from '@/lib/us-states'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -13,6 +14,14 @@ export async function GET(request: NextRequest) {
   // Month-based filtering for calendar view
   const monthStart = searchParams.get('monthStart')
   const monthEnd = searchParams.get('monthEnd')
+
+  // The marketplace is scoped to one city. NEXT_PUBLIC_CITY holds
+  // "Charlotte, NC", so the site shows that state and nothing else — an
+  // event that belongs to another market should not appear on this map.
+  // Events with no known location are kept: an unknown city is assumed
+  // local rather than silently dropped.
+  const cityFilter = searchParams.get('city')
+  const stateFilter = stateAbbreviation(searchParams.get('state')) ?? siteState()
 
   try {
     const now = new Date()
@@ -51,9 +60,9 @@ export async function GET(request: NextRequest) {
           search
             ? {
                 OR: [
-                  { title: { contains: search } },
-                  { venueName: { contains: search } },
-                  { address: { contains: search } },
+                  { title: { contains: search, mode: 'insensitive' } },
+                  { venueName: { contains: search, mode: 'insensitive' } },
+                  { address: { contains: search, mode: 'insensitive' } },
                 ],
               }
             : {},
@@ -62,6 +71,12 @@ export async function GET(request: NextRequest) {
           eventTypes.length > 0 ? { eventType: { in: eventTypes } } : {},
           // Map mode: only return events with valid coordinates
           ...(mapMode ? [{ lat: { not: null } }, { lng: { not: null } }] : []),
+          // Location scoping
+          cityFilter
+            ? { city: { equals: cityFilter, mode: 'insensitive' as const } }
+            : stateFilter
+              ? { OR: [{ state: stateFilter }, { state: null }] }
+              : {},
         ],
       },
       orderBy: {
