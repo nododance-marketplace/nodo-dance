@@ -12,6 +12,7 @@ import { findRecurrencePhrase, parseDateTime, parseTime } from '../lib/parsers/d
 import { findAddress, findCityStateZip, findVenueName } from '../lib/location'
 import { extractJsonLd, extractLinks, extractMeta, stripHtml } from '../lib/parsers/html'
 import { extractEvents } from '../lib/parsers/extract'
+import { looksLikeEventPage, isPastEventUrl } from '../lib/sitemap'
 import { validateEvent } from '../lib/qa'
 import { sanitizeForDb } from '../lib/pipeline'
 import type { ExtractedEvent } from '../lib/types'
@@ -341,6 +342,32 @@ section('Extraction quality')
     pageText: 'BodyVox Dance Center presents the CineVox dance film festival.',
   })
   check('a film submission at a dance center is quarantined', result.status === 'QUARANTINE', result.reasons)
+}
+
+// ── Discovery ──────────────────────────────────────────────────────────────
+// Sitemaps are the cheapest discovery channel there is, and they are also
+// full of pages that are not events. The filter decides what is worth a
+// crawl.
+section('Source discovery')
+
+{
+  eq('a calendar path is an event page', looksLikeEventPage('https://x.com/calendar/salsabachata-11/20/2026'), true)
+  eq('an event-details path is an event page', looksLikeEventPage('https://x.com/event-details/tipsy-tap-9'), true)
+  eq('a class schedule is an event page', looksLikeEventPage('https://x.com/current-youth-adult-class-schedule/'), true)
+  eq('a calendar page is an event page', looksLikeEventPage('https://x.com/studio-calendar/'), true)
+
+  // The SEO article that is in every dance school's sitemap.
+  eq('an article about choosing a class is not an event page', looksLikeEventPage('https://x.com/best-dance-classes-for-kids-what-parents-should-know/'), false)
+  eq('a class description without a date is not an event page', looksLikeEventPage('https://x.com/kids-dance-classes-seattle-junior-ballet/'), false)
+  eq('a class with a date in the url is an event page', looksLikeEventPage('https://x.com/kids-dance-classes-11-20-2026/'), true)
+
+  eq('a blog post is not an event page', looksLikeEventPage('https://x.com/blog/2026/11/salsa-tips'), false)
+  eq('a contact page is not an event page', looksLikeEventPage('https://x.com/contact/'), false)
+
+  // A sitemap keeps listing last year's events.
+  eq('a past event url is recognised as past', isPastEventUrl('https://x.com/event-details/spring-recital-2023-06-22-15-00', new Date('2026-11-05T00:00:00Z')), true)
+  eq('a future event url is not past', isPastEventUrl('https://x.com/calendar/salsabachata-11-20-2026', new Date('2026-11-05T00:00:00Z')), false)
+  eq('a url with no date is not past', isPastEventUrl('https://x.com/calendar/salsa', new Date('2026-11-05T00:00:00Z')), false)
 }
 
 // ── Dedupe ─────────────────────────────────────────────────────────────────

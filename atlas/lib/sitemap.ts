@@ -16,12 +16,26 @@ export interface SitemapUrl {
   priority?: number
 }
 
-/** Strong signals that a URL is an event/calendar listing page. */
+/**
+ * Strong signals that a URL is an event or calendar listing page.
+ *
+ * These name what the page is, so a path containing one of them is a page
+ * worth reading — a calendar, a schedule, an event. The match is loose on
+ * purpose: studios write their slugs without separators ("esquinasocial",
+ * "outdoormilonga", "main-events").
+ */
 const EVENT_URL_HINTS = [
-  'event', 'calendar', 'schedule', 'class', 'social', 'milonga', 'practica',
-  'practice', 'workshop', 'festival', 'party', 'lesson', 'upcoming', 'what-s-on',
-  'whats-on', 'gatherings', 'community', 'flights', 'nights', 'gather',
+  'event', 'calendar', 'schedule', 'milonga', 'practica',
+  'workshop', 'festival', 'social', 'gatherings',
+  'upcoming', 'what-s-on', 'whats-on',
 ]
+
+/**
+ * Weak signals. They only mean something next to a date: "class" is in
+ * every dance school's sitemap, including the SEO article about choosing
+ * a dance class for kids and the page describing each class.
+ */
+const WEAK_URL_HINTS = ['class', 'classes', 'lesson', 'lessons', 'night', 'nights', 'gather', 'flights', 'community', 'party', 'parties']
 
 /** Paths that are never event listings. */
 const NON_EVENT_PATHS = [
@@ -31,15 +45,59 @@ const NON_EVENT_PATHS = [
   '/gift', '/coupon', '/membership', '/memberships', '/staff', '/team',
 ]
 
-export function looksLikeEventPage(url: string): boolean {
-  let pathname: string
+/** A date written into a URL: 2026-11-04, 11-04-2026, 12/13/2026. */
+const URL_DATE_RE =
+  /\b(?:20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})\b/
+
+function pathOf(url: string): string | null {
   try {
-    pathname = new URL(url).pathname.toLowerCase()
+    return new URL(url).pathname.toLowerCase()
   } catch {
-    return false
+    return null
   }
+}
+
+export function looksLikeEventPage(url: string): boolean {
+  const pathname = pathOf(url)
+  if (!pathname) return false
   if (NON_EVENT_PATHS.some(p => pathname.includes(p))) return false
-  return EVENT_URL_HINTS.some(hint => pathname.includes(hint))
+
+  // A strong hint means the path names what the page is.
+  if (EVENT_URL_HINTS.some(hint => pathname.includes(hint))) return true
+
+  // Otherwise a weak hint has to be backed by a date in the URL.
+  const weak = WEAK_URL_HINTS.some(hint => pathname.includes(hint))
+  return weak && URL_DATE_RE.test(pathname)
+}
+
+/**
+ * Does this URL name a date that has already passed?
+ *
+ * A sitemap keeps listing last year's events. Crawling them costs a fetch
+ * and produces a candidate the expiry rule rejects, so they are skipped.
+ */
+export function isPastEventUrl(url: string, now: Date = new Date()): boolean {
+  const pathname = pathOf(url)
+  if (!pathname) return false
+  const m = URL_DATE_RE.exec(pathname)
+  if (!m) return false
+
+  const parts = m[0].split(/[-/.]/)
+  let year: number
+  let month: number
+  let day: number
+  if (parts[0].length === 4) {
+    ;[year, month, day] = parts.map(Number)
+  } else {
+    ;[month, day, year] = parts.map(Number)
+  }
+  if (!year || !month || !day) return false
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false
+
+  const when = Date.UTC(year, month - 1, day)
+  if (Number.isNaN(when)) return false
+  // A grace period: today and yesterday may still be running.
+  return when < Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 86400000
 }
 
 function parseXmlLoc(xml: string): string[] {

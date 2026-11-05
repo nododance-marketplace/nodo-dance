@@ -30,7 +30,7 @@ import { Atlas } from './lib/pipeline'
 import { Fetcher } from './lib/fetcher'
 import { Discovery, discoverCity, looksLikeDanceSource } from './lib/discovery'
 import { OsmDiscovery, looksLikeDanceOrg, censusQuery, areaQuery, type OsmOrganisation } from './lib/osm'
-import { SitemapReader, looksLikeEventPage, type SitemapUrl } from './lib/sitemap'
+import { SitemapReader, looksLikeEventPage, isPastEventUrl, type SitemapUrl } from './lib/sitemap'
 import { RobotsCache } from './lib/robots'
 import { DANCE_STYLES } from './lib/normalize'
 import { wallTimeToUtc } from './lib/recurrence'
@@ -221,7 +221,7 @@ async function expand(args: Args) {
     } catch {
       continue
     }
-    const eventPages = sitemapUrls.filter(u => looksLikeEventPage(u.loc))
+    const eventPages = sitemapUrls.filter(u => looksLikeEventPage(u.loc) && !isPastEventUrl(u.loc))
     process.stdout.write(`  ${source.domain.padEnd(34)} ${String(sitemapUrls.length).padStart(4)} urls → ${String(eventPages.length).padStart(3)} event pages`)
     for (const page of eventPages.slice(0, 20)) {
       const { created } = await atlas.registerSource({
