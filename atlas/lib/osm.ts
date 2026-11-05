@@ -147,6 +147,9 @@ export function normaliseWebsite(raw: string): string {
   try {
     const url = new URL(value)
     if (!/^https?:$/.test(url.protocol)) return ''
+    // Always prefer https — a public calendar served over http is a
+    // mixed-content and privacy problem for anyone who follows the link.
+    url.protocol = 'https:'
     url.hash = ''
     const drop = ['utm_source', 'utm_medium', 'utm_campaign', 'gclid', 'fbclid']
     for (const key of drop) url.searchParams.delete(key)

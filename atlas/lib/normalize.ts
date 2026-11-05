@@ -50,7 +50,7 @@ export function detectEventType(text: string): NodoEventType | null {
   if (/\b(milonga|practica|pr[áa]ctica)\b/.test(t)) return 'TANGO_MILONGA'
   if (/\b(festival|fest\b|congress|convention|marathon|weekend fest)/.test(t)) return 'FESTIVAL'
   if (/\b(workshop|bootcamp|seminar|master ?class|intensive)\b/.test(t)) return 'WORKSHOP'
-  if (/\b(class|classes|group lesson|group class|lesson|levels|beginner|intermediate|advanced)\b/.test(t)) {
+  if (/\b(class|classes|group lesson|group class|lesson|levels|beginner|intermediate|advanced|session|dance night)\b/.test(t)) {
     return 'GROUP_CLASS'
   }
   if (/\b(social|socials|party|practica night|dance party|night out|bashment)\b/.test(t)) return 'SOCIAL'
@@ -80,6 +80,13 @@ export function parsePrice(text: string | undefined | null): { price?: number; p
   const range = raw.match(/(\d+)\s*(?:-|–|to)\s*(\d+)/i)
   if (range && /\$\s*\d/.test(raw)) {
     return { price: Number(range[1]), priceText: raw }
+  }
+
+  // A bare amount on its own line ("20") is a price. Anything with other
+  // words attached is not — we never guess.
+  const bare = raw.match(/^(\d{1,4})$/)
+  if (bare) {
+    return { price: Number(bare[1]), priceText: raw }
   }
 
   return { price: undefined, priceText: raw }

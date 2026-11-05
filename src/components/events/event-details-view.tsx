@@ -18,8 +18,11 @@ export function EventDetailsView({ event, isLoggedIn = false }: { event: any; is
   const startDate = new Date(event.startDateTime)
   const endDate = event.endDateTime ? new Date(event.endDateTime) : null
 
-  const googleMapsUrl = event.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.address)}`
+  // A street address on its own resolves to the wrong city — include the
+  // city and state so the map link lands on the right venue.
+  const fullLocation = [event.address, event.city, event.state].filter(Boolean).join(', ')
+  const googleMapsUrl = fullLocation
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullLocation)}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venueName)}`
 
   function downloadCalendar() {
@@ -145,8 +148,37 @@ END:VCALENDAR`
                 {event.address && (
                   <p className="text-sm text-gray-600">{event.address}</p>
                 )}
+                {event.city && (
+                  <p className="text-sm text-gray-600">
+                    {[event.city, event.state].filter(Boolean).join(', ')}
+                    {event.zip ? ` ${event.zip}` : ''}
+                  </p>
+                )}
               </div>
             </div>
+
+            {event.sourceUrl && (
+              <div className="flex items-start gap-3">
+                <Globe className="w-5 h-5 text-accent-magenta mt-1" />
+                <div>
+                  <p className="font-semibold">Listed by</p>
+                  <p className="text-sm text-gray-600">
+                    {event.sourceName || 'the organizer'}
+                    {event.verifiedAt && (
+                      <> · verified {formatDate(event.verifiedAt)}</>
+                    )}
+                  </p>
+                  <a
+                    href={event.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[var(--color-accent-ink)] hover:underline inline-flex items-center gap-1 mt-0.5"
+                  >
+                    View the original listing
+                  </a>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-start gap-3">
               <DollarSign className="w-5 h-5 text-accent-magenta mt-1" />

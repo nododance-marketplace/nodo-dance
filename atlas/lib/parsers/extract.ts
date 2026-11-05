@@ -13,9 +13,9 @@
  */
 import { detectEventType, detectStyles, parsePrice } from '../normalize'
 import { detectRecurrence, addDays, dayOfWeek } from '../recurrence'
-import { findAddress, findCityStateZip, findVenueName } from '../location'
+import { findAddress, findCityStateZip, findVenueName, looksLikeAddress } from '../location'
 import { findRecurrencePhrase, parseDateTime, parseTime } from './dates'
-import { extractJsonLd, extractLinks, extractMeta, findEnclosingTag, findNearestHeading, isGenericTitle, stripHtml, stripLeadingTime, tidy } from './html'
+import { extractJsonLd, extractLinks, extractMeta, findEnclosingTag, findNearestHeading, isGenericTitle, stripHtml, stripLeadingTime, stripMarkup, tidy } from './html'
 import type { DanceStyle, ExtractedEvent, ExtractedSchool, ExtractionMethod, FieldEvidence } from '../types'
 
 const EVENT_TYPE_HINTS: Array<[RegExp, string]> = [
@@ -92,7 +92,7 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
     const title = tidy(String(node.name ?? ''))
     if (!title) continue
 
-    const description = tidy(String(node.description ?? ''))
+    const description = stripMarkup(String(node.description ?? ''))
     const startRaw = node.startDate ? String(node.startDate) : ''
     const endRaw = node.endDate ? String(node.endDate) : ''
 
@@ -130,12 +130,15 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
     }
 
     const location = node.location ?? {}
-    const address = location.address ?? location
-    const addressLine = typeof address === 'object' ? address.streetAddress : address
-    const addressCity = typeof address === 'object' ? address.addressLocality : undefined
-    const addressRegion = typeof address === 'object' ? address.addressRegion : undefined
-    const addressPostal = typeof address === 'object' ? address.postalCode : undefined
+    const rawAddress = location.address ?? location
+    const addressLine =
+      typeof rawAddress === 'object' ? rawAddress.streetAddress : rawAddress
+    const addressCity = typeof rawAddress === 'object' ? rawAddress.addressLocality : undefined
+    const addressRegion = typeof rawAddress === 'object' ? rawAddress.addressRegion : undefined
+    const addressPostal = typeof rawAddress === 'object' ? rawAddress.postalCode : undefined
     const venueName = tidy(String(location.name ?? '')) || undefined
+    // Only keep an address that actually reads like one.
+    const usableAddress = looksLikeAddress(addressLine) ? tidy(String(addressLine)) : undefined
 
     const organizer = node.organizer
     const organizerName =
@@ -152,17 +155,20 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
 
     const haystack = [title, description, organizerName ?? '', venueName ?? ''].join(' ')
     const styles = detectStyles(haystack)
-    const eventType = detectEventType(haystack) ?? undefined
 
     const recurrenceText = findRecurrencePhrase([description, title].join(' '))
     const recurrence = detectRecurrence(recurrenceText, localDate, timeZone)
+
+    let eventType = detectEventType(haystack) ?? undefined
+    // A recurring published session with no other signal is a class.
+    if (!eventType && recurrence.isRecurring) eventType = 'GROUP_CLASS'
 
     const foundFields = [
       'title',
       startRaw ? 'startDateTime' : null,
       description ? 'description' : null,
       venueName ? 'venueName' : null,
-      addressLine ? 'address' : null,
+      usableAddress ? 'address' : null,
       organizerName ? 'organizerName' : null,
       priceRaw != null ? 'price' : null,
       recurrenceText ? 'recurrence' : null,
@@ -184,7 +190,7 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
       recurrenceRule: recurrence.rule,
       recurrenceConfidence: recurrence.confidence,
       venueName,
-      address: addressLine ? tidy(String(addressLine)) : undefined,
+      address: usableAddress,
       city: addressCity ? tidy(String(addressCity)) : undefined,
       state: addressRegion ? tidy(String(addressRegion)) : undefined,
       zip: addressPostal ? tidy(String(addressPostal)) : undefined,

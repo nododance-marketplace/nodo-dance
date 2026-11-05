@@ -547,6 +547,19 @@ export class Atlas {
       where: { sourceId, dedupeKey: key },
     })
 
+    // Never overwrite good data with null: a candidate that was geocoded
+    // earlier keeps its coordinates even when the page does not repeat them.
+    if (existing) {
+      if (data.lat === null) data.lat = existing.lat
+      if (data.lng === null) data.lng = existing.lng
+      if (!data.city && existing.city) data.city = existing.city
+      if (!data.state && existing.state) data.state = existing.state
+      if (!data.zip && existing.zip) data.zip = existing.zip
+      if (!data.address && existing.address) data.address = existing.address
+      if (!data.venueName && existing.venueName) data.venueName = existing.venueName
+      if (!data.organizerName && existing.organizerName) data.organizerName = existing.organizerName
+    }
+
     const candidate = existing
       ? await this.prisma.candidateEvent.update({ where: { id: existing.id }, data })
       : await this.prisma.candidateEvent.create({ data })

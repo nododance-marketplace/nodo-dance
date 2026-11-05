@@ -17,6 +17,27 @@ const ADDRESS_RE = new RegExp(
 
 const CITY_STATE_ZIP_RE = /\b([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
 
+/**
+ * Is this string actually a street address?
+ *
+ * Free text near an event listing is full of things that look address-shaped
+ * but are not: "December 7, 2026", "Flatirons Dance Academy", "Suite 200".
+ * A real address starts with a house number and ends with a street suffix.
+ */
+export function looksLikeAddress(value: string | undefined | null): boolean {
+  if (!value) return false
+  const text = tidy(value)
+  if (text.length < 6 || text.length > 120) return false
+  // A date is not an address.
+  if (/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b/i.test(text)) {
+    return false
+  }
+  if (/^\d{1,2}[:.]\d{2}\s*(am|pm)?$/i.test(text)) return false
+  if (!/\b\d{1,6}\s+/.test(text)) return false
+  if (!new RegExp(`\\b(?:${STREET_SUFFIXES})\\b`, 'i').test(text)) return false
+  return true
+}
+
 export interface FoundLocation {
   address?: string
   city?: string

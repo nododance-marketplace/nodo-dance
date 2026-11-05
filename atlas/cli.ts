@@ -21,7 +21,11 @@
  */
 import { resolve } from 'node:path'
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
-import { PrismaClient } from './generated/local-client'
+import { createPrisma, assertPublishAllowed, type AtlasPrisma, type AtlasTarget } from './lib/db'
+
+const prisma: AtlasPrisma = createPrisma(
+  (process.argv.includes('--target=production') ? 'production' : 'local') as AtlasTarget
+)
 import { Atlas } from './lib/pipeline'
 import { Fetcher } from './lib/fetcher'
 import { Discovery, discoverCity, looksLikeDanceSource } from './lib/discovery'
@@ -31,7 +35,6 @@ import { RobotsCache } from './lib/robots'
 import { DANCE_STYLES } from './lib/normalize'
 import { wallTimeToUtc } from './lib/recurrence'
 
-const prisma = new PrismaClient()
 
 const CITIES = [
   { slug: 'charlotte-nc', name: 'Charlotte', state: 'NC', stateName: 'North Carolina', timeZone: 'America/New_York', priority: 10, population: 911_987 },
@@ -41,6 +44,21 @@ const CITIES = [
   { slug: 'austin-tx', name: 'Austin', state: 'TX', stateName: 'Texas', timeZone: 'America/Chicago', priority: 35, population: 961_855 },
   { slug: 'miami-fl', name: 'Miami', state: 'FL', stateName: 'Florida', timeZone: 'America/New_York', priority: 40, population: 442_241 },
   { slug: 'chicago-il', name: 'Chicago', state: 'IL', stateName: 'Illinois', timeZone: 'America/Chicago', priority: 45, population: 2_746_388 },
+  { slug: 'new-york-ny', name: 'New York', state: 'NY', stateName: 'New York', timeZone: 'America/New_York', priority: 50, population: 8_258_035 },
+  { slug: 'los-angeles-ca', name: 'Los Angeles', state: 'CA', stateName: 'California', timeZone: 'America/Los_Angeles', priority: 55, population: 3_898_747 },
+  { slug: 'denver-co', name: 'Denver', state: 'CO', stateName: 'Colorado', timeZone: 'America/Denver', priority: 60, population: 715_522 },
+  { slug: 'portland-or', name: 'Portland', state: 'OR', stateName: 'Oregon', timeZone: 'America/Los_Angeles', priority: 65, population: 652_503 },
+  { slug: 'san-diego-ca', name: 'San Diego', state: 'CA', stateName: 'California', timeZone: 'America/Los_Angeles', priority: 70, population: 1_386_932 },
+  { slug: 'seattle-wa', name: 'Seattle', state: 'WA', stateName: 'Washington', timeZone: 'America/Los_Angeles', priority: 75, population: 737_015 },
+  { slug: 'boston-ma', name: 'Boston', state: 'MA', stateName: 'Massachusetts', timeZone: 'America/New_York', priority: 80, population: 675_647 },
+  { slug: 'las-vegas-nv', name: 'Las Vegas', state: 'NV', stateName: 'Nevada', timeZone: 'America/Los_Angeles', priority: 85, population: 641_903 },
+  { slug: 'philadelphia-pa', name: 'Philadelphia', state: 'PA', stateName: 'Pennsylvania', timeZone: 'America/New_York', priority: 90, population: 1_603_675 },
+  { slug: 'minneapolis-mn', name: 'Minneapolis', state: 'MN', stateName: 'Minnesota', timeZone: 'America/Chicago', priority: 95, population: 429_954 },
+  { slug: 'st-louis-mo', name: 'St. Louis', state: 'MO', stateName: 'Missouri', timeZone: 'America/Chicago', priority: 100, population: 301_578 },
+  { slug: 'nashville-tn', name: 'Nashville', state: 'TN', stateName: 'Tennessee', timeZone: 'America/Chicago', priority: 105, population: 689_447 },
+  { slug: 'orlando-fl', name: 'Orlando', state: 'FL', stateName: 'Florida', timeZone: 'America/New_York', priority: 110, population: 307_573 },
+  { slug: 'tampa-fl', name: 'Tampa', state: 'FL', stateName: 'Florida', timeZone: 'America/New_York', priority: 115, population: 384_959 },
+  { slug: 'new-orleans-la', name: 'New Orleans', state: 'LA', stateName: 'Louisiana', timeZone: 'America/Chicago', priority: 120, population: 383_997 },
 ]
 
 interface Args {
@@ -110,6 +128,21 @@ const CITY_BBOXES: Record<string, string> = {
   'austin-tx': '30.15,-97.90,30.45,-97.55',
   'miami-fl': '25.65,-80.35,25.95,-80.05',
   'chicago-il': '41.75,-87.85,42.05,-87.55',
+  'new-york-ny': '40.55,-74.10,40.90,-73.70',
+  'los-angeles-ca': '33.90,-118.35,34.15,-118.05',
+  'denver-co': '39.65,-105.10,39.85,-104.80',
+  'portland-or': '45.45,-122.75,45.60,-122.50',
+  'san-diego-ca': '32.55,-117.20,32.80,-116.90',
+  'seattle-wa': '47.50,-122.45,47.70,-122.20',
+  'boston-ma': '42.30,-71.15,42.45,-70.95',
+  'las-vegas-nv': '36.05,-115.25,36.25,-115.00',
+  'philadelphia-pa': '39.85,-75.40,40.10,-75.10',
+  'minneapolis-mn': '44.90,-93.35,45.10,-93.15',
+  'st-louis-mo': '38.55,-90.35,38.75,-90.15',
+  'nashville-tn': '36.10,-86.85,36.25,-86.60',
+  'orlando-fl': '28.40,-81.45,28.60,-81.25',
+  'tampa-fl': '27.85,-82.55,28.05,-82.30',
+  'new-orleans-la': '29.90,-90.15,30.05,-89.90',
 }
 
 /**
@@ -494,6 +527,9 @@ async function decide(candidateId: string, decision: 'APPROVED' | 'REJECTED', by
 }
 
 async function publish(candidateId: string, by = 'cli') {
+  const target: AtlasTarget = process.argv.includes('--target=production') ? 'production' : 'local'
+  assertPublishAllowed(target, process.argv.includes('--publish-to-production'))
+
   const candidate = await prisma.candidateEvent.findFirst({
     where: { id: { startsWith: candidateId } },
     include: { source: true },
@@ -691,6 +727,14 @@ Nodo Atlas CLI
   atlas publish <candidateId>       publish an approved candidate
   atlas report                      coverage + quality report
   atlas kill-switch [--on|--off]    pause or resume all crawling
+
+Target
+  --target=production               run against the live Neon database.
+                                    Crawling and discovery only create inert
+                                    candidate records; publishing additionally
+                                    requires --publish-to-production.
+  --publish-to-production           acknowledge that this publishes to the
+                                    public site.
 `)
   }
 }

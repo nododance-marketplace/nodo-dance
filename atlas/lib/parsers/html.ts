@@ -242,3 +242,20 @@ export function sha256(input: string): string {
 export function tidy(input: string): string {
   return decodeEntities(input).replace(/\s+/g, ' ').trim()
 }
+
+/**
+ * Remove any markup from a value that will be shown as plain text.
+ *
+ * JSON-LD descriptions routinely contain HTML — sometimes as literal tags,
+ * sometimes entity-encoded ("&lt;p&gt;Join us…&lt;/p&gt;"). Both have to be
+ * handled: decode first, then strip, because decoding can reveal new tags.
+ */
+export function stripMarkup(input: string): string {
+  if (!input) return ''
+  return tidy(
+    decodeEntities(input)
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/?p[^>]*>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+  )
+}
