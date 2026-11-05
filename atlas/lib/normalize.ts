@@ -61,25 +61,49 @@ export function detectEventType(text: string): NodoEventType | null {
  * Parse a price string into an integer amount (whole dollars).
  * Returns null for free / unknown / non-monetary values.
  */
+
+/**
+ * A price is a short phrase, never a paragraph.
+ *
+ * Scraped pages hand whole text blocks to this function. A block that
+ * mentions "$20" somewhere is not a price, and storing the block as the
+ * price text puts hundreds of characters of navigation into the database.
+ */
+const PRICE_PHRASE_RE = /(?:\$\s*\d{1,4}(?:\.\d{2})?|\b\d{1,4}\s*(?:dollars?|usd)\b|\bfree\b)/i
+
+function pricePhrase(raw: string, index: number): string | undefined {
+  const token = raw.slice(index, index + 40).match(PRICE_PHRASE_RE)
+  if (!token || token.index === undefined) return undefined
+  const phrase = token[0].replace(/\s+/g, ' ').trim()
+  if (phrase.length > 40) return undefined
+  return phrase
+}
+
 export function parsePrice(text: string | undefined | null): { price?: number; priceText?: string } {
   if (!text) return {}
   const raw = text.trim()
   if (!raw) return {}
 
-  if (/\bfree\b/i.test(raw) && !/\$\s*\d/.test(raw)) return { price: undefined, priceText: raw }
-
   const dollar = raw.match(/\$\s*([\d,]+(?:\.\d{2})?)/)
-  if (dollar) {
+  if (dollar && dollar.index !== undefined) {
     const n = Number(dollar[1].replace(/,/g, ''))
     if (!Number.isNaN(n)) {
-      return { price: Math.round(n), priceText: raw }
+      return { price: Math.round(n), priceText: pricePhrase(raw, dollar.index) ?? `$${dollar[1]}` }
     }
+  }
+
+  // "Free" counts when the word stands alone. A paragraph that happens to
+  // contain it is not a free event.
+  if (/\bfree\b/i.test(raw)) {
+    const phrase = pricePhrase(raw, raw.search(/\bfree\b/i))
+    if (phrase && phrase.length <= 20) return { price: undefined, priceText: phrase }
+    return {}
   }
 
   // "$15-$20" ranges → take the lower bound but keep the original text.
   const range = raw.match(/(\d+)\s*(?:-|–|to)\s*(\d+)/i)
-  if (range && /\$\s*\d/.test(raw)) {
-    return { price: Number(range[1]), priceText: raw }
+  if (range && /\$\s*\d/.test(raw) && range.index !== undefined) {
+    return { price: Number(range[1]), priceText: pricePhrase(raw, range.index) ?? raw.slice(0, 40) }
   }
 
   // A bare amount on its own line ("20") is a price. Anything with other
@@ -89,7 +113,9 @@ export function parsePrice(text: string | undefined | null): { price?: number; p
     return { price: Number(bare[1]), priceText: raw }
   }
 
-  return { price: undefined, priceText: raw }
+  // Nothing here reads like a price. The text is a paragraph, not a price,
+  // so it is dropped rather than stored.
+  return {}
 }
 
 /**

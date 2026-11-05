@@ -97,14 +97,33 @@ export function validateEvent(event: ExtractedEvent, ctx: QaContext): QaResult {
     reasons.push('Missing title')
   }
 
-  // Dance relevance — checked against the whole page, not a slice: a school
-  // page may name its styles far down the body.
+  // Dance relevance — two separate questions.
+  //
+  // 1. Does the page as a whole talk about dance? It may name its styles
+  //    far down the body, so the whole page is fair game.
+  // 2. Does this record itself look like a dance event?
+  //
+  // A page can pass the first and fail the second. A ballet company's
+  // "Jobs" page and a contemporary company's season page both mention
+  // dance while listing something that is not a dance event at all.
   if (ctx.pageText) {
-    const haystack = `${event.title} ${event.description ?? ''} ${ctx.pageText} ${event.sourceUrl}`
-    const styles = detectStyles(haystack)
-    const genericDanceSignal = /\b(dance|dancing|social|class|studio|milonga|practica|practice|zouk|salsa|bachata|partner)\b/i.test(haystack)
+    const pageHaystack = `${event.title} ${event.description ?? ''} ${ctx.pageText} ${event.sourceUrl}`
+    const styles = detectStyles(pageHaystack)
+    const genericDanceSignal = /\b(dance|dancing|social|class|studio|milonga|practica|practice|zouk|salsa|bachata|partner)\b/i.test(pageHaystack)
     if (styles.length === 0 && !genericDanceSignal) {
       reasons.push('No dance-related signal found on the page')
+    }
+  }
+
+  // The record's own text — title, description, venue, organiser — has to
+  // carry the dance signal. This is a quarantine, not a rejection: a human
+  // may still see a dance event in a record we could not read well.
+  {
+    const own = `${event.title} ${event.description ?? ''} ${event.venueName ?? ''} ${event.organizerName ?? ''}`
+    const ownStyles = detectStyles(own)
+    const ownSignal = /\b(salsa|bachata|tango|milonga|zouk|kizomba|shag|swing|cumbia|walle?z|foxtrot|cha\s?cha|jive|samba|ballroom|line\s?danc|partner)\b/i.test(own)
+    if (ownStyles.length === 0 && !ownSignal) {
+      reasons.push('Record carries no dance-related signal of its own')
     }
   }
 

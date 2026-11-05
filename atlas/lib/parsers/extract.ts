@@ -83,6 +83,43 @@ function ldType(node: any): string[] {
   return Array.isArray(t) ? t.map(String) : [String(t)]
 }
 
+/**
+ * Are two URLs on the same site?
+ *
+ * A link from one organisation's page to another — an Instagram reel, a
+ * ticketing platform, a directory — is a destination, not a source. Treating
+ * it as the source would misattribute the record and point the database at
+ * a page we never read.
+ */
+function sameSite(a: URL, b: URL): boolean {
+  const host = (u: URL) => u.hostname.toLowerCase().replace(/^www\./, '')
+  const ha = host(a)
+  const hb = host(b)
+  return ha === hb || ha.endsWith(`.${hb}`) || hb.endsWith(`.${ha}`)
+}
+
+/**
+ * Turn a JSON-LD address into one line of text.
+ *
+ * The shape varies: a plain string, a PostalAddress object, or an object
+ * with no street address at all. Stringifying an object directly would
+ * store the literal text "[object Object]".
+ */
+function addressToString(raw: unknown): string | undefined {
+  if (raw == null) return undefined
+  if (typeof raw === 'string') return raw.trim() || undefined
+  if (typeof raw !== 'object') return undefined
+  const a = raw as Record<string, unknown>
+  const street = a.streetAddress ?? a.address1 ?? a.thoroughfare
+  const city = a.addressLocality ?? a.city
+  const region = a.addressRegion ?? a.state
+  const postcode = a.postalCode ?? a.zip ?? a.zipcode
+  const parts = [street, city, region, postcode].filter(
+    (p): p is string => typeof p === 'string' && p.trim().length > 0
+  )
+  return parts.length ? parts.join(', ') : undefined
+}
+
 function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate: Date): ExtractedEvent[] {
   const events: ExtractedEvent[] = []
   for (const node of flattenLd(blocks)) {
@@ -91,6 +128,9 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
 
     const title = tidy(String(node.name ?? ''))
     if (!title) continue
+    // A JSON-LD name is not always the event. Plugins emit menu items and
+    // page headings as events; "letter", "here" and "Staff" are not events.
+    if (isGenericTitle(title)) continue
 
     const description = stripMarkup(String(node.description ?? ''))
     const startRaw = node.startDate ? String(node.startDate) : ''
@@ -131,8 +171,7 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
 
     const location = node.location ?? {}
     const rawAddress = location.address ?? location
-    const addressLine =
-      typeof rawAddress === 'object' ? rawAddress.streetAddress : rawAddress
+    const addressLine = addressToString(rawAddress.streetAddress ?? rawAddress)
     const addressCity = typeof rawAddress === 'object' ? rawAddress.addressLocality : undefined
     const addressRegion = typeof rawAddress === 'object' ? rawAddress.addressRegion : undefined
     const addressPostal = typeof rawAddress === 'object' ? rawAddress.postalCode : undefined
@@ -212,6 +251,14 @@ function buildEvidence(node: any, url: string): FieldEvidence[] {
   const evidence: FieldEvidence[] = []
   const push = (field: string, value: unknown) => {
     if (value === undefined || value === null || value === '') return
+    // An object is a structured value, not text. Stringifying it would
+    // store the literal text "[object Object]" as the evidence.
+    if (typeof value === 'object') {
+      const asText = addressToString(value)
+      if (!asText) return
+      evidence.push({ field, value: asText, method: 'JSONLD', excerpt: undefined })
+      return
+    }
     evidence.push({ field, value: String(value), method: 'JSONLD', excerpt: undefined })
   }
   push('title', node.name)
@@ -219,7 +266,7 @@ function buildEvidence(node: any, url: string): FieldEvidence[] {
   push('startDateTime', node.startDate)
   push('endDateTime', node.endDate)
   push('venueName', node.location?.name)
-  push('address', node.location?.address?.streetAddress ?? node.location?.address)
+  push('address', node.location?.address)
   push('organizerName', node.organizer?.name ?? node.organizer)
   push('registrationUrl', node.url)
   return evidence
@@ -407,9 +454,17 @@ function fromHtml(html: string, url: string, timeZone: string, referenceDate: Da
     const pageVenue = findVenueName(contextAfter) ?? findVenueName(text)
 
     let resolvedUrl = url
+    let externalUrl: string | undefined
     if (bestLink?.href) {
       try {
-        resolvedUrl = new URL(bestLink.href, url).toString()
+        const href = new URL(bestLink.href, url)
+        if (sameSite(href, new URL(url))) {
+          resolvedUrl = href.toString()
+        } else {
+          // A link off this site is where to buy a ticket, not where the
+          // event was found. The source of a record is the page we read.
+          externalUrl = href.toString()
+        }
       } catch {
         resolvedUrl = url
       }
@@ -437,6 +492,7 @@ function fromHtml(html: string, url: string, timeZone: string, referenceDate: Da
       zip: pagePlace.zip,
       sourceUrl: resolvedUrl,
       sourceUrlCanonical: resolvedUrl,
+      registrationUrl: externalUrl,
       foundFields: ['title', 'startDateTime', pageVenue ? 'venueName' : null, pageAddress ? 'address' : null].filter(Boolean) as string[],
       extractionMethod: 'HTML',
     })

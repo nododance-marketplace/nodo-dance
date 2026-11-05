@@ -203,7 +203,12 @@ const GENERIC_TITLES = [
   'view event', 'view events', 'event', 'events', 'details', 'detail', 'more info',
   'more information', 'learn more', 'read more', 'register', 'registration',
   'sign up', 'signup', 'rsvp', 'rsvp now', 'click here', 'join now', 'buy tickets',
-  'tickets', 'get tickets', 'book now', 'book', 'reserve', 'save the date',
+  'tickets', 'get tickets', 'get your tickets', 'book now', 'book', 'reserve',
+  'save the date', 'submit your film', 'open performing group', 'upcoming events',
+  'here', 'letter', 'staff', 'our staff', 'jobs', 'job', 'contact', 'about',
+  'home', 'faq', 'blog', 'news', 'menu', 'search', 'cart', 'privacy', 'terms',
+  'donate', 'volunteer', 'faculty', 'scholarships', 'membership', 'sponsors',
+  'featured', 'read more →', 'read more ->',
   'view event →', 'view event ->', 'learn more →', 'learn more ->',
 ]
 

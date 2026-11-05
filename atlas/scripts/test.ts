@@ -173,6 +173,107 @@ section('HTML parsing')
   eq('json-ld method', events[0]?.extractionMethod, 'JSONLD')
 }
 
+// ── Extraction quality ─────────────────────────────────────────────────────
+// The defects these cover were all found by reading the production review
+// queue: navigation text became titles, paragraphs became prices, and links
+// to other people's pages became the source of the record.
+section('Extraction quality')
+
+{
+  // A JSON-LD name is not always an event.
+  const generic = `<!doctype html><html><head>
+    <script type="application/ld+json">{"@type":"Event","name":"here","startDate":"2027-03-05T23:00:00-05:00"}</script>
+    </head><body></body></html>`
+  eq('json-ld generic title is skipped', extractEvents(generic, 'https://example.com/x', 'America/New_York').length, 0)
+}
+
+{
+  // A structured address must not be stored as "[object Object]".
+  const structured = `<!doctype html><html><head>
+    <script type="application/ld+json">{"@type":"Event","name":"Salsa Social","startDate":"2027-03-05T23:00:00-05:00",
+    "location":{"name":"The Loft","address":{"streetAddress":"123 Main St","addressLocality":"Charlotte","addressRegion":"NC","postalCode":"28203"}}}</script>
+    </head><body></body></html>`
+  const events = extractEvents(structured, 'https://example.com/x', 'America/New_York')
+  eq('json-ld address object extracted', events[0]?.address, '123 Main St')
+  eq('json-ld city extracted', events[0]?.city, 'Charlotte')
+  const addressEvidence = events[0]?.evidence?.find(e => e.field === 'address')
+  check('json-ld address evidence is text', addressEvidence?.value.includes('123 Main St') === true, addressEvidence?.value)
+  check('no evidence says [object Object]', !(events[0]?.evidence?.some(e => e.value.includes('[object')) ?? true))
+}
+
+{
+  // A paragraph is not a price.
+  const blob = 'This studio has been the heartbeat of dance education for over 40 years and we welcome everyone.'
+  eq('a paragraph yields no price', parsePrice(blob).priceText, undefined)
+  eq('a paragraph yields no price number', parsePrice(blob).price, undefined)
+
+  const withPrice = 'Join us on Saturday November 14, 2026 from 5-9 pm. New student deal $60. All welcome.'
+  eq('a price inside a paragraph is found', parsePrice(withPrice).price, 60)
+  eq('the price text stays short', (parsePrice(withPrice).priceText ?? '').length <= 40, true)
+  eq('the price text is the price', parsePrice(withPrice).priceText, '$60')
+
+  eq('a bare amount is a price', parsePrice('20').price, 20)
+  eq('free is a price phrase', parsePrice('Free').priceText, 'Free')
+}
+
+{
+  // A link to another site is where to buy a ticket, not where the event was
+  // found. The source of a record is the page we actually read.
+  const offSite = `<!doctype html><html><body>
+    <a href="https://www.instagram.com/reel/Deu21wAgEY1/">Meraki</a>
+    <p>Saturday November 14, 2026 5-9 pm Salsa and Bachata at the studio</p>
+    </body></html>`
+  const events = extractEvents(offSite, 'https://majestyinmotion.com/', 'America/Los_Angeles')
+  const event = events.find(e => e.title.includes('Meraki'))
+  check('an off-site link does not become the source', event?.sourceUrl === 'https://majestyinmotion.com/', event?.sourceUrl)
+  eq('an off-site link becomes the registration url', event?.registrationUrl, 'https://www.instagram.com/reel/Deu21wAgEY1/')
+}
+
+{
+  // The record must carry its own dance signal, not borrow the page's.
+  const ballet: ExtractedEvent = {
+    title: 'Nutcracker Sweets',
+    styles: ['Other'],
+    venueName: 'BodyVox Dance Center',
+    address: '1201 NW 17th Ave, Portland, OR 97209',
+    localDate: '2027-03-05',
+    localTime: '19:00',
+    isRecurring: false,
+    recurrenceConfidence: 0,
+    sourceUrl: 'https://bodyvox.org/shows',
+    foundFields: ['title', 'startDateTime', 'localDate', 'localTime', 'venueName', 'address'],
+    extractionMethod: 'HTML',
+  }
+  const result = validateEvent(ballet, {
+    now: new Date('2026-11-04T00:00:00Z'),
+    pageText: 'BodyVox Dance Center presents. Our season of contemporary dance and ballet.',
+  })
+  check('a record with no dance signal of its own is quarantined', result.status === 'QUARANTINE', result.reasons)
+  check('the reason names the problem', result.reasons.some(r => r.includes('dance-related signal of its own')), result.reasons)
+}
+
+{
+  // A dance record keeps its PASS.
+  const social: ExtractedEvent = {
+    title: 'Salsa Social at The Loft',
+    styles: ['Salsa'],
+    venueName: 'The Loft',
+    address: '123 Main St, Charlotte, NC 28203',
+    localDate: '2027-03-05',
+    localTime: '19:00',
+    isRecurring: false,
+    recurrenceConfidence: 0,
+    sourceUrl: 'https://example.com/salsa',
+    foundFields: ['title', 'startDateTime', 'localDate', 'localTime', 'venueName', 'address'],
+    extractionMethod: 'HTML',
+  }
+  const result = validateEvent(social, {
+    now: new Date('2026-11-04T00:00:00Z'),
+    pageText: 'Salsa every Friday at The Loft.',
+  })
+  check('a dance record still passes', result.status === 'PASS', result.reasons)
+}
+
 // ── Dedupe ─────────────────────────────────────────────────────────────────
 section('Entity resolution')
 
