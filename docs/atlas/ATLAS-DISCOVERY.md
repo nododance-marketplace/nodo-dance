@@ -311,7 +311,7 @@ What OSM **is** good for:
 
 1. **Census.** How many dance organisations exist per metro, for coverage
    measurement and rollout prioritisation. See `ATLAS-LEAD-CENSUS.md`.
-2. **Search seeds.** The organisation *names* are the valuable output. Ten
+2. **Search seeds.** The organisation *names* are the valuable output. Seven
    organisations in Charlotte had no website in OSM — but their names are
    exactly what a keyword search needs to find one. The seeds are written to
    `atlas/.cache/osm-seeds-<city>.json` for that purpose.

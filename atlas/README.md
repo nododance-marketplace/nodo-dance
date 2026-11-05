@@ -3,9 +3,9 @@
 > **Mission: map the dance world. Keep it connected.**
 >
 > **Status: paused (2026-11-04).** Core pipeline built, tested and running against
-> live Charlotte sources. Nine deliverable documents written. Fifteen Obsidian notes
-> written. Committed and pushed as `5fba47f`. Production migration still needs
-> explicit approval.
+> live Charlotte sources. Nine deliverable documents plus a lead census written.
+> Sixteen Obsidian notes written. Committed and pushed as `5fba47f`, `ca6e874`,
+> `119f4b0`. Production migration still needs explicit approval.
 >
 > **Start here when picking it back up:**
 >
@@ -159,15 +159,18 @@ duplicate candidates.
 6. **Search provider** — every free search endpoint (DuckDuckGo HTML/lite, Bing,
    Mojeek) is bot-challenged from this IP. A paid API (Serper ≈ $0.01/query,
    Brave ≈ $5/1k) is required for keyword discovery; sitemaps carry us without it.
-7. **LLM long tail** — JS-rendered listings (Punchpass, Square) yield nothing
-   deterministically. This is where ScrapeGraphAI earns its cost. The sidecar
-   contract is designed but not yet built.
-8. **OSM as a discovery channel** — the national census proved OpenStreetMap gives a
-   free, licensed, key-free inventory of dance organisations
-   (`atlas/scripts/us-lead-census.ts`). Wiring it into Agent A would give every
-   metro a starting point without needing a search API.
-9. **Finish the metro census** — 14 of 38 metros measured so far;
-   `atlas/scripts/us-metro-retry.ts` recovers the rest.
+7. **LLM long tail** — the ScrapeGraphAI sidecar is built (`atlas/sidecar/`,
+   Python 3.12+) and wired into the extraction ladder behind a strict gate. It
+   needs an LLM key to run; the contract is tested without one
+   (`npx tsx atlas/scripts/test-sidecar.ts`, 23 assertions).
+8. **OSM is a census and a search seed, not a source channel** — measured: 21
+   dance-name matches in Charlotte, 8 real organisations (38%), only 1 with a
+   website (5%). The organisation *names* are the valuable output; they are
+   written to `atlas/.cache/osm-seeds-<city>.json` for keyword discovery.
+9. **Turn OSM names into search queries** — pair OSM (free names) with a search
+   API (Serper ≈ $0.01/query) to reach websites OSM never recorded.
+10. **The lead census is complete** — 37 of 37 priority metros measured
+    (315 venues, 907 named dance places). See `docs/atlas/ATLAS-LEAD-CENSUS.md`.
 
 ---
 

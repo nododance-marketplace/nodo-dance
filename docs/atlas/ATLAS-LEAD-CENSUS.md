@@ -1,7 +1,8 @@
 # Nodo Atlas — National Lead Census (US)
 
 > How many dance leads exist across the United States? Measured 2026-11-04.
-> **Status: partial.** The national totals are complete; the metro table is 14 of 38.
+> **Status: complete.** The national totals are complete; all 37 priority metros
+> are measured.
 > Source data: `atlas/data/lead-census-2026-11-04.json`.
 
 ---
@@ -51,14 +52,20 @@ dedicated dance venues**, and it is a **floor**.
 | Charlotte NC | Count |
 |---|---|
 | OpenStreetMap places | 27 |
-| **Source domains Atlas actually reached** | **66** |
+| **Source records Atlas actually reached** | **66** (across 9 organizer domains) |
 | **Candidate schools Atlas actually found** | **64** |
 | Candidate events extracted | 150 |
 
-From **six** seeded organizer websites, sitemap expansion reached 66 distinct source
-domains and 64 candidate schools in one city. OpenStreetMap maps 27 places there.
-The dataset undercounts small private studios by **3x or more**, because a studio
-that was never mapped does not exist in OSM.
+From **six** seeded organizer websites, sitemap expansion reached 66 registered
+source records and 64 candidate schools in one city. OpenStreetMap maps 27
+places there. The dataset undercounts small private studios by **3x or more**,
+because a studio that was never mapped does not exist in OSM.
+
+> **Units matter when comparing the two figures.** OSM counts *places*. Atlas
+> counts *registered sources* — one URL per crawlable page. Atlas's 66 records
+> come from 9 distinct organizer domains, so the domain-level comparison is
+> 9 versus 27 mapped places, and the record-level comparison is 66 versus 27.
+> Either way the dataset undercounts.
 
 ---
 
@@ -112,6 +119,7 @@ replace it with measured numbers as each metro is ingested.
 | Milwaukee | Wisconsin | 14 | 16 | 30 |
 | Boston | Massachusetts | 11 | 19 | 30 |
 | Raleigh | North Carolina | 11 | 19 | 30 |
+| Houston | Texas | 7 | 22 | 29 |
 | Minneapolis | Minnesota | 8 | 20 | 28 |
 | Baltimore | Maryland | 9 | 18 | 27 |
 | Phoenix | Arizona | 10 | 17 | 27 |
@@ -136,11 +144,15 @@ replace it with measured numbers as each metro is ingested.
 
 **Measured across 37 metros: 315 dedicated dance venues and 907 named dance places.**
 
-Note how Charlotte ranks **18th of 37** on mapped presence — yet it is our pilot
-city. Mapped density and actual dance activity are different things: Austin,
+Note how Charlotte ranks **18th of 37** on dedicated dance venues — yet it is our
+pilot city. Mapped density and actual dance activity are different things: Austin,
 Denver and Portland punch above their mapped weight because their communities run
 active calendars, while Las Vegas's 94 comes almost entirely from named places
 rather than dedicated venues.
+
+> **On that ranking:** "18th" counts dedicated `leisure=dance` venues. By the
+> combined total column Charlotte is 19th of 37. The point stands either way —
+> the pilot city was chosen for founder familiarity, not for density.
 
 ---
 

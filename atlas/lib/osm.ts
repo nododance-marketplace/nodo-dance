@@ -185,9 +185,10 @@ const EXCLUDED_AMENITIES = [
  * Does this OSM record look like a real dance organisation?
  *
  * Requires BOTH a dance signal in the name and a business/organisation tag.
- * Measured precision on the Charlotte sample: a name-only filter matched 20
- * places of which only 2 were dance businesses with a website; requiring a
- * business tag removes streets, restaurants and residential names.
+ * Measured precision on the Charlotte sample: a name-only filter matched 21
+ * places, of which 8 were dance organisations (38%) but only 1 carried a
+ * website (5%). Requiring a business tag removes streets, restaurants and
+ * residential names.
  */
 export function looksLikeDanceOrg(org: OsmOrganisation): boolean {
   const tags = org.tags
