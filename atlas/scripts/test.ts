@@ -10,7 +10,7 @@ import { canonicalUrl, dedupeKey, proposeMatches } from '../lib/dedupe'
 import { detectEventType, detectStyles, normalizeAddress, parsePrice } from '../lib/normalize'
 import { findRecurrencePhrase, parseDateTime, parseTime } from '../lib/parsers/dates'
 import { findAddress, findCityStateZip, findVenueName } from '../lib/location'
-import { extractJsonLd, extractLinks, extractMeta, stripHtml } from '../lib/parsers/html'
+import { extractJsonLd, extractLinks, extractMeta, stripHtml, findNearestHeading } from '../lib/parsers/html'
 import { extractEvents } from '../lib/parsers/extract'
 import { looksLikeEventPage, isPastEventUrl } from '../lib/sitemap'
 import { validateEvent } from '../lib/qa'
@@ -372,6 +372,30 @@ section('Source discovery')
   eq('a past event url is recognised as past', isPastEventUrl('https://x.com/event-details/spring-recital-2023-06-22-15-00', new Date('2026-11-05T00:00:00Z')), true)
   eq('a future event url is not past', isPastEventUrl('https://x.com/calendar/salsabachata-11-20-2026', new Date('2026-11-05T00:00:00Z')), false)
   eq('a url with no date is not past', isPastEventUrl('https://x.com/calendar/salsa', new Date('2026-11-05T00:00:00Z')), false)
+}
+
+{
+  // The offsets have to line up with the text, or the heading lookup misses
+  // and every event on a calendar page ends up with the page's title.
+  const page = `<!doctype html><html><body>
+    <div class="info">
+      <h1 class="title"><a href="/calendar/go-west-11-10-2026">Go West: Weekly West Coast Swing Dance</a></h1>
+      <ul><li><time datetime="2026-11-10">Tuesday, November 10, 2026   8:30 PM</time></li></ul>
+    </div>
+    <p>Some   navigation   text   with &amp; entities &amp; irregular spacing</p>
+    </body></html>`
+
+  const { text, offsets } = stripHtml(page)
+  eq('entities are decoded', text.includes('&'), true)
+  check('whitespace is collapsed', !text.includes('  '), text.slice(0, 60))
+  eq('offsets line up with the text', offsets.length, text.length)
+
+  const dateIndex = text.indexOf('November 10, 2026')
+  check('the date is in the text', dateIndex > -1, text.slice(0, 80))
+  eq('the offset points at the source', page.slice(offsets[dateIndex], offsets[dateIndex] + 6), 'Novemb')
+
+  const heading = findNearestHeading(page, offsets[dateIndex])
+  eq('the heading before the date is found', heading, 'Go West: Weekly West Coast Swing Dance')
 }
 
 // ── Dedupe ─────────────────────────────────────────────────────────────────

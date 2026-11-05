@@ -414,9 +414,20 @@ function fromHtml(html: string, url: string, timeZone: string, referenceDate: Da
   const dateRe =
     /\b(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})\b/gi
 
+  // A calendar page writes the cell header first and the event below it:
+  //
+  //   "Nov 17  Go West: Weekly West Coast Swing Dance  Tuesday, November 17, 2026"
+  //
+  // The first date is the cell and the second is the event, and the title
+  // sits between them. Taking the first match anchors every event on the
+  // cell header, which throws the title away and leaves the page title
+  // standing in for it. So a date that carries a year wins.
+  const allDates = [...text.matchAll(dateRe)]
+  const dated = allDates.filter((m) => /\d{4}/.test(m[0]))
+  const dateMatches = dated.length > 0 ? dated : allDates
+
   const seen = new Set<string>()
-  let match: RegExpExecArray | null
-  while ((match = dateRe.exec(text))) {
+  for (const match of dateMatches) {
     const start = match.index
     const contextBefore = text.slice(Math.max(0, start - 260), start)
     const contextAfter = text.slice(start, start + 220)
@@ -606,6 +617,23 @@ function firstLine(text: string): string {
 }
 
 /**
+ * The last meaningful line before a point in the text.
+ *
+ * A listing puts the name of the event right before its date. The text
+ * before that is the previous event's tail, and the text further back is
+ * navigation, so the line nearest the date is the one that names it.
+ */
+function lastLine(text: string): string {
+  const cleaned = tidy(text)
+  const parts = cleaned.split(/[|·—–•]|\s{2,}/)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const t = parts[i].trim()
+    if (t.length >= 4 && t.length <= 140) return t
+  }
+  return ''
+}
+
+/**
  * Choose the best title for a listing block:
  *   1. the anchor text, when it is not a generic call-to-action
  *   2. the nearest preceding heading
@@ -632,7 +660,7 @@ function pickTitle(
     if (!isGenericTitle(candidate)) return candidate
   }
 
-  const line = cleaned(firstLine(contextBefore))
+  const line = cleaned(lastLine(contextBefore))
   if (line && !isGenericTitle(line)) return line
 
   const og = meta['og:title'] ? cleaned(meta['og:title']) : ''

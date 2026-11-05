@@ -20,6 +20,30 @@ export function decodeEntities(input: string): string {
     .replace(/&([a-z]+);/gi, (m, name) => ENTITIES[name.toLowerCase()] ?? m)
 }
 
+/**
+ * Decode one entity reference, or null when it is not an entity.
+ *
+ * The caller needs to know how many source characters the entity took, so
+ * that the text it produces can still be mapped back to the HTML.
+ */
+function decodeEntity(reference: string): string | null {
+  const numeric = /^&#x([0-9a-f]+);$/i.exec(reference)
+  if (numeric) {
+    const code = parseInt(numeric[1], 16)
+    return Number.isFinite(code) && code >= 0 ? String.fromCodePoint(code) : null
+  }
+  const decimal = /^&#(\d+);$/.exec(reference)
+  if (decimal) {
+    const code = Number(decimal[1])
+    return Number.isFinite(code) && code >= 0 ? String.fromCodePoint(code) : null
+  }
+  const named = /^&([a-z]+);$/i.exec(reference)
+  if (named) {
+    return ENTITIES[named[1].toLowerCase()] ?? null
+  }
+  return null
+}
+
 export interface StrippedHtml {
   text: string
   /** offsets[i] = index in the original html where text[i] came from. */
@@ -78,17 +102,54 @@ export function stripHtml(html: string): StrippedHtml {
     }
   }
 
-  const text = decodeEntities(out.join('')).replace(/\s+/g, ' ')
-  // Rebuild offsets after whitespace collapsing is approximate — good enough
-  // for locating a date occurrence back into the source HTML.
+  const text = out.join('')
+  // The text was collapsed and decoded as it was collected, so offsets[i]
+  // still points at the source position of text[i]. Collapsing afterwards
+  // would shift every offset and quietly break the heading lookup that
+  // depends on them.
   return { text, offsets }
 }
 
 function pushText(out: string[], offsets: number[], chunk: string, startOffset: number): void {
-  for (let k = 0; k < chunk.length; k++) {
-    out.push(chunk[k])
-    offsets.push(startOffset + k)
+  let i = 0
+  while (i < chunk.length) {
+    const ch = chunk[i]
+
+    // An entity is decoded in place, so the text it produces still points at
+    // the characters it came from.
+    if (ch === '&') {
+      const semi = chunk.indexOf(';', i)
+      if (semi !== -1 && semi - i <= 12) {
+        const decoded = decodeEntity(chunk.slice(i, semi + 1))
+        if (decoded !== null) {
+          for (const c of decoded) pushChar(out, offsets, c, startOffset + i)
+          i = semi + 1
+          continue
+        }
+      }
+    }
+
+    pushChar(out, offsets, ch, startOffset + i)
+    i++
   }
+}
+
+/**
+ * Add one character, collapsing a run of whitespace into a single space.
+ *
+ * The offset kept is that of the first character of the run, so the text
+ * still lines up with the source.
+ */
+function pushChar(out: string[], offsets: number[], ch: string, offset: number): void {
+  if (/\s/.test(ch)) {
+    if (out.length > 0 && out[out.length - 1] !== ' ') {
+      out.push(' ')
+      offsets.push(offset)
+    }
+    return
+  }
+  out.push(ch)
+  offsets.push(offset)
 }
 
 function findTagEnd(html: string, start: number): number {
