@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime, parseJsonArray, formatCurrency, APP_TIMEZONE } from '@/lib/utils'
-import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat, Pencil } from 'lucide-react'
+import { CheckCircle, XCircle, Trash2, RefreshCw, MapPin, MapPinOff, Repeat, Pencil, Sparkles } from 'lucide-react'
 
 function getIntervalLabel(event: any): string {
   return event.recurrenceInterval === 2 ? 'Biweekly' : 'Weekly'
@@ -247,6 +247,12 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
           <p className="text-sm text-gray-500 mt-3 break-all">Signed in as {adminEmail}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/atlas" className="inline-flex">
+            <Button variant="outline" size="sm">
+              <Sparkles className="w-4 h-4 mr-2" />
+              Nodo Atlas
+            </Button>
+          </Link>
           {missingCoords.length > 0 && (
             <Button variant="gradient" size="sm" onClick={geocodeAll}>
               <MapPin className="w-4 h-4 mr-2" />

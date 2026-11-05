@@ -38,6 +38,14 @@ next-env.d.ts
 prisma/*.db
 prisma/*.db-journal
 
+# Nodo Atlas (local proof-of-concept artifacts)
+.atlas-cache/
+.cache/
+atlas/.cache/
+atlas/prisma/atlas.db
+atlas/prisma/atlas.db-journal
+atlas/generated/
+
 # PWA
 **/public/sw.js
 **/public/workbox-*.js

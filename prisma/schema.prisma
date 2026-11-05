@@ -186,6 +186,14 @@ model Event {
   address      String?
   lat          Float?
   lng          Float?
+  venueId      String?
+  venue        Venue?  @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  // Geography & time
+  city      String?
+  state     String?
+  zip       String?
+  timeZone  String?   // IANA, e.g. "America/New_York". Legacy rows are assumed America/New_York.
 
   price Int? // null = free
 
@@ -199,6 +207,19 @@ model Event {
 
   submittedByUserId String?
   submittedBy       User?   @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  // Provenance — every published record is traceable to a source
+  sourceId       String?   // DiscoverySource.id (Atlas) — null for organizer-submitted
+  sourceUrl      String?   // original event URL
+  sourceName     String?   // organization name as published
+  publishedVia   String    @default("ORGANIZER") // ORGANIZER | ATLAS | MANUAL
+  verifiedAt     DateTime?
+  atlasCandidateId String?
+
+  // Organizer claim
+  claimedByUserId String?
+  claimedAt       DateTime?
+  claimStatus     String?   // PENDING | VERIFIED | REJECTED
 
   // Recurrence fields (null/false = one-off event)
   isRecurring         Boolean   @default(false)
@@ -217,6 +238,8 @@ model Event {
   @@index([startDateTime])
   @@index([eventType])
   @@index([recurrenceGroupId])
+  @@index([sourceId])
+  @@index([city, state])
 }
 
 model RateLimitEntry {
@@ -229,3 +252,402 @@ model RateLimitEntry {
   @@unique([identifier, action])
   @@index([identifier, action, windowStart])
 }
+
+// ─────────────────────────────────────────────────────────────
+// NODO ATLAS — ingestion layer
+// Raw source data → Extracted candidate → Validated candidate → Approved publication
+// Every published record must be traceable to a DiscoverySource.
+// ─────────────────────────────────────────────────────────────
+
+model DiscoveryCity {
+  id        String   @id @default(cuid())
+  slug      String   @unique // "charlotte-nc"
+  name      String // "Charlotte"
+  state     String // "NC"
+  stateName String?
+  country   String   @default("US")
+  timeZone  String // IANA, e.g. "America/New_York"
+  priority  Int      @default(50) // lower runs first
+  status    String   @default("PENDING") // PENDING | ACTIVE | PAUSED | COMPLETE
+  population Int?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sources DiscoverySource[]
+
+  @@index([status, priority])
+}
+
+model DiscoverySource {
+  id        String  @id @default(cuid())
+  url       String  @unique // canonical site URL
+  domain    String
+  organizationName String?
+  cityId    String?
+  city      DiscoveryCity? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+
+  sourceCategory String @default("EVENT_ORG") // SCHOOL | STUDIO | EVENT_ORG | VENUE | DIRECTORY | INSTRUCTOR | AGGREGATOR
+  sourceType     String @default("HTML") // HTML | RSS | ICAL | JSONLD | API
+  supportedStyles String @default("[]") // JSON array of DANCE_STYLES
+  extractionMethod String @default("DETERMINISTIC") // DETERMINISTIC | LLM | API
+
+  // Permissions & ethics
+  robotsStatus      String    @default("UNKNOWN") // ALLOWED | DISALLOWED | UNKNOWN | NOT_FETCHED
+  robotsCheckedAt   DateTime?
+  robotsDetail      String?
+  permissionsStatus String    @default("UNKNOWN") // PERMITTED | REVIEW_REQUIRED | DENIED
+  isPaused          Boolean   @default(false)
+  optOut            Boolean   @default(false) // organizer removal request honored
+  optOutReason      String?
+
+  // Health & reliability
+  reliability         Float    @default(0.5)
+  extractionSuccessRate Float  @default(0)
+  lastCrawledAt       DateTime?
+  lastSuccessAt       DateTime?
+  nextCrawlAt         DateTime?
+  crawlIntervalDays   Int      @default(7)
+  consecutiveFailures Int      @default(0)
+
+  // Change detection
+  contentHash  String?
+  etag         String?
+  lastModified String?
+
+  discoveredVia String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  crawlJobs       CrawlJob[]
+  rawExtractions  RawExtraction[]
+  candidates      CandidateEvent[]
+  evidence        SourceEvidence[]
+  health          SourceHealth[]
+  schools         CandidateSchool[]
+
+  @@index([domain])
+  @@index([nextCrawlAt])
+  @@index([cityId])
+}
+
+model CrawlJob {
+  id       String  @id @default(cuid())
+  sourceId String?
+  source   DiscoverySource? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  jobType   String @default("CRAWL") // CRAWL | DISCOVER | GEOCODE | DEDUPE | RESOLVE
+  status    String @default("QUEUED") // QUEUED | RUNNING | SUCCEEDED | FAILED | SKIPPED | CANCELLED
+  priority  Int    @default(50)
+  scheduledFor DateTime @default(now())
+  startedAt DateTime?
+  finishedAt DateTime?
+  attempts  Int     @default(0)
+  maxAttempts Int  @default(3)
+  lastError String?
+  payload   String  @default("{}")
+  costUsd   Float   @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  crawlAttempts CrawlAttempt[]
+
+  @@index([status, scheduledFor])
+}
+
+model CrawlAttempt {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       CrawlJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attemptNumber Int
+  status    String // SUCCESS | FAILED | SKIPPED_BLOCKED | SKIPPED_UNCHANGED
+  httpStatus Int?
+  url       String?
+  durationMs Int?
+  bytes     Int?
+  contentHash String?
+  errorCode String?
+  errorMessage String?
+  extractionMethod String?
+  candidatesFound Int @default(0)
+  candidatesAccepted Int @default(0)
+  costUsd   Float @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+model RawExtraction {
+  id         String   @id @default(cuid())
+  sourceId   String
+  source     DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  url        String
+  contentHash String
+  rawPayload String // JSON of the extracted structure
+  extractedFields String @default("[]") // JSON array of field names found
+  extractor  String // JSONLD | RSS | ICAL | HTML | LLM
+  confidence Float    @default(0)
+  fetchedAt  DateTime @default(now())
+
+  @@index([sourceId, fetchedAt])
+}
+
+model CandidateEvent {
+  id         String  @id @default(cuid())
+  sourceId   String
+  source     DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  rawExtractionId String?
+
+  title       String
+  description String?
+  eventType   String? // SOCIAL | TANGO_MILONGA | GROUP_CLASS | WORKSHOP | FESTIVAL
+  styles      String  @default("[]") // JSON array of DANCE_STYLES
+  otherStyle  String?
+
+  startDateTime DateTime?
+  endDateTime   DateTime?
+  localDate  String? // YYYY-MM-DD as stated on the page (wall time)
+  localTime  String? // HH:MM wall time
+  timeZone   String? // IANA
+
+  isRecurring        Boolean @default(false)
+  recurrenceRule     String? // JSON RRULE
+  recurrenceText     String? // original source phrase
+  recurrenceConfidence Float @default(0)
+
+  venueName String?
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  lat       Float?
+  lng       Float?
+
+  price     Int?
+  priceText String?
+
+  organizerName    String?
+  registrationUrl  String?
+  sourceUrl        String
+  sourceUrlCanonical String?
+
+  confidence Float   @default(0)
+  qaStatus   String  @default("PENDING") // PENDING | PASS | QUARANTINE | REJECTED
+  qaReasons  String  @default("[]") // JSON array
+  reviewStatus String @default("PENDING") // PENDING | APPROVED | REJECTED | PUBLISHED | MERGED
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  publishedEventId String?
+  dedupeKey   String?
+  isExpired   Boolean @default(false)
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  evidence SourceEvidence[]
+  matches  EntityMatch[]
+  recurrenceRules RecurrenceRule[]
+  moderationDecisions ModerationDecision[]
+  publicationRecords PublicationRecord[]
+
+  @@index([sourceId])
+  @@index([reviewStatus])
+  @@index([qaStatus])
+  @@index([dedupeKey])
+}
+
+model CandidateSchool {
+  id       String @id @default(cuid())
+  sourceId String
+  source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  businessName       String
+  websiteUrl         String?
+  address            String?
+  city               String?
+  state              String?
+  zip                String?
+  lat                Float?
+  lng                Float?
+  phone              String? // published business contact only
+  contactChannel     String?
+  styles             String @default("[]") // JSON array of DANCE_STYLES
+  classScheduleUrl   String?
+  instructorDirectoryUrl String?
+
+  confidence  Float  @default(0)
+  qaStatus    String @default("PENDING")
+  qaReasons   String @default("[]")
+  reviewStatus String @default("PENDING")
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  dedupeKey   String?
+  sourceUrl   String
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([reviewStatus])
+  @@index([dedupeKey])
+}
+
+model CandidateVenue {
+  id        String @id @default(cuid())
+  name      String
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  lat       Float?
+  lng       Float?
+  websiteUrl String?
+  sourceUrl String
+  normalizedAddress String?
+  confidence Float @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([normalizedAddress])
+}
+
+model CandidateInstructor {
+  id          String @id @default(cuid())
+  displayName String
+  sourceUrl   String
+  styles      String @default("[]") // JSON array of DANCE_STYLES
+  city        String?
+  state       String?
+  websiteUrl  String?
+  confidence  Float  @default(0)
+  qaStatus    String @default("PENDING")
+  reviewStatus String @default("PENDING")
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([reviewStatus])
+}
+
+model RecurrenceRule {
+  id       String @id @default(cuid())
+  candidateEventId String?
+  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  seriesKey String // stable key for a detected series
+
+  ruleJson String // JSON RRULE
+  timeZone String
+  interval Int    @default(1)
+  byDay    String @default("[]") // JSON array of weekday numbers
+  until    DateTime?
+  count    Int?
+  exceptions String @default("[]") // JSON array of YYYY-MM-DD cancelled dates
+  originalText String?
+  confidence Float @default(0)
+  status    String @default("PROPOSED") // PROPOSED | VERIFIED | REJECTED | EXPIRED
+  sourceUrl String?
+  verifiedAt DateTime?
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seriesKey])
+  @@index([status])
+}
+
+model SourceEvidence {
+  id       String @id @default(cuid())
+  sourceId String
+  source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  candidateEventId String?
+  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+
+  url        String
+  fieldName  String
+  fieldValue String
+  excerpt    String?
+  method     String // JSONLD | RSS | ICAL | HTML | LLM
+  observedAt DateTime @default(now())
+
+  @@index([candidateEventId])
+  @@index([sourceId])
+}
+
+model EntityMatch {
+  id       String @id @default(cuid())
+  candidateEventId String
+  candidateEvent CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  existingEventId  String?
+  existingSchoolId String?
+  matchType String // EXACT | NORMALIZED | FUZZY_TITLE | VENUE_TIME | SERIES | RECURRENCE
+  score    Float @default(0)
+  status   String @default("PROPOSED") // PROPOSED | CONFIRMED | REJECTED
+  reason   String?
+  createdAt DateTime @default(now())
+
+  @@index([candidateEventId])
+  @@index([status])
+}
+
+model ModerationDecision {
+  id       String @id @default(cuid())
+  candidateEventId String
+  candidateEvent CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  decision String // APPROVE | REJECT | QUARANTINE | PUBLISH | MERGE
+  decidedBy String?
+  reason   String?
+  createdAt DateTime @default(now())
+
+  @@index([candidateEventId])
+}
+
+model PublicationRecord {
+  id       String @id @default(cuid())
+  candidateEventId String?
+  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: SetNull)
+  eventId  String?
+  sourceId String?
+  publishedBy String?
+  publishedAt DateTime @default(now())
+  snapshot String // JSON of the fields published
+  method   String @default("MANUAL") // MANUAL | ATLAS_AUTO
+
+  @@index([eventId])
+}
+
+model SourceHealth {
+  id       String @id @default(cuid())
+  sourceId String
+  source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  windowStart DateTime @default(now())
+  successCount Int @default(0)
+  failureCount Int @default(0)
+  skippedCount  Int @default(0)
+  avgLatencyMs  Int @default(0)
+  candidatesFound Int @default(0)
+  candidatesAccepted Int @default(0)
+  contentChanged Boolean @default(false)
+  lastSuccessAt DateTime?
+  healthScore Float @default(0)
+
+  @@index([sourceId, windowStart])
+}
+
+model Venue {
+  id        String @id @default(cuid())
+  name      String
+  address   String?
+  city      String?
+  state     String?
+  zip       String?
+  lat       Float?
+  lng       Float?
+  timezone  String?
+  websiteUrl String?
+  normalizedAddress String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+}
+
