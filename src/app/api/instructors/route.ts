@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
-import { marketBySlug } from '@/lib/markets'
+import { resolveMarket } from '@/lib/markets-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
   // Which city the instructor is in. Nodo serves more than one city now, so
   // an instructor without one cannot be found by anyone looking for one.
   const marketParam = searchParams.get('market')
-  const market = marketParam && marketParam !== 'all' ? marketBySlug(marketParam) : null
+  const market =
+    marketParam && marketParam !== 'all' ? await resolveMarket(marketParam) : null
 
   try {
     const session = await getServerSession(authOptions)

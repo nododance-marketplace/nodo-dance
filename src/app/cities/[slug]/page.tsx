@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
-import { MARKETS, marketBySlug } from '@/lib/markets'
+import { MARKETS } from '@/lib/markets'
+import { resolveMarket } from '@/lib/markets-server'
 import { EventCard } from '@/components/events/event-card'
 import { Button } from '@/components/ui/button'
 import { MapPin, ArrowRight } from 'lucide-react'
@@ -19,15 +20,15 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
-  const market = marketBySlug(slug)
+  const market = await resolveMarket(slug)
   if (!market) return { title: 'City not found — Nodo Dance' }
 
   return {
     title: `Dance Events in ${market.label} — Nodo Dance`,
-    description: `${market.tagline} Find salsa, bachata, kizomba, tango and West Coast Swing socials, classes and workshops in ${market.label}.`,
+    description: `${market.tagline ?? `Partner dancing in ${market.label}.`} Find salsa, bachata, kizomba, tango and West Coast Swing socials, classes and workshops in ${market.label}.`,
     openGraph: {
       title: `Dance Events in ${market.label} — Nodo Dance`,
-      description: market.tagline,
+      description: market.tagline ?? `Partner dancing in ${market.label}.`,
       type: 'website',
     },
   }
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CityPage({ params }: PageProps) {
   const { slug } = await params
-  const market = marketBySlug(slug)
+  const market = await resolveMarket(slug)
   if (!market) notFound()
 
   const now = new Date()

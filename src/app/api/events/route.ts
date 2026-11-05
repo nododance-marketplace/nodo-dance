@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
 import { stateAbbreviation } from '@/lib/us-states'
-import { marketBySlug } from '@/lib/markets'
+import { resolveMarket } from '@/lib/markets-server'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
   // Nodo serves more than one market now. The market decides which city and
   // its neighbours are shown; without one, every market is shown.
   const marketParam = searchParams.get('market')
-  const market = marketParam && marketParam !== 'all' ? marketBySlug(marketParam) : null
+  const market =
+    marketParam && marketParam !== 'all' ? await resolveMarket(marketParam) : null
   const cityFilter = searchParams.get('city')
   const stateFilter = stateAbbreviation(searchParams.get('state'))
 
