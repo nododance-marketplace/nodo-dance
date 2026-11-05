@@ -1,0 +1,62 @@
+{
+  "generated": "2026-11-04",
+  "method": "OpenStreetMap via Overpass API (ODbL), bounding-box and area queries",
+  "status": "PARTIAL — 14 of 38 metros measured before the run was interrupted",
+  "national": {
+    "us_leisure_dance_venues": 2349,
+    "us_named_places_with_dance_word": 9474,
+    "us_social_facility_dance": 0,
+    "us_amenity_dance": 0,
+    "note": "social_facility=dance and amenity=dance are not used tags in the US; leisure=dance is the live one."
+  },
+  "metros": [
+    { "city": "New York", "state": "New York", "venues": 70, "named": 118, "total": 188 },
+    { "city": "Chicago", "state": "Illinois", "venues": 19, "named": 53, "total": 72 },
+    { "city": "Seattle", "state": "Washington", "venues": 19, "named": 37, "total": 56 },
+    { "city": "Austin", "state": "Texas", "venues": 13, "named": 31, "total": 44 },
+    { "city": "Atlanta", "state": "Georgia", "venues": 5, "named": 29, "total": 34 },
+    { "city": "Philadelphia", "state": "Pennsylvania", "venues": 8, "named": 26, "total": 34 },
+    { "city": "Los Angeles", "state": "California", "venues": 10, "named": 24, "total": 34 },
+    { "city": "Boston", "state": "Massachusetts", "venues": 11, "named": 19, "total": 30 },
+    { "city": "Raleigh", "state": "North Carolina", "venues": 11, "named": 19, "total": 30 },
+    { "city": "Houston", "state": "Texas", "venues": 7, "named": 22, "total": 29 },
+    { "city": "Phoenix", "state": "Arizona", "venues": 10, "named": 17, "total": 27 },
+    { "city": "Charlotte", "state": "North Carolina", "venues": 6, "named": 21, "total": 27 },
+    { "city": "Miami", "state": "Florida", "venues": 6, "named": 12, "total": 18 },
+    { "city": "Durham", "state": "North Carolina", "venues": 0, "named": 11, "total": 11 }
+  ],
+  "metros_pending": [
+    "San Diego CA", "Tampa FL", "New Orleans LA", "Denver CO", "Detroit MI",
+    "Nashville TN", "Las Vegas NV", "Portland OR", "Memphis TN", "Baltimore MD",
+    "Milwaukee WI", "Kansas City MO", "Cleveland OH", "Minneapolis MN",
+    "Newark NJ", "St. Louis MO", "Pittsburgh PA", "Orlando FL", "Cincinnati OH",
+    "Indianapolis IN", "Columbus OH", "San Francisco CA", "Jacksonville FL", "Dallas TX"
+  ],
+  "live_database_baseline": {
+    "note": "Measured read-only from the production Neon database on 2026-11-04.",
+    "events_total": 601,
+    "events_approved": 601,
+    "events_pending": 0,
+    "events_rejected": 0,
+    "events_recurring": 597,
+    "recurring_series": 32,
+    "distinct_venues": 14,
+    "distinct_organizers": 13,
+    "distinct_source_websites": 15,
+    "upcoming_events": 188,
+    "geocoded": 601,
+    "events_in_NC": 464,
+    "instructor_profiles": 6,
+    "instructor_profiles_published": 6,
+    "users": 18,
+    "users_with_instructor_role": 9
+  },
+  "undercount_evidence": {
+    "metro": "Charlotte NC",
+    "osm_says": 27,
+    "atlas_actually_found_source_domains": 66,
+    "atlas_found_candidate_schools": 64,
+    "atlas_found_candidate_events": 150,
+    "note": "From 6 seeded organizer websites in one city, sitemap expansion reached 66 distinct source domains. OpenStreetMap maps 27 places there. OSM is a floor, not a count."
+  }
+}

@@ -1,10 +1,22 @@
 # Nodo Atlas — local proof of concept
 
-> **Status: paused mid-pilot (2026-11-04).** The deterministic pipeline is built,
-> tested and running against live Charlotte sources. The remaining work is the
-> documentation set, the Obsidian notes, and the costed nationwide rollout plan.
->
 > **Mission: map the dance world. Keep it connected.**
+>
+> **Status: paused (2026-11-04).** Core pipeline built, tested and running against
+> live Charlotte sources. Nine deliverable documents written. Fifteen Obsidian notes
+> written. Committed and pushed as `5fba47f`. Production migration still needs
+> explicit approval.
+>
+> **Start here when picking it back up:**
+>
+> | I want to… | Do this |
+> |---|---|
+> | See the state of the world | `npx tsx atlas/cli.ts report` |
+> | Work the review queue | `npx tsx atlas/cli.ts review` |
+> | Read the design | `docs/atlas/ATLAS-ARCHITECTURE.md` |
+> | Ship the schema to production | `docs/atlas/ATLAS-MIGRATION.md` — needs approval first |
+> | Continue the national lead census | `docs/atlas/ATLAS-LEAD-CENSUS.md` §6 |
+> | Check the tests | `npx tsx atlas/scripts/test.ts` (60 assertions) |
 
 ---
 
@@ -140,6 +152,12 @@ duplicate candidates.
 7. **LLM long tail** — JS-rendered listings (Punchpass, Square) yield nothing
    deterministically. This is where ScrapeGraphAI earns its cost. The sidecar
    contract is designed but not yet built.
+8. **OSM as a discovery channel** — the national census proved OpenStreetMap gives a
+   free, licensed, key-free inventory of dance organisations
+   (`atlas/scripts/us-lead-census.ts`). Wiring it into Agent A would give every
+   metro a starting point without needing a search API.
+9. **Finish the metro census** — 14 of 38 metros measured so far;
+   `atlas/scripts/us-metro-retry.ts` recovers the rest.
 
 ---
 
