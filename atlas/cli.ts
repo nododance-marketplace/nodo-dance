@@ -446,12 +446,33 @@ async function crawl(args: Args) {
   const outcomes = []
   for (const source of sources) {
     process.stdout.write(`  → ${source.domain.padEnd(34)}`)
-    const outcome = await atlas.crawlSource(source.id)
-    outcomes.push(outcome)
-    console.log(
-      ` ${outcome.status.padEnd(18)} ${String(outcome.candidatesFound).padStart(3)} found` +
-      ` · ${outcome.candidatesAccepted} ok · ${outcome.quarantine} quarantined · ${outcome.duplicates} dup`
-    )
+    try {
+      const outcome = await atlas.crawlSource(source.id)
+      outcomes.push(outcome)
+      console.log(
+        ` ${outcome.status.padEnd(18)} ${String(outcome.candidatesFound).padStart(3)} found` +
+        ` · ${outcome.candidatesAccepted} ok · ${outcome.quarantine} quarantined · ${outcome.duplicates} dup`
+      )
+    } catch (error) {
+      // One bad source must never abort the whole run.
+      const message = error instanceof Error ? error.message : String(error)
+      console.log(` FAILED                   ${message.slice(0, 70)}`)
+      outcomes.push({
+        sourceId: source.id,
+        url: source.url,
+        status: 'FAILED' as const,
+        durationMs: 0,
+        bytes: 0,
+        candidatesFound: 0,
+        candidatesAccepted: 0,
+        candidatesRejected: 0,
+        quarantine: 0,
+        duplicates: 0,
+        contentChanged: false,
+        error: message,
+        costUsd: 0,
+      })
+    }
   }
 
   console.log('')

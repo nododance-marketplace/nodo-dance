@@ -13,6 +13,7 @@ import { findAddress, findCityStateZip, findVenueName } from '../lib/location'
 import { extractJsonLd, extractLinks, extractMeta, stripHtml } from '../lib/parsers/html'
 import { extractEvents } from '../lib/parsers/extract'
 import { validateEvent } from '../lib/qa'
+import { sanitizeForDb } from '../lib/pipeline'
 import type { ExtractedEvent } from '../lib/types'
 
 let passed = 0
@@ -264,6 +265,63 @@ section('Quality assurance')
 
   const unbounded = validateEvent({ ...base, isRecurring: true, recurrenceRule: { rrule: 'FREQ=WEEKLY', interval: 1, byDay: [3], exceptions: [], timeZone: 'America/New_York', confidence: 0.9 }, recurrenceConfidence: 0.9 }, { now: new Date('2026-11-04T00:00:00Z'), pageText: 'salsa' })
   check('unbounded recurring claim is quarantined', unbounded.status === 'QUARANTINE', unbounded.reasons)
+}
+
+// ── Database sanitisation ──────────────────────────────────────────────────
+// Measured against PostgreSQL 16 and the Prisma engine: a NUL byte and a lone
+// surrogate are the only two things that make a write fail. Everything else
+// is accepted, and must not be mangled.
+section('Database sanitisation')
+
+{
+  eq('plain text is untouched', sanitizeForDb('Saturday Salsa Social'), 'Saturday Salsa Social')
+
+  eq('valid \\u escape survives', sanitizeForDb('caf\\u00e9'), 'caf\\u00e9')
+
+  eq('invalid \\u escape is left alone', sanitizeForDb('Bring your own \\u partner'), 'Bring your own \\u partner')
+
+  eq('trailing lone backslash is removed', sanitizeForDb('path\\'), 'path')
+
+  eq('control characters are stripped', sanitizeForDb('Sal\x00sa\x07 Social'), 'Salsa Social')
+
+  eq('tab and newline survive', sanitizeForDb('Line one\nLine\ttwo'), 'Line one\nLine\ttwo')
+
+  eq('null passes through', sanitizeForDb(null), null)
+
+  eq('undefined passes through', sanitizeForDb(undefined), undefined)
+
+  // A NUL byte makes Postgres reject the whole statement: 22021.
+  check(
+    'NUL byte never reaches the database',
+    !sanitizeForDb('Sal\x00sa Social')!.includes('\x00'),
+    sanitizeForDb('Sal\x00sa Social')
+  )
+
+  // A lone surrogate makes the Prisma engine fail before the query is sent.
+  check(
+    'lone surrogate never reaches the database',
+    !/[\uD800-\uDFFF]/.test(sanitizeForDb('Sal\uD800sa Social')!),
+    sanitizeForDb('Sal\uD800sa Social')
+  )
+
+  // A well-formed pair is a real character and must survive intact.
+  eq('a valid surrogate pair survives', sanitizeForDb('Party \uD83C\uDF89 tonight'), 'Party \uD83C\uDF89 tonight')
+
+  eq('a lone low surrogate is replaced', sanitizeForDb('Sal\uDC00sa'), 'Sal\uFFFDsa')
+
+  // The sanitiser runs over already-JSON-encoded columns too, so it must
+  // never turn valid JSON into invalid JSON.
+  const rule = { rrule: 'FREQ=WEEKLY', originalText: 'Starts at C:\\u bar' }
+  const encoded = JSON.stringify(rule)
+  eq('JSON-encoded values survive unchanged', sanitizeForDb(encoded), encoded)
+  check('JSON-encoded values stay parseable', (() => {
+    try {
+      JSON.parse(sanitizeForDb(encoded)!)
+      return true
+    } catch {
+      return false
+    }
+  })())
 }
 
 // ── Summary ────────────────────────────────────────────────────────────────

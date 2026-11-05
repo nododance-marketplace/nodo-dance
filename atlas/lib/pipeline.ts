@@ -51,6 +51,37 @@ export interface CrawlOutcome {
   costUsd: number
 }
 
+/**
+ * Make a string safe to store.
+ *
+ * Measured against PostgreSQL 16 and the Prisma query engine, exactly two
+ * classes of character make a write fail:
+ *
+ *   • A NUL byte — Postgres rejects the whole statement with
+ *     "invalid byte sequence for encoding UTF8: 0x00" (SQLSTATE 22021).
+ *   • A lone surrogate — the Prisma engine serialises parameters as JSON and
+ *     fails with "unexpected end of hex escape" before the query is sent.
+ *
+ * Everything else is accepted by the database and is deliberately left alone:
+ * an invalid \u escape, a trailing lone backslash, BEL, CR and ESC all store
+ * without complaint. Escaping them would only corrupt the text.
+ *
+ * One bad page must never stop a crawl, so every string is cleaned before it
+ * is written.
+ */
+export function sanitizeForDb(value: string | null | undefined): string | null | undefined {
+  if (value === null || value === undefined) return value
+  return value
+    // Control characters, except tab, newline and carriage return.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    // Lone surrogates become the replacement character. A well-formed pair —
+    // an emoji, an accented character — is left untouched.
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD')
+    // A trailing lone backslash makes a URL a different URL, which splits
+    // dedupe keys and creates duplicate candidates.
+    .replace(/\\+$/, '')
+}
+
 export class Atlas {
   private prisma: PrismaClient
   private fetcher: Fetcher
@@ -404,7 +435,7 @@ export class Atlas {
           out.push({
             ...better,
             // Keep the calendar page as the discovery URL, the detail page as canonical.
-            sourceUrl: event.sourceUrl,
+            sourceUrl: sanitizeForDb(event.sourceUrl) ?? '',
             sourceUrlCanonical: better.sourceUrlCanonical ?? res.finalUrl,
             registrationUrl: better.registrationUrl ?? event.registrationUrl,
           })
@@ -506,8 +537,8 @@ export class Atlas {
 
     const data = {
       sourceId,
-      title: event.title,
-      description: event.description ?? null,
+      title: sanitizeForDb(event.title) ?? '',
+      description: sanitizeForDb(event.description) ?? null,
       eventType: event.eventType ?? null,
       styles: JSON.stringify(event.styles),
       otherStyle: event.otherStyle ?? null,
@@ -522,8 +553,8 @@ export class Atlas {
       recurrenceRule: event.recurrenceRule ? JSON.stringify(event.recurrenceRule) : null,
       recurrenceText: event.recurrenceText ?? null,
       recurrenceConfidence: event.recurrenceConfidence,
-      venueName: event.venueName ?? null,
-      address: event.address ?? null,
+      venueName: sanitizeForDb(event.venueName) ?? null,
+      address: sanitizeForDb(event.address) ?? null,
       city: event.city ?? null,
       state: event.state ?? null,
       zip: event.zip ?? null,
@@ -531,15 +562,25 @@ export class Atlas {
       lng: event.lng ?? null,
       price: event.price ?? null,
       priceText: event.priceText ?? null,
-      organizerName: event.organizerName ?? null,
+      organizerName: sanitizeForDb(event.organizerName) ?? null,
       registrationUrl: event.registrationUrl ?? null,
-      sourceUrl: event.sourceUrl,
+      sourceUrl: sanitizeForDb(event.sourceUrl) ?? '',
       sourceUrlCanonical: event.sourceUrlCanonical ?? event.sourceUrl,
       confidence,
       qaStatus,
       qaReasons: JSON.stringify(reasons),
       dedupeKey: key,
       lastSeenAt: new Date(),
+    }
+
+    // Every string that reaches the database is cleaned in one sweep. Scraped
+    // text can contain lone backslashes and control characters, and a single
+    // invalid escape sequence makes Postgres reject the whole insert.
+    for (const key of Object.keys(data)) {
+      const value = (data as Record<string, unknown>)[key]
+      if (typeof value === 'string') {
+        (data as Record<string, unknown>)[key] = sanitizeForDb(value)
+      }
     }
 
     // Idempotent upsert on (sourceId, dedupeKey)
@@ -570,10 +611,10 @@ export class Atlas {
         data: {
           sourceId,
           candidateEventId: candidate.id,
-          url: event.sourceUrl,
-          fieldName: ev.field,
-          fieldValue: ev.value,
-          excerpt: ev.excerpt ?? null,
+          url: sanitizeForDb(event.sourceUrl) ?? '',
+          fieldName: sanitizeForDb(ev.field) ?? '',
+          fieldValue: sanitizeForDb(ev.value) ?? '',
+          excerpt: sanitizeForDb(ev.excerpt) ?? null,
           method: ev.method,
         },
       })
@@ -596,7 +637,7 @@ export class Atlas {
           originalText: event.recurrenceRule.originalText ?? null,
           confidence: event.recurrenceRule.confidence,
           status: 'PROPOSED',
-          sourceUrl: event.sourceUrl,
+          sourceUrl: sanitizeForDb(event.sourceUrl) ?? '',
           expiresAt: event.recurrenceRule.until
             ? new Date(`${event.recurrenceRule.until}T00:00:00Z`)
             : new Date(Date.now() + 180 * 86400000),
@@ -744,7 +785,7 @@ export class Atlas {
         startedAt: new Date(),
         finishedAt: new Date(),
         attempts: 1,
-        lastError: data.errorMessage ?? null,
+        lastError: sanitizeForDb(data.errorMessage) ?? null,
         costUsd: data.costUsd ?? 0,
       },
     })
@@ -754,12 +795,12 @@ export class Atlas {
         attemptNumber: 1,
         status: data.status,
         httpStatus: data.httpStatus ?? null,
-        url: data.url,
+        url: sanitizeForDb(data.url) ?? '',
         durationMs: data.durationMs ?? null,
         bytes: data.bytes ?? null,
         contentHash: data.contentHash ?? null,
-        errorCode: data.errorCode ?? null,
-        errorMessage: data.errorMessage ?? null,
+        errorCode: sanitizeForDb(data.errorCode) ?? null,
+        errorMessage: sanitizeForDb(data.errorMessage) ?? null,
         extractionMethod: data.extractionMethod ?? null,
         candidatesFound: data.candidatesFound ?? 0,
         candidatesAccepted: data.candidatesAccepted ?? 0,

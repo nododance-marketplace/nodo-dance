@@ -13,7 +13,7 @@ async function main() {
   let total = 0
   for (const row of byCity.sort((a, b) => b._count._all - a._count._all)) {
     total += row._count._all
-    console.log(`  ${(nameOf.get(row.cityId) ?? 'unassigned').padEnd(24)} ${row._count._all}`)
+    console.log(`  ${(nameOf.get(row.cityId ?? '') ?? 'unassigned').padEnd(24)} ${row._count._all}`)
   }
   console.log(`\ntotal sources registered: ${total}`)
 
