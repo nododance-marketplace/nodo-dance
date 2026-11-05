@@ -15,8 +15,6 @@ const ADDRESS_RE = new RegExp(
   'i'
 )
 
-const CITY_STATE_ZIP_RE = /\b([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
-
 /**
  * Is this string actually a street address?
  *
@@ -72,10 +70,32 @@ export function findAddress(text: string): string | undefined {
   return candidate.length >= 6 ? candidate : undefined
 }
 
+/**
+ * The city is what sits between the last comma and the state.
+ *
+ * "1711 S. Broad Street, Philadelphia, PA" is Philadelphia, not "Broad
+ * Street Philadelphia". The street address has already been read
+ * separately, so the city is the last segment before the state.
+ */
+const CITY_SEGMENT_RE = /,\s*([^,]{2,40}?)\s*,\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
+
+const CITY_STATE_ZIP_RE = /\b([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
+
 /** Find "City, ST" and optional ZIP. */
 export function findCityStateZip(text: string): FoundLocation {
-  CITY_STATE_ZIP_RE.lastIndex = 0
+  CITY_SEGMENT_RE.lastIndex = 0
   let m: RegExpExecArray | null
+  while ((m = CITY_SEGMENT_RE.exec(text))) {
+    const city = tidy(m[1])
+    const state = m[2]
+    if (!city || city.length < 3) continue
+    // A segment that is really the street address, not a city.
+    if (/\b(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Ct|Court|Blvd|Suite|Ste|Apt)\b\.?$/i.test(city)) continue
+    if (/^(mon|tue|wed|thu|fri|sat|sun)/i.test(city)) continue
+    return { city, state, zip: m[3] }
+  }
+
+  CITY_STATE_ZIP_RE.lastIndex = 0
   while ((m = CITY_STATE_ZIP_RE.exec(text))) {
     const city = tidy(m[1])
     const state = m[2]

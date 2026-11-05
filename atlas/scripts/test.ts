@@ -168,6 +168,17 @@ section('Location heuristics')
 
   eq('street address found', findAddress('Join us at 2935 Griffith St, Charlotte, NC 28203 every Monday'), '2935 Griffith St')
   eq('city and state found', findCityStateZip('Located in Charlotte, NC 28203').city, 'Charlotte')
+  eq(
+    'the city is the last segment, not the street',
+    findCityStateZip('1711 S. Broad Street, Philadelphia, PA').city,
+    'Philadelphia'
+  )
+  eq(
+    'the city is still found with a street in front',
+    findCityStateZip('2935 Griffith St, Charlotte, NC 28203').city,
+    'Charlotte'
+  )
+  eq('a state and zip still work', findCityStateZip('Austin, TX 78701').state, 'TX')
   check('venue name found', (findVenueName('Venue: The Loft at 5th Street') ?? '').includes('Loft'))
   check('no false venue from weekday', !/^(mon|tue)/i.test(findVenueName('Monday Class') ?? ''))
 

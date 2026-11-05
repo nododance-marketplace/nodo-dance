@@ -123,7 +123,7 @@ async function main() {
       sourceId: true,
       qaStatus: true,
       qaReasons: true,
-      source: { select: { organizationName: true } },
+      source: { select: { organizationName: true, city: { select: { name: true, state: true } } } },
     },
   })
 
@@ -211,7 +211,7 @@ async function main() {
   for (const id of toPublish) {
     const candidate = await prisma.candidateEvent.findFirst({
       where: { id },
-      include: { source: { select: { organizationName: true } } },
+      include: { source: { select: { organizationName: true, city: { select: { name: true, state: true } } } } },
     })
     if (!candidate) continue
 
@@ -234,6 +234,10 @@ async function main() {
     })
 
     const styles = JSON.parse(candidate.styles || '[]') as string[]
+    // The source registry is curated against a city, so it decides which
+    // market the event belongs to. The address still carries the precise
+    // street, and often the precise town.
+    const marketCity = candidate.source.city
     const event = await prisma.event.create({
       data: {
         title: candidate.title,
@@ -244,8 +248,8 @@ async function main() {
         endDateTime: candidate.endDateTime,
         venueName: candidate.venueName ?? '',
         address: candidate.address,
-        city: candidate.city,
-        state: candidate.state,
+        city: marketCity?.name ?? candidate.city,
+        state: marketCity?.state ?? candidate.state,
         zip: candidate.zip,
         lat: candidate.lat,
         lng: candidate.lng,
