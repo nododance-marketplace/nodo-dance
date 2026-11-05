@@ -16,6 +16,8 @@ interface InstructorCardProps {
     instagramUrl: string | null
     styles: string
     neighborhood: string | null
+    city: string | null
+    state: string | null
     privateRateHourly: number | null
     groupRatePerClass: number | null
     offersPrivate: boolean
@@ -102,10 +104,13 @@ export function InstructorCard({ instructor }: InstructorCardProps) {
             </div>
           )}
 
-          {instructor.neighborhood && (
+          {(instructor.neighborhood || instructor.city) && (
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <MapPin className="w-4 h-4 mr-1" />
-              {instructor.neighborhood}
+              {instructor.neighborhood || instructor.city}
+              {instructor.neighborhood && instructor.city && (
+                <span className="text-gray-400"> · {instructor.city}</span>
+              )}
             </div>
           )}
 

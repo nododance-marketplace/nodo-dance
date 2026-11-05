@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { parseJsonArray } from '@/lib/utils'
+import { marketBySlug } from '@/lib/markets'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get('sortBy') || 'recommended'
   const djOnly = searchParams.get('djOnly') === '1'
 
+  // Which city the instructor is in. Nodo serves more than one city now, so
+  // an instructor without one cannot be found by anyone looking for one.
+  const marketParam = searchParams.get('market')
+  const market = marketParam && marketParam !== 'all' ? marketBySlug(marketParam) : null
+
   try {
     const session = await getServerSession(authOptions)
     const isLoggedIn = !!session?.user?.email
@@ -29,9 +35,11 @@ export async function GET(request: NextRequest) {
                 OR: [
                   { displayName: { contains: search } },
                   { neighborhood: { contains: search } },
+                  { city: { contains: search } },
                 ],
               }
             : {},
+          market ? { city: { in: market.cities, mode: 'insensitive' } } : {},
           lessonType === 'PRIVATE' ? { offersPrivate: true } : {},
           lessonType === 'GROUP' ? { offersGroup: true } : {},
           locationType ? { locationType: locationType as any } : {},
@@ -64,6 +72,8 @@ export async function GET(request: NextRequest) {
         locationType: true,
         neighborhood: true,
         address: true,
+        city: true,
+        state: true,
         travelRadiusMiles: true,
         paymentCash: true,
         paymentVenmo: true,

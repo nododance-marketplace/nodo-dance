@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { DANCE_STYLES, SKILL_LEVELS, LOCATION_TYPES, INSTRUCTOR_OFFERINGS, LANGUAGES } from '@/lib/constants'
+import { MARKETS } from '@/lib/markets'
 import { parseJsonArray, getYouTubeEmbedUrl } from '@/lib/utils'
 import slugify from 'slugify'
 
@@ -35,6 +36,7 @@ const schema = z.object({
   groupClassNotes: z.string().optional(),
   locationType: z.string().optional(),
   neighborhood: z.string().optional(),
+  city: z.string().optional(),
   address: z.string().optional(),
   travelRadiusMiles: z.string().optional(),
   paymentCash: z.boolean(),
@@ -96,6 +98,7 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
           groupClassNotes: profile.groupClassNotes || '',
           locationType: profile.locationType || '',
           neighborhood: profile.neighborhood || '',
+          city: profile.city || '',
           address: profile.address || '',
           travelRadiusMiles: profile.travelRadiusMiles?.toString() || '',
           paymentCash: profile.paymentCash,
@@ -593,6 +596,21 @@ export function InstructorProfileEditor({ user, profile, redirectTo }: { user: a
                     </option>
                   ))}
                 </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">City</label>
+                <Select {...register('city')}>
+                  <option value="">Choose a city</option>
+                  {MARKETS.map((m) => (
+                    <option key={m.slug} value={m.name}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  This is how people find you when they look for instructors in their city.
+                </p>
               </div>
 
               <div>

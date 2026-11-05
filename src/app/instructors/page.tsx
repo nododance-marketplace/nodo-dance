@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { InstructorCard } from '@/components/instructors/instructor-card'
 import { InstructorCardCompact } from '@/components/instructors/instructor-card-compact'
 import { InstructorCardTile } from '@/components/instructors/instructor-card-tile'
@@ -12,8 +14,20 @@ import { Badge } from '@/components/ui/badge'
 import { Reveal } from '@/components/ui/reveal'
 import { Search, Filter, X, Disc3 } from 'lucide-react'
 import { DANCE_STYLES, LESSON_TYPES, LOCATION_TYPES } from '@/lib/constants'
+import { marketBySlug } from '@/lib/markets'
 
 export default function InstructorsPage() {
+  return (
+    <Suspense fallback={<div className="page-shell"><div className="bg-white rounded-xl h-96 motion-safe:animate-pulse" /></div>}>
+      <InstructorsContent />
+    </Suspense>
+  )
+}
+
+function InstructorsContent() {
+  const searchParams = useSearchParams()
+  const market = marketBySlug(searchParams.get('market'))
+
   const [instructors, setInstructors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -27,7 +41,7 @@ export default function InstructorsPage() {
 
   useEffect(() => {
     fetchInstructors()
-  }, [search, selectedStyles, lessonType, locationType, sortBy, djOnly])
+  }, [search, selectedStyles, lessonType, locationType, sortBy, djOnly, market])
 
   async function fetchInstructors() {
     setLoading(true)
@@ -37,6 +51,7 @@ export default function InstructorsPage() {
     if (lessonType) params.set('lessonType', lessonType)
     if (locationType) params.set('locationType', locationType)
     if (djOnly) params.set('djOnly', '1')
+    if (market) params.set('market', market.slug)
     params.set('sortBy', sortBy)
 
     try {
@@ -77,10 +92,12 @@ export default function InstructorsPage() {
       <Reveal>
         <div className="page-header block">
           <h1 className="page-heading">
-            Find Your Instructor
+            {market ? `Instructors in ${market.name}` : 'Find Your Instructor'}
           </h1>
           <p className="page-intro">
-            Browse experienced dance instructors in {process.env.NEXT_PUBLIC_CITY || 'Charlotte'}
+            {market
+              ? `Experienced dance instructors teaching in ${market.label}.`
+              : 'Browse experienced dance instructors in your city'}
           </p>
         </div>
       </Reveal>

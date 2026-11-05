@@ -111,10 +111,14 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                   ))}
                 </div>
 
-                {instructor.neighborhood && (
+                {(instructor.neighborhood || instructor.city) && (
                   <div className="flex items-center text-gray-600 mb-2">
                     <MapPin className="w-4 h-4 mr-2" />
                     {instructor.neighborhood}
+                    {instructor.neighborhood && instructor.city && (
+                      <span className="text-gray-400"> · {instructor.city}</span>
+                    )}
+                    {!instructor.neighborhood && instructor.city && <span>{instructor.city}</span>}
                   </div>
                 )}
 
@@ -417,6 +421,12 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
               {instructor.neighborhood && (
                 <p className="text-gray-700">
                   <strong>Area:</strong> {instructor.neighborhood}
+                </p>
+              )}
+              {instructor.city && (
+                <p className="text-gray-700">
+                  <strong>City:</strong> {instructor.city}
+                  {instructor.state ? `, ${instructor.state}` : ''}
                 </p>
               )}
               {instructor.travelRadiusMiles && (

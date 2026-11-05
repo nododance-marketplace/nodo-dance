@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { homeMarket } from '@/lib/markets'
 
 const schema = z.object({
   slug: z.string(),
@@ -26,6 +27,7 @@ const schema = z.object({
   groupClassNotes: z.string().optional(),
   locationType: z.string().optional(),
   neighborhood: z.string().optional(),
+  city: z.string().optional(),
   address: z.string().optional(),
   travelRadiusMiles: z.number().nullable(),
   paymentCash: z.boolean(),
@@ -67,6 +69,9 @@ function buildProfileData(data: z.infer<typeof schema>) {
     groupClassNotes: data.groupClassNotes || null,
     locationType: data.locationType || null,
     neighborhood: data.neighborhood || null,
+    // An instructor who has not chosen a city is assumed to be in the home
+    // market, so they are still findable by someone looking there.
+    city: data.city || homeMarket().name,
     address: data.address || null,
     travelRadiusMiles: data.travelRadiusMiles,
     paymentCash: data.paymentCash,
