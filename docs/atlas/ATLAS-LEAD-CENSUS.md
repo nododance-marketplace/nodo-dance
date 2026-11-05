@@ -93,34 +93,54 @@ replace it with measured numbers as each metro is ingested.
 
 ---
 
-## 4. Metro ranking (14 of 38 measured)
+## 4. Metro ranking (37 metros measured)
 
 | City | State | Dance venues | Named dance places | Total |
 |---|---|---:|---:|---:|
 | New York | New York | 70 | 118 | **188** |
+| Las Vegas | Nevada | 3 | 91 | **94** |
 | Chicago | Illinois | 19 | 53 | **72** |
-| Seattle | Washington | 19 | 37 | **56** |
-| Austin | Texas | 13 | 31 | **44** |
+| San Diego | California | 6 | 51 | 57 |
+| Seattle | Washington | 19 | 37 | 56 |
+| San Francisco | California | 18 | 27 | 45 |
+| Austin | Texas | 13 | 31 | 44 |
+| Denver | Colorado | 8 | 35 | 43 |
+| Portland | Oregon | 15 | 26 | 41 |
+| St. Louis | Missouri | 2 | 36 | 38 |
 | Atlanta | Georgia | 5 | 29 | 34 |
 | Philadelphia | Pennsylvania | 8 | 26 | 34 |
-| Los Angeles | California | 10 | 24 | 34 |
+| Milwaukee | Wisconsin | 14 | 16 | 30 |
 | Boston | Massachusetts | 11 | 19 | 30 |
 | Raleigh | North Carolina | 11 | 19 | 30 |
-| Houston | Texas | 7 | 22 | 29 |
+| Minneapolis | Minnesota | 8 | 20 | 28 |
+| Baltimore | Maryland | 9 | 18 | 27 |
 | Phoenix | Arizona | 10 | 17 | 27 |
 | Charlotte | North Carolina | 6 | 21 | 27 |
+| Dallas | Texas | 2 | 23 | 25 |
+| Pittsburgh | Pennsylvania | 3 | 21 | 24 |
+| Columbus | Ohio | 6 | 15 | 21 |
+| Kansas City | Missouri | 7 | 13 | 20 |
+| New Orleans | Louisiana | 2 | 17 | 19 |
 | Miami | Florida | 6 | 12 | 18 |
+| Cincinnati | Ohio | 5 | 11 | 16 |
+| Cleveland | Ohio | 1 | 13 | 14 |
+| Detroit | Michigan | 3 | 11 | 14 |
+| Jacksonville | Florida | 5 | 9 | 14 |
+| Newark | New Jersey | 4 | 8 | 12 |
+| Nashville | Tennessee | 2 | 9 | 11 |
 | Durham | North Carolina | 0 | 11 | 11 |
+| Orlando | Florida | 2 | 9 | 11 |
+| Tampa | Florida | 2 | 6 | 8 |
+| Indianapolis | Indiana | 1 | 6 | 7 |
+| Memphis | Tennessee | 2 | 1 | 3 |
 
-**Still to measure (24):** San Diego, Tampa, New Orleans, Denver, Detroit, Nashville,
-Las Vegas, Portland, Memphis, Baltimore, Milwaukee, Kansas City, Cleveland,
-Minneapolis, Newark, St. Louis, Pittsburgh, Orlando, Cincinnati, Indianapolis,
-Columbus, San Francisco, Jacksonville, Dallas.
+**Measured across 37 metros: 315 dedicated dance venues and 907 named dance places.**
 
-Note how Charlotte ranks **12th of 14 measured** on mapped presence — yet it is our
-pilot city. Mapped density and actual dance activity are different things: Austin,
-Miami and Tampa punch above their mapped weight because their communities run
-active calendars.
+Note how Charlotte ranks **18th of 37** on mapped presence — yet it is our pilot
+city. Mapped density and actual dance activity are different things: Austin,
+Denver and Portland punch above their mapped weight because their communities run
+active calendars, while Las Vegas's 94 comes almost entirely from named places
+rather than dedicated venues.
 
 ---
 
@@ -142,15 +162,18 @@ active calendars.
 ## 6. Resuming this work
 
 ```bash
-# National totals (takes ~4 minutes, Overpass under load may 504):
+# National totals (takes ~4 minutes; Overpass mirrors rotate automatically):
 npx tsx atlas/scripts/us-lead-census.ts
 
-# Metro table (takes ~15 minutes, flaky under load):
+# Metro table (takes ~25 minutes across two passes):
 npx tsx atlas/scripts/us-metro-census.ts     # first pass
 npx tsx atlas/scripts/us-metro-retry.ts       # recover the 502/504 metros
 
 # Live database baseline (read-only):
 npx tsx atlas/scripts/production-snapshot.ts
+
+# OSM census + search seeds for a city:
+npx tsx atlas/cli.ts discover:osm --city charlotte-nc
 ```
 
 **Overpass etiquette:** send a descriptive `User-Agent`, stay under ~1 query per
@@ -158,8 +181,12 @@ second, and expect 502/504 under load — a failed query is *unknown*, never a z
 Both scripts already handle that: the retry script skips failures instead of
 recording them as zero.
 
-**Next step when the connection is stable:** add OSM as a formal Atlas discovery
-channel (`Agent A`), where each mapped organisation with a `website`/`contact:website`
-tag becomes a registered `DiscoverySource` with `discoveredVia: 'OSM'`. That converts
-this census from a report into a pipeline, and gives every metro a free starting
-point.
+**Mirror notes:** `overpass-api.de` rate-limits (HTTP 429),
+`overpass.kumi.systems` times out under load, and `overpass.osm.ch` serves
+**Switzerland only** — it silently returns zero US results. The working mirrors
+are listed in `atlas/lib/osm.ts`.
+
+**Next step when the connection is stable:** turn the OSM organisation names into
+search queries for the keyword-discovery channel. OSM gives the names for free;
+a search API (Serper ≈ $0.01/query) turns them into URLs. That pairing is
+cheaper and more precise than either channel alone.

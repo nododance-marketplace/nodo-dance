@@ -48,13 +48,15 @@ npx prisma generate --schema atlas/prisma/schema.local.prisma
 # seed and run
 npx tsx atlas/cli.ts seed:cities            # 7 rollout cities
 npx tsx atlas/cli.ts seed:sources           # 9 verified Charlotte sources
+npx tsx atlas/cli.ts discover:osm --city charlotte-nc   # OSM census + search seeds
 npx tsx atlas/cli.ts expand                 # discover event pages via sitemaps
 npx tsx atlas/cli.ts crawl --force --limit 70
 npx tsx atlas/cli.ts review                 # candidate review queue
 npx tsx atlas/cli.ts report                 # coverage + quality report
 
-# unit tests (60 assertions)
-npx tsx atlas/scripts/test.ts
+# unit tests
+npx tsx atlas/scripts/test.ts               # 60 assertions — deterministic core
+npx tsx atlas/scripts/test-sidecar.ts       # 23 assertions — LLM sidecar contract
 ```
 
 Useful flags: `--reextract` (re-parse every page after an extractor change),
@@ -73,6 +75,9 @@ atlas/
     robots.ts            robots.txt parser + gate + on-disk cache
     sitemap.ts           sitemap parsing and event-page discovery
     discovery.ts         city discovery via search providers
+    osm.ts               OpenStreetMap census and search seeds (Overpass, ODbL)
+    llm.ts               client for the optional LLM sidecar
+    llm-gate.ts          decides when a page is worth an LLM call
     location.ts          venue / address / city heuristics
     normalize.ts         style, event type, price, address canonicalisation
     recurrence.ts        recurrence detection, DST-correct wall-clock maths
@@ -82,8 +87,13 @@ atlas/
     parsers/             json-ld, rss, ical, html, dates
   scripts/
     test.ts              unit tests for the deterministic core
+    test-sidecar.ts      contract tests for the LLM sidecar
     gen-local-schema.ts  derives the SQLite schema from prisma/schema.prisma
-    debug-page.ts        inspects one live page
+    us-lead-census.ts    national OSM lead census
+    us-metro-census.ts   metro OSM census
+    production-snapshot.ts  read-only counts from the live database
+  sidecar/
+    main.py              FastAPI service wrapping ScrapeGraphAI (Python 3.12+)
   prisma/
     schema.local.prisma  generated — do not hand-edit
 ```

@@ -20,10 +20,12 @@
  * separately and writes only to the Atlas ingestion tables.
  */
 import { resolve } from 'node:path'
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { PrismaClient } from './generated/local-client'
 import { Atlas } from './lib/pipeline'
 import { Fetcher } from './lib/fetcher'
 import { Discovery, discoverCity, looksLikeDanceSource } from './lib/discovery'
+import { OsmDiscovery, looksLikeDanceOrg, censusQuery, areaQuery, type OsmOrganisation } from './lib/osm'
 import { SitemapReader, looksLikeEventPage, type SitemapUrl } from './lib/sitemap'
 import { RobotsCache } from './lib/robots'
 import { DANCE_STYLES } from './lib/normalize'
@@ -94,6 +96,20 @@ async function seedCities() {
     await prisma.discoveryCity.create({ data: { ...city, status: city.slug === 'charlotte-nc' ? 'ACTIVE' : 'PENDING' } })
     console.log(`  ✓ ${city.name}, ${city.state} (${city.timeZone})`)
   }
+}
+
+/**
+ * Approximate bounding boxes for the seeded metro areas (S,W,N,E).
+ * A box query is far more reliable than an area lookup under load.
+ */
+const CITY_BBOXES: Record<string, string> = {
+  'charlotte-nc': '35.00,-80.95,35.35,-80.60',
+  'raleigh-nc': '35.70,-78.80,35.92,-78.50',
+  'durham-nc': '35.90,-79.05,36.05,-78.80',
+  'atlanta-ga': '33.60,-84.60,33.95,-84.20',
+  'austin-tx': '30.15,-97.90,30.45,-97.55',
+  'miami-fl': '25.65,-80.35,25.95,-80.05',
+  'chicago-il': '41.75,-87.85,42.05,-87.55',
 }
 
 /**
@@ -191,6 +207,102 @@ async function expand(args: Args) {
   }
   console.log('')
   console.log(`  ✓ ${found} new source(s) discovered via sitemaps.`)
+}
+
+/**
+ * Discover sources for a city from OpenStreetMap.
+ *
+ * MEASURED PRECISION (Charlotte, 2026-11-04): 21 dance-name matches, of which
+ * 11 are real organisations (52%) but only 1 carries a website tag (5%).
+ *
+ * So OSM is used for two things, NOT one:
+ *   1. A census — how many dance organisations exist in a metro, for coverage
+ *      measurement and rollout prioritisation.
+ *   2. A search seed — the organisation NAMES are what you look up to find
+ *      their websites. Only the 5% that already carry a website can be
+ *      ingested directly.
+ *
+ * OSM data is © OpenStreetMap contributors (ODbL); attribution is recorded on
+ * every source discovered this way.
+ */
+async function discoverOsm(args: Args) {
+  const slug = String(args.city ?? 'charlotte-nc')
+  const city = await prisma.discoveryCity.findUnique({ where: { slug } })
+  if (!city) throw new Error(`Unknown city "${slug}". Run: atlas seed:cities`)
+
+  header(`Discovering sources from OpenStreetMap — ${city.name}, ${city.state}`)
+
+  const fetcher = new Fetcher({ politenessDelayMs: 1500, requestTimeoutMs: 160000, maxRetries: 0 })
+  const osm = new OsmDiscovery(fetcher)
+  const atlas = new Atlas({ prisma, fetcher })
+
+  const bbox = String(args.bbox ?? CITY_BBOXES[city.slug] ?? '')
+  let all: OsmOrganisation[] = []
+  if (bbox) {
+    all = await osm.census(censusQuery(bbox))
+    if (all.length === 0) {
+      console.log('  Box query returned nothing — trying the area lookup…')
+      all = await osm.census(areaQuery(city.name, city.state))
+    }
+  } else {
+    all = await osm.census(areaQuery(city.name, city.state))
+  }
+
+  if (all.length === 0) {
+    console.log('  No results (an Overpass mirror may be unavailable — this is not evidence of absence).')
+    return
+  }
+
+  const organisations = all.filter(looksLikeDanceOrg)
+  const ingestible = organisations.filter(o => o.website)
+
+  console.log(`  ${all.length} dance-name matches in the area`)
+  console.log(`  ${organisations.length} look like real dance organisations (${Math.round((organisations.length / all.length) * 100)}%)`)
+  console.log(`  ${ingestible.length} of those carry a website and can be ingested directly (${Math.round((ingestible.length / all.length) * 100)}%)`)
+  console.log('')
+
+  let created = 0
+  for (const org of ingestible) {
+    const { created: isNew } = await atlas.registerSource({
+      url: org.website!,
+      organizationName: org.name,
+      cityId: city.id,
+      sourceCategory: 'SCHOOL',
+      sourceType: 'HTML',
+      discoveredVia: 'OSM',
+      notes:
+        `Discovered via OpenStreetMap (${org.osmType}/${org.osmId}). ` +
+        `Map data © OpenStreetMap contributors (ODbL).`,
+    })
+    if (isNew) {
+      created++
+      console.log(`  ✓ ${org.name.slice(0, 40).padEnd(42)} ${org.website}`)
+    }
+  }
+
+  // The organisations with no website are the valuable part: they are the
+  // search seeds for the keyword-discovery channel.
+  const seeds = organisations.filter(o => !o.website)
+  console.log('')
+  console.log(`  ✓ ${created} source(s) registered from OSM.`)
+  console.log(`  ${seeds.length} organisation(s) have no website in OSM — use these as search seeds:`)
+  for (const seed of seeds.slice(0, 15)) {
+    console.log(`      · ${seed.name}${seed.city ? ` (${seed.city})` : ''}`)
+  }
+  if (seeds.length > 15) console.log(`      … and ${seeds.length - 15} more`)
+
+  const seedFile = `atlas/.cache/osm-seeds-${city.slug}.json`
+  if (!existsSync('atlas/.cache')) mkdirSync('atlas/.cache', { recursive: true })
+  writeFileSync(
+    seedFile,
+    JSON.stringify(
+      seeds.map(s => ({ name: s.name, city: s.city, state: s.state, tags: s.tags })),
+      null,
+      2
+    )
+  )
+  console.log('')
+  console.log(`  Seeds written to ${seedFile}`)
 }
 
 async function listSources() {
@@ -529,6 +641,9 @@ async function main() {
     case 'discover':
       await discover(args)
       break
+    case 'discover:osm':
+      await discoverOsm(args)
+      break
     case 'seed:sources':
       await seedSources(args)
       break
@@ -566,6 +681,7 @@ Nodo Atlas CLI
   atlas seed:cities                 register the rollout cities
   atlas seed:sources [--city slug]  register the pilot source seeds
   atlas discover --city <slug>      find candidate sources for a city
+  atlas discover:osm --city <slug> find sources from OpenStreetMap (free, no key)
   atlas expand [--city slug]        expand sources via their own sitemaps
   atlas sources                     list the source registry
   atlas crawl [--limit N]           crawl sources that are due

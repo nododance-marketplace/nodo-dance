@@ -128,6 +128,36 @@ The Charlotte pilot produced **95 candidates at $0 total cost** because tiers 0�
 covered every page the pilot visited. Tiers 5–6 exist for the long tail and are the
 only place where ScrapeGraphAI earns its cost (see `ATLAS-SCRAPEGRAPHAI-EVAL.md`).
 
+### The LLM sidecar (tier 5)
+
+Tiers 5 and 6 live behind an HTTP contract, in a separate Python process:
+
+```
+atlas worker (Node)  ──POST /extract──▶  sidecar (Python · ScrapeGraphAI)
+                    ◀──{ok, data, costUsd}──
+```
+
+Why a sidecar rather than a library call:
+
+- Playwright, LangChain and the Python runtime stay out of the main worker.
+- ScrapeGraphAI can be swapped for Crawl4AI, Firecrawl or a direct model call
+  without touching the pipeline.
+- The sidecar needs Python **3.12+** (ScrapeGraphAI 2.x requirement), which is
+  not a dependency the main worker should take on.
+
+The gate before spending money is in `atlas/lib/llm-gate.ts`: a page qualifies
+only when it carries **both** listing language (event, calendar, schedule, class)
+**and** dance language, and only when the deterministic pass found nothing on it.
+A failed or empty LLM response produces **no candidate** — the page is simply
+skipped, which is the correct outcome.
+
+The sidecar's contract is tested without any API key by
+`npx tsx atlas/scripts/test-sidecar.ts` (23 assertions), which exercises the
+success path, the failure path, an unreachable sidecar and the gate itself.
+
+**An LLM-extracted candidate faces exactly the same QA, dedupe and review rules
+as a JSON-LD one. There is no trusted path.**
+
 ---
 
 ## 4. Data flow of a single crawl
@@ -224,11 +254,14 @@ atlas/
     robots.ts            robots.txt parsing, precedence rules, on-disk cache
     sitemap.ts           sitemap + sitemap-index parsing, event-page discovery
     discovery.ts         search providers, dance-source filters, excluded platforms
+    osm.ts               OpenStreetMap census and search seeds (Overpass, ODbL)
     location.ts          venue / street address / city-state-zip heuristics
     normalize.ts         style, event type, price, address canonicalisation, jaro-winkler
     recurrence.ts        recurrence detection, DST-correct wall time, bounded horizons
     dedupe.ts            canonical URLs, dedupe keys, series keys, match proposals
     qa.ts                confidence scoring, PASS/QUARANTINE/REJECT, cancellation scoping
+    llm.ts               client for the optional LLM sidecar
+    llm-gate.ts          decides when a page is worth an LLM call
     pipeline.ts          orchestration and persistence
     parsers/
       html.ts            dependency-free HTML scanning
@@ -236,7 +269,10 @@ atlas/
       extract.ts         JSON-LD, RSS, iCal and heuristic HTML extraction
   scripts/
     test.ts              60 assertions over the deterministic core
+    test-sidecar.ts      23 assertions over the LLM sidecar contract
     gen-local-schema.ts  derives the SQLite PoC schema from prisma/schema.prisma
+  sidecar/
+    main.py              FastAPI service wrapping ScrapeGraphAI (Python 3.12+)
   prisma/schema.local.prisma   generated — never hand-edit
 
 src/app/api/atlas/tick/           scheduler entry point (Vercel Cron)

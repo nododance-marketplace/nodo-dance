@@ -275,7 +275,71 @@ code and must be enforced in reporting:
 
 ---
 
-## 6. Platform exclusions
+## 6. OpenStreetMap as a census and a search seed (measured 2026-11-04)
+
+OpenStreetMap is free, licensed (ODbL) and needs no API key. Atlas can query it
+through the Overpass API. The **measured** result changes how it should be used.
+
+### What the measurement showed (Charlotte, NC)
+
+| Stage | Count | Precision |
+|---|---:|---:|
+| Places whose name contains a dance word | 21 | — |
+| Of those, real dance organisations | 8 | **38%** |
+| Of those, carrying a website tag | 1 | **5% of all matches** |
+| Organisations kept as search seeds | 7 | — |
+
+Rejected as false positives: `Salsarita's Fresh Mexican Grille` (a restaurant),
+`Shagbark Lane` / `Dancing Wind Road` / `Sundancer Court` (residential streets),
+`Dance Fusion of Harrisburg` (a real school, oddly named).
+
+### The conclusion: census and seeds, not a source channel
+
+OSM **cannot** be a direct source channel. Only 5% of dance-name matches carry
+a website, so wiring it into Agent A would register almost nothing while adding
+a lot of noise. The filters that make it work are in `atlas/lib/osm.ts`:
+
+- a business/organisation tag is required (`craft`, `shop`, `amenity`, `leisure`,
+  `club`, `office`, `sport`, `social_facility`, `community_centre`, `education`)
+- `highway`, `place` and `natural` tags disqualify a record — this is what
+  removes the street names
+- food and drink amenities (`restaurant`, `bar`, `cafe`, `nightclub`, …) are excluded
+- the precise OSM tags `amenity=dancing_school`, `leisure=dance`,
+  `dance:teaching=yes` are accepted on their own
+
+What OSM **is** good for:
+
+1. **Census.** How many dance organisations exist per metro, for coverage
+   measurement and rollout prioritisation. See `ATLAS-LEAD-CENSUS.md`.
+2. **Search seeds.** The organisation *names* are the valuable output. Ten
+   organisations in Charlotte had no website in OSM — but their names are
+   exactly what a keyword search needs to find one. The seeds are written to
+   `atlas/.cache/osm-seeds-<city>.json` for that purpose.
+
+### Operational notes
+
+- **Use several Overpass mirrors.** `overpass-api.de` rate-limits (HTTP 429),
+  `overpass.kumi.systems` times out under load, and `overpass.osm.ch` serves
+  **Switzerland only** — it silently returns zero US results. The working
+  mirrors are listed in `atlas/lib/osm.ts`.
+- **Allow a long timeout.** Overpass answers in 60–120 seconds on a cold cache;
+  the default 20-second fetch timeout aborts every query.
+- **A failed query is unknown, never zero.** The scripts skip failures instead
+  of recording them as zero, because a zero looks like "no dance community
+  here" and would be a lie.
+
+### Command
+
+```bash
+npx tsx atlas/cli.ts discover:osm --city charlotte-nc
+```
+
+Reports the precision breakdown, registers the organisations that have a
+website, and writes the remaining organisation names as search seeds.
+
+---
+
+## 7. Platform exclusions
 
 `isExcludedDomain()` in `atlas/lib/discovery.ts` rejects a hit when the
 hostname matches an excluded domain exactly or as a subdomain:
@@ -300,7 +364,7 @@ where the organiser asks to be found).
 
 ---
 
-## 7. The style list
+## 8. The style list
 
 Discovery searches for the app's canonical vocabulary, `DANCE_STYLES` in
 `src/lib/constants.ts` (identical to `atlas/lib/normalize.ts`):
@@ -319,7 +383,7 @@ whose only style is `Other` is flagged as a warning in QA.
 
 ---
 
-## 8. City prioritisation
+## 9. City prioritisation
 
 A metro is chosen for rollout when it scores well on the criteria below. The
 criteria are qualitative and reviewed by hand; the numbers are not invented
@@ -356,7 +420,7 @@ and Chicago (`America/Chicago`) are handled correctly without special-casing.
 
 ---
 
-## 9. Source registry lifecycle
+## 10. Source registry lifecycle
 
 ```
   registration
@@ -399,7 +463,7 @@ Rules that hold across the whole lifecycle:
 
 ---
 
-## 10. Operating discovery from the CLI
+## 11. Operating discovery from the CLI
 
 ```bash
 # 1. register the rollout cities (7 cities; Charlotte becomes ACTIVE)
@@ -431,7 +495,7 @@ drain.
 
 ---
 
-## 11. Related documents
+## 12. Related documents
 
 | Document | Purpose |
 |---|---|

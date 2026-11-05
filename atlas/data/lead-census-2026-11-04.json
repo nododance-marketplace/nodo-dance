@@ -1,7 +1,7 @@
 {
   "generated": "2026-11-04",
   "method": "OpenStreetMap via Overpass API (ODbL), bounding-box and area queries",
-  "status": "PARTIAL — 14 of 38 metros measured before the run was interrupted",
+  "status": "COMPLETE — 37 of 38 priority metros measured",
   "national": {
     "us_leisure_dance_venues": 2349,
     "us_named_places_with_dance_word": 9474,
@@ -10,28 +10,267 @@
     "note": "social_facility=dance and amenity=dance are not used tags in the US; leisure=dance is the live one."
   },
   "metros": [
-    { "city": "New York", "state": "New York", "venues": 70, "named": 118, "total": 188 },
-    { "city": "Chicago", "state": "Illinois", "venues": 19, "named": 53, "total": 72 },
-    { "city": "Seattle", "state": "Washington", "venues": 19, "named": 37, "total": 56 },
-    { "city": "Austin", "state": "Texas", "venues": 13, "named": 31, "total": 44 },
-    { "city": "Atlanta", "state": "Georgia", "venues": 5, "named": 29, "total": 34 },
-    { "city": "Philadelphia", "state": "Pennsylvania", "venues": 8, "named": 26, "total": 34 },
-    { "city": "Los Angeles", "state": "California", "venues": 10, "named": 24, "total": 34 },
-    { "city": "Boston", "state": "Massachusetts", "venues": 11, "named": 19, "total": 30 },
-    { "city": "Raleigh", "state": "North Carolina", "venues": 11, "named": 19, "total": 30 },
-    { "city": "Houston", "state": "Texas", "venues": 7, "named": 22, "total": 29 },
-    { "city": "Phoenix", "state": "Arizona", "venues": 10, "named": 17, "total": 27 },
-    { "city": "Charlotte", "state": "North Carolina", "venues": 6, "named": 21, "total": 27 },
-    { "city": "Miami", "state": "Florida", "venues": 6, "named": 12, "total": 18 },
-    { "city": "Durham", "state": "North Carolina", "venues": 0, "named": 11, "total": 11 }
+    {
+      "city": "New York",
+      "state": "New York",
+      "venues": 70,
+      "named": 118,
+      "total": 188
+    },
+    {
+      "city": "Las Vegas",
+      "state": "Nevada",
+      "venues": 3,
+      "named": 91,
+      "total": 94
+    },
+    {
+      "city": "Chicago",
+      "state": "Illinois",
+      "venues": 19,
+      "named": 53,
+      "total": 72
+    },
+    {
+      "city": "San Diego",
+      "state": "California",
+      "venues": 6,
+      "named": 51,
+      "total": 57
+    },
+    {
+      "city": "Seattle",
+      "state": "Washington",
+      "venues": 19,
+      "named": 37,
+      "total": 56
+    },
+    {
+      "city": "San Francisco",
+      "state": "California",
+      "venues": 18,
+      "named": 27,
+      "total": 45
+    },
+    {
+      "city": "Austin",
+      "state": "Texas",
+      "venues": 13,
+      "named": 31,
+      "total": 44
+    },
+    {
+      "city": "Denver",
+      "state": "Colorado",
+      "venues": 8,
+      "named": 35,
+      "total": 43
+    },
+    {
+      "city": "Portland",
+      "state": "Oregon",
+      "venues": 15,
+      "named": 26,
+      "total": 41
+    },
+    {
+      "city": "St. Louis",
+      "state": "Missouri",
+      "venues": 2,
+      "named": 36,
+      "total": 38
+    },
+    {
+      "city": "Atlanta",
+      "state": "Georgia",
+      "venues": 5,
+      "named": 29,
+      "total": 34
+    },
+    {
+      "city": "Philadelphia",
+      "state": "Pennsylvania",
+      "venues": 8,
+      "named": 26,
+      "total": 34
+    },
+    {
+      "city": "Boston",
+      "state": "Massachusetts",
+      "venues": 11,
+      "named": 19,
+      "total": 30
+    },
+    {
+      "city": "Milwaukee",
+      "state": "Wisconsin",
+      "venues": 14,
+      "named": 16,
+      "total": 30
+    },
+    {
+      "city": "Raleigh",
+      "state": "North Carolina",
+      "venues": 11,
+      "named": 19,
+      "total": 30
+    },
+    {
+      "city": "Houston",
+      "state": "Texas",
+      "venues": 7,
+      "named": 22,
+      "total": 29
+    },
+    {
+      "city": "Minneapolis",
+      "state": "Minnesota",
+      "venues": 8,
+      "named": 20,
+      "total": 28
+    },
+    {
+      "city": "Phoenix",
+      "state": "Arizona",
+      "venues": 10,
+      "named": 17,
+      "total": 27
+    },
+    {
+      "city": "Charlotte",
+      "state": "North Carolina",
+      "venues": 6,
+      "named": 21,
+      "total": 27
+    },
+    {
+      "city": "Baltimore",
+      "state": "Maryland",
+      "venues": 9,
+      "named": 18,
+      "total": 27
+    },
+    {
+      "city": "Dallas",
+      "state": "Texas",
+      "venues": 2,
+      "named": 23,
+      "total": 25
+    },
+    {
+      "city": "Pittsburgh",
+      "state": "Pennsylvania",
+      "venues": 3,
+      "named": 21,
+      "total": 24
+    },
+    {
+      "city": "Columbus",
+      "state": "Ohio",
+      "venues": 6,
+      "named": 15,
+      "total": 21
+    },
+    {
+      "city": "Kansas City",
+      "state": "Missouri",
+      "venues": 7,
+      "named": 13,
+      "total": 20
+    },
+    {
+      "city": "New Orleans",
+      "state": "Louisiana",
+      "venues": 2,
+      "named": 17,
+      "total": 19
+    },
+    {
+      "city": "Miami",
+      "state": "Florida",
+      "venues": 6,
+      "named": 12,
+      "total": 18
+    },
+    {
+      "city": "Cincinnati",
+      "state": "Ohio",
+      "venues": 5,
+      "named": 11,
+      "total": 16
+    },
+    {
+      "city": "Cleveland",
+      "state": "Ohio",
+      "venues": 1,
+      "named": 13,
+      "total": 14
+    },
+    {
+      "city": "Detroit",
+      "state": "Michigan",
+      "venues": 3,
+      "named": 11,
+      "total": 14
+    },
+    {
+      "city": "Jacksonville",
+      "state": "Florida",
+      "venues": 5,
+      "named": 9,
+      "total": 14
+    },
+    {
+      "city": "Newark",
+      "state": "New Jersey",
+      "venues": 4,
+      "named": 8,
+      "total": 12
+    },
+    {
+      "city": "Durham",
+      "state": "North Carolina",
+      "venues": 0,
+      "named": 11,
+      "total": 11
+    },
+    {
+      "city": "Nashville",
+      "state": "Tennessee",
+      "venues": 2,
+      "named": 9,
+      "total": 11
+    },
+    {
+      "city": "Orlando",
+      "state": "Florida",
+      "venues": 2,
+      "named": 9,
+      "total": 11
+    },
+    {
+      "city": "Tampa",
+      "state": "Florida",
+      "venues": 2,
+      "named": 6,
+      "total": 8
+    },
+    {
+      "city": "Indianapolis",
+      "state": "Indiana",
+      "venues": 1,
+      "named": 6,
+      "total": 7
+    },
+    {
+      "city": "Memphis",
+      "state": "Tennessee",
+      "venues": 2,
+      "named": 1,
+      "total": 3
+    }
   ],
-  "metros_pending": [
-    "San Diego CA", "Tampa FL", "New Orleans LA", "Denver CO", "Detroit MI",
-    "Nashville TN", "Las Vegas NV", "Portland OR", "Memphis TN", "Baltimore MD",
-    "Milwaukee WI", "Kansas City MO", "Cleveland OH", "Minneapolis MN",
-    "Newark NJ", "St. Louis MO", "Pittsburgh PA", "Orlando FL", "Cincinnati OH",
-    "Indianapolis IN", "Columbus OH", "San Francisco CA", "Jacksonville FL", "Dallas TX"
-  ],
+  "metros_pending": [],
   "live_database_baseline": {
     "note": "Measured read-only from the production Neon database on 2026-11-04.",
     "events_total": 601,
@@ -58,5 +297,10 @@
     "atlas_found_candidate_schools": 64,
     "atlas_found_candidate_events": 150,
     "note": "From 6 seeded organizer websites in one city, sitemap expansion reached 66 distinct source domains. OpenStreetMap maps 27 places there. OSM is a floor, not a count."
+  },
+  "measured_metro_count": 37,
+  "metro_totals": {
+    "venues": 315,
+    "named": 907
   }
 }

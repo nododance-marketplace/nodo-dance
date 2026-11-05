@@ -13,12 +13,13 @@ import { Fetcher } from './fetcher'
 import { RobotsCache } from './robots'
 import { domainOf, stableHash } from './normalize'
 import { extractEvents, extractSchool } from './parsers/extract'
-import { isGenericTitle } from './parsers/html'
+import { isGenericTitle, stripHtml } from './parsers/html'
+import { LlmExtractor } from './llm'
+import { looksLikeEventListing } from './llm-gate'
 import { canonicalUrl, dedupeKey, proposeMatches, seriesKey, type ExistingRecord } from './dedupe'
 import { isCancellationNotice, validateEvent } from './qa'
 import { detectRecurrence, dayOfWeek } from './recurrence'
 import { findRecurrencePhrase } from './parsers/dates'
-import { stripHtml } from './parsers/html'
 import type { ExtractedEvent, FetchResult } from './types'
 
 export interface AtlasOptions {
@@ -28,6 +29,8 @@ export interface AtlasOptions {
   defaultTimeZone?: string
   /** When true nothing is written; used by --dry-run. */
   dryRun?: boolean
+  /** Optional LLM sidecar for the long tail. */
+  llm?: LlmExtractor
 }
 
 export interface CrawlOutcome {
@@ -54,6 +57,7 @@ export class Atlas {
   private robots: RobotsCache
   private defaultTimeZone: string
   private dryRun: boolean
+  private llm: LlmExtractor
 
   constructor(opts: AtlasOptions) {
     this.prisma = opts.prisma
@@ -61,6 +65,7 @@ export class Atlas {
     this.robots = opts.robots ?? new RobotsCache()
     this.defaultTimeZone = opts.defaultTimeZone ?? 'America/New_York'
     this.dryRun = opts.dryRun ?? false
+    this.llm = opts.llm ?? new LlmExtractor()
   }
 
   /** Register a source, skipping duplicates by canonical URL. */
@@ -222,6 +227,8 @@ export class Atlas {
     const timeZone = source.city?.timeZone ?? this.defaultTimeZone
     let events = extractEvents(result.body, result.finalUrl, timeZone)
     const school = extractSchool(result.body, result.finalUrl, timeZone)
+    let method = events[0]?.extractionMethod
+    let costUsd = 0
 
     // 4b — resolve listings whose title is a call-to-action ("View Event →")
     // by reading the page they link to. Calendar indexes link to detail pages
@@ -233,6 +240,18 @@ export class Atlas {
     // the occurrences. A candidate whose date falls on the stated weekday, in a
     // group of two or more such candidates, is part of that series.
     events = this.attachPageRecurrence(events, result.body, timeZone)
+
+    // 4d — LLM long tail. Only reached when the deterministic ladder found
+    // nothing usable on a page that looks like it lists events. The sidecar is
+    // optional; without it this step is skipped entirely.
+    if (events.length === 0 && this.llm.enabled && looksLikeEventListing(result.body, result.finalUrl)) {
+      const outcome = await this.extractWithLlm(result.finalUrl, timeZone)
+      if (outcome) {
+        events = [outcome.event]
+        method = 'LLM'
+        costUsd += outcome.costUsd
+      }
+    }
 
     // 5 — store raw extraction for auditability
     if (!this.dryRun) {
@@ -254,7 +273,6 @@ export class Atlas {
     let rejected = 0
     let quarantine = 0
     let duplicates = 0
-    const method = events[0]?.extractionMethod
 
     for (const event of events) {
       // Cancellation is judged on the event's own text, not the whole page -
@@ -335,6 +353,22 @@ export class Atlas {
    * Replace generic-title candidates with the real record from the page they
    * link to. Bounded per run: each resolved URL is fetched once.
    */
+  /**
+   * Ask the LLM sidecar for an event record. Returns null when the sidecar is
+   * unavailable or produced nothing usable — the pipeline then simply has no
+   * candidate for that page, which is the correct outcome.
+   */
+  private async extractWithLlm(
+    url: string,
+    timeZone: string
+  ): Promise<{ event: ExtractedEvent; costUsd: number } | null> {
+    const result = await this.llm.extract(url, timeZone)
+    if (!result.ok || !result.data) return null
+    const event = this.llm.toCandidate(result, url, timeZone)
+    if (!event) return null
+    return { event, costUsd: result.costUsd ?? 0 }
+  }
+
   private async resolveGenericTitles(
     events: ExtractedEvent[],
     timeZone: string

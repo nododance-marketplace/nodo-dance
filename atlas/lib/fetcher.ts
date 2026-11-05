@@ -14,6 +14,14 @@ export interface FetchOptions {
   etag?: string
   lastModified?: string
   headers?: Record<string, string>
+  /** HTTP method. Defaults to GET. */
+  method?: 'GET' | 'POST'
+  /** Request body for POST requests (form-encoded for Overpass). */
+  body?: string
+  /** Override the request timeout for slow endpoints (e.g. Overpass). */
+  timeoutMs?: number
+  /** Override the retry count — mirror fallback usually handles failures. */
+  maxRetries?: number
 }
 
 export class Fetcher {
@@ -53,16 +61,17 @@ export class Fetcher {
 
   async fetch(url: string, options: FetchOptions = {}): Promise<FetchResult> {
     const domain = new URL(url).hostname
+    const maxRetries = options.maxRetries ?? this.policy.maxRetries
     let lastError: Error | null = null
 
-    for (let attempt = 0; attempt <= this.policy.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await this.withDomainLock(domain, () => this.fetchInternal(url, options))
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
         // Only transient failures are worth retrying.
         const transient = /HTTP (429|5\d\d)/.test(lastError.message) || /fetch failed/.test(lastError.message)
-        if (!transient || attempt === this.policy.maxRetries) break
+        if (!transient || attempt === maxRetries) break
         const backoff = 1000 * 2 ** attempt
         await new Promise(r => setTimeout(r, backoff))
       }
@@ -85,11 +94,18 @@ export class Fetcher {
     if (options.lastModified) headers['If-Modified-Since'] = options.lastModified
 
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), this.policy.requestTimeoutMs)
+    const timeoutMs = options.timeoutMs ?? this.policy.requestTimeoutMs
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
 
     let response: Response
     try {
-      response = await fetch(url, { headers, redirect: 'follow', signal: controller.signal })
+      response = await fetch(url, {
+        method: options.method ?? 'GET',
+        headers,
+        body: options.body,
+        redirect: 'follow',
+        signal: controller.signal,
+      })
     } catch (error) {
       // Surface the underlying cause (TLS, DNS, timeout) — "fetch failed" alone
       // is useless for operators.
