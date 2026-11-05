@@ -13,6 +13,7 @@ import { findAddress, findCityStateZip, findVenueName } from '../lib/location'
 import { extractJsonLd, extractLinks, extractMeta, stripHtml, findNearestHeading } from '../lib/parsers/html'
 import { extractEvents } from '../lib/parsers/extract'
 import { looksLikeEventPage, isPastEventUrl } from '../lib/sitemap'
+import { findSocialLinks } from '../lib/social'
 import { validateEvent } from '../lib/qa'
 import { sanitizeForDb } from '../lib/pipeline'
 import type { ExtractedEvent } from '../lib/types'
@@ -424,6 +425,34 @@ section('Source discovery')
 
   const heading = findNearestHeading(page, offsets[dateIndex])
   eq('the heading before the date is found', heading, 'Go West: Weekly West Coast Swing Dance')
+}
+
+// ── Social accounts ────────────────────────────────────────────────────────
+// A studio links to its own social accounts from its own website. That is
+// how we know where a small studio posts, when it has no website at all.
+section('Social accounts')
+
+{
+  const html = `
+    <a href="https://www.facebook.com/godance">Facebook</a>
+    <a href="http://instagram.com/godancestudio">Instagram</a>
+    <a href="https://www.tiktok.com/@godanceaustin">TikTok</a>
+    <a href="https://www.youtube.com/godancestudio">YouTube</a>
+    <a href="http://www.facebook.com/2008/fbml">xmlns</a>
+    <a href="https://instagram.com/squarespace">built with</a>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=x">share</a>
+  `
+  const links = findSocialLinks(html)
+  const byPlatform = new Map(links.map((l) => [l.platform, l.url]))
+
+  eq('the facebook account is found', byPlatform.get('facebook'), 'https://www.facebook.com/godance')
+  eq('the instagram account is found', byPlatform.get('instagram'), 'https://instagram.com/godancestudio')
+  eq('the tiktok account is found', byPlatform.get('tiktok'), 'https://www.tiktok.com/@godanceaustin')
+  eq('the youtube account is found', byPlatform.get('youtube'), 'https://www.youtube.com/godancestudio')
+  check('the xml namespace is not an account', !links.some((l) => l.url.includes('/2008/')))
+  check('the website builder is not an account', !links.some((l) => l.url.includes('squarespace')))
+  check('a share button is not an account', !links.some((l) => l.url.includes('sharer')))
+  eq('a page with no links has none', findSocialLinks('<p>Nothing here</p>').length, 0)
 }
 
 // ── Dedupe ─────────────────────────────────────────────────────────────────

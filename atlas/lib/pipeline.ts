@@ -22,6 +22,7 @@ import { looksLikeEventListing } from './llm-gate'
 import { canonicalUrl, dedupeKey, proposeMatches, seriesKey, type ExistingRecord } from './dedupe'
 import { isCancellationNotice, validateEvent } from './qa'
 import { detectRecurrence, dayOfWeek } from './recurrence'
+import { findSocialLinks, socialLinksToJson } from './social'
 import { findRecurrencePhrase } from './parsers/dates'
 import type { ExtractedEvent, FetchResult } from './types'
 
@@ -370,6 +371,11 @@ export class Atlas {
 
     // 7 — source health
     if (!this.dryRun) {
+      // Where this studio posts its events, found from its own website. We
+      // read the links the studio puts on its own site; we never log in and
+      // never read the platform.
+      const socialLinks = socialLinksToJson(findSocialLinks(result.body))
+
       await this.prisma.discoverySource.update({
         where: { id: sourceId },
         data: {
@@ -382,6 +388,7 @@ export class Atlas {
           robotsStatus: 'ALLOWED',
           nextCrawlAt: new Date(Date.now() + source.crawlIntervalDays * 86400000),
           extractionSuccessRate: { set: Math.min(1, events.length > 0 ? 0.8 : 0.2) },
+          ...(socialLinks ? { socialLinks } : {}),
         },
       })
     }

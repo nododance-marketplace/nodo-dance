@@ -297,6 +297,11 @@ model DiscoverySource {
   supportedStyles String @default("[]") // JSON array of DANCE_STYLES
   extractionMethod String @default("DETERMINISTIC") // DETERMINISTIC | LLM | API
 
+  // Where this studio posts its events, found from its own website. Most
+  // small studios have an Instagram account and no website, so this is how
+  // we know where to look - and how a listing points back at its source.
+  socialLinks String? // JSON array of { platform, url }
+
   // Permissions & ethics
   robotsStatus      String    @default("UNKNOWN") // ALLOWED | DISALLOWED | UNKNOWN | NOT_FETCHED
   robotsCheckedAt   DateTime?

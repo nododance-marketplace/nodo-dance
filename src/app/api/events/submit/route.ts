@@ -35,6 +35,7 @@ const schema = z.object({
   organizerEmail: z.string().email(),
   instagramUrl: z.string().optional(),
   websiteUrl: z.string().optional(),
+  sourceUrl: z.string().optional(),
   description: z.string().min(1),
   imageUrl: z.string().nullable().optional(),
   honeypot: z.string().max(0),
@@ -122,6 +123,9 @@ export async function POST(request: NextRequest) {
       organizerEmail: data.organizerEmail,
       instagramUrl: data.instagramUrl || null,
       websiteUrl: data.websiteUrl || null,
+      // Where the person who posted this found it. We link back to it, and
+      // it is how a social media listing keeps its credit.
+      sourceUrl: data.sourceUrl || null,
       imageUrl: data.imageUrl || null,
       description: data.description,
       submittedByUserId: user.id,

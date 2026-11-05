@@ -34,6 +34,7 @@ const schema = z.object({
   organizerEmail: z.string().email('Valid email is required'),
   instagramUrl: z.string().optional().or(z.literal('')),
   websiteUrl: z.string().optional().or(z.literal('')),
+  sourceUrl: z.string().optional().or(z.literal('')),
   description: z.string().min(1, 'Description is required'),
   honeypot: z.string().max(0),
   isRecurring: z.boolean().default(false),
@@ -144,8 +145,9 @@ function SubmitEventContent() {
               price: event.price != null ? String(event.price) : '',
               organizerName: event.organizerName,
               organizerEmail: event.organizerEmail,
-              instagramUrl: event.instagramUrl || '',
-              websiteUrl: event.websiteUrl || '',
+    instagramUrl: event.instagramUrl || '',
+    websiteUrl: event.websiteUrl || '',
+    sourceUrl: event.sourceUrl || '',
               description: event.description,
               honeypot: '',
             })
@@ -635,6 +637,19 @@ function SubmitEventContent() {
                 <label className="block text-sm font-medium mb-1">Website/Ticket Link (optional)</label>
                 <Input {...register('websiteUrl')} placeholder="https://..." error={errors.websiteUrl?.message} />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Where did you see this? (optional)</label>
+              <Input
+                {...register('sourceUrl')}
+                placeholder="https://instagram.com/... or any link"
+                error={errors.sourceUrl?.message}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                If you saw this event on Facebook or Instagram, paste the link. We link back to
+                where it came from, and it helps us find more events like it.
+              </p>
             </div>
 
             {/* Description */}

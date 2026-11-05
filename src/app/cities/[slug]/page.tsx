@@ -94,6 +94,25 @@ export default async function CityPage({ params }: PageProps) {
     }
   }
 
+  // The studios we know about in this market. A studio that sees its own
+  // name on the page for its town is a studio that posts its events here.
+  const cityRows = await prisma.discoveryCity.findMany({
+    where: { name: { in: market.cities, mode: 'insensitive' } },
+    select: { id: true },
+  })
+  const studios = await prisma.discoverySource.findMany({
+    where: { cityId: { in: cityRows.map((c) => c.id) }, isPaused: false },
+    select: {
+      id: true,
+      organizationName: true,
+      url: true,
+      socialLinks: true,
+      _count: { select: { candidates: true } },
+    },
+    orderBy: { organizationName: 'asc' },
+    take: 60,
+  })
+
   return (
     <div className="page-shell">
       {/* Hero */}
@@ -134,8 +153,60 @@ export default async function CityPage({ params }: PageProps) {
         </div>
       </section>
 
+      {/* Studios */}
+      {studios.length > 0 && (
+        <section className="mt-16">
+          <h2 className="text-2xl font-bold mb-2">Studios in {market.name}</h2>
+          <p className="text-gray-600 mb-6 max-w-2xl">
+            We are mapping every studio in {market.name}. If yours is here and your events
+            are not, post them — it takes a minute.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {studios.map((studio) => {
+              let socials: Array<{ platform: string; url: string }> = []
+              try {
+                socials = studio.socialLinks ? JSON.parse(studio.socialLinks) : []
+              } catch {
+                socials = []
+              }
+              return (
+                <div key={studio.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                  <h3 className="font-semibold mb-2">{studio.organizationName ?? studio.url}</h3>
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    <a
+                      href={studio.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Website
+                    </a>
+                    {socials.map((s) => (
+                      <a
+                        key={s.platform + s.url}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-600 hover:underline capitalize"
+                      >
+                        {s.platform}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-6">
+            <Link href="/submit-event">
+              <Button variant="outline">Post your studio&apos;s events</Button>
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Upcoming */}
-      <section>
+      <section className="mt-16">
         <h2 className="text-2xl font-bold mb-6">Coming up in {market.name}</h2>
 
         {events.length === 0 ? (
