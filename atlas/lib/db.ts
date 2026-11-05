@@ -10,21 +10,22 @@
  * That separation is what makes it safe to point the worker at production.
  */
 import { PrismaClient as LocalClient } from '../generated/local-client'
-import { PrismaClient as ProdClient } from '../../node_modules/.prisma/client'
+import { PrismaClient as ProdClient } from '@prisma/client'
 
 export type AtlasTarget = 'local' | 'production'
 
 /**
- * The local client is the structural base type; the production client has the
- * same models plus a few extra columns, so it is cast onto it.
+ * The production client is the structural base type. The local schema is
+ * generated from the production one, so the two have identical models and
+ * the local client is cast onto it.
  */
-export type AtlasPrisma = LocalClient
+export type AtlasPrisma = ProdClient
 
 export function createPrisma(target: AtlasTarget): AtlasPrisma {
   if (target === 'production') {
-    return new ProdClient() as unknown as AtlasPrisma
+    return new ProdClient()
   }
-  return new LocalClient()
+  return new LocalClient() as unknown as AtlasPrisma
 }
 
 /**

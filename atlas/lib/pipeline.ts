@@ -8,7 +8,10 @@
  * Idempotency: candidates are keyed by dedupeKey + sourceId. Re-running the
  * same crawl updates the existing candidate instead of creating a duplicate.
  */
-import { PrismaClient } from '../generated/local-client'
+// A type-only import: the pipeline never constructs a client, it is handed
+// one. Keeping it type-only means this module can be bundled into the web
+// app without pulling in the SQLite client and its 19MB query engine.
+import type { PrismaClient } from '@prisma/client'
 import { Fetcher } from './fetcher'
 import { RobotsCache } from './robots'
 import { domainOf, stableHash } from './normalize'

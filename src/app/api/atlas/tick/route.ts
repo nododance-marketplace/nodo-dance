@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Atlas } from '@atlas/lib/pipeline'
+import { Fetcher } from '@atlas/lib/fetcher'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -8,15 +10,15 @@ export const maxDuration = 300
  * GET /api/atlas/tick
  *
  * Scheduler entry point. Vercel Cron calls this once a day (see vercel.json).
- * It selects the sources that are due for a re-check and hands them to the
- * ingestion worker.
+ * It selects the sources that are due for a re-check and crawls them.
  *
- * Two modes:
- *  - Inline  (default): performs a small bounded number of crawls inside this
- *    request. Safe on a hobby plan, but keep `maxSources` small.
- *  - Enqueue (ATLAS_MODE=enqueue): only writes CrawlJob rows and returns.
- *    A separate worker (atlas/cli.ts crawl) drains the queue. This is the
- *    recommended mode once volume grows.
+ * The crawl runs here, inline, because this endpoint is the only thing that
+ * runs on a schedule. Writing job rows and waiting for a worker to drain
+ * them was the previous design, and nothing ever drained them: the queue
+ * filled and no source was ever re-checked.
+ *
+ * The run is bounded by ATLAS_MAX_SOURCES so it finishes inside the serverless
+ * timeout, and one failing source never stops the others.
  *
  * Security: Vercel sends `Authorization: Bearer $CRON_SECRET`. When
  * CRON_SECRET is not configured the endpoint refuses to run, so it can never
@@ -36,7 +38,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const mode = process.env.ATLAS_MODE ?? 'enqueue'
   const maxSources = Math.min(Number(process.env.ATLAS_MAX_SOURCES ?? 10), 50)
   const now = new Date()
 
@@ -53,44 +54,59 @@ export async function GET(req: NextRequest) {
   })
 
   if (due.length === 0) {
-    return NextResponse.json({ ok: true, mode, scheduled: 0, sources: [] })
+    return NextResponse.json({ ok: true, scheduled: 0, results: [] })
   }
 
-  if (mode === 'enqueue') {
-    const jobs = await prisma.crawlJob.createMany({
-      data: due.map(source => ({
-        sourceId: source.id,
-        jobType: 'CRAWL',
-        status: 'QUEUED',
-        priority: 50,
-        scheduledFor: now,
-        payload: JSON.stringify({ url: source.url, timeZone: source.city?.timeZone ?? 'America/New_York' }),
-      })),
-    })
-    return NextResponse.json({
-      ok: true,
-      mode,
-      scheduled: jobs.count,
-      sources: due.map(s => ({ id: s.id, domain: s.domain, url: s.url })),
-    })
+  const fetcher = new Fetcher({ politenessDelayMs: 2500 })
+  const atlas = new Atlas({ prisma, fetcher })
+
+  const results: Array<{
+    domain: string
+    status: string
+    found: number
+    accepted: number
+    quarantined: number
+    rejected: number
+    error?: string
+  }> = []
+
+  for (const source of due) {
+    try {
+      const outcome = await atlas.crawlSource(source.id)
+      results.push({
+        domain: source.domain,
+        status: outcome.status,
+        found: outcome.candidatesFound,
+        accepted: outcome.candidatesAccepted,
+        quarantined: outcome.quarantine,
+        rejected: outcome.candidatesRejected,
+        ...(outcome.error ? { error: outcome.error } : {}),
+      })
+    } catch (error) {
+      // One bad source must never abort the run.
+      const message = error instanceof Error ? error.message : String(error)
+      results.push({
+        domain: source.domain,
+        status: 'FAILED',
+        found: 0,
+        accepted: 0,
+        quarantined: 0,
+        rejected: 0,
+        error: message.slice(0, 200),
+      })
+    }
   }
 
-  // Inline mode: record the job, and let the external worker pick it up.
-  await prisma.crawlJob.createMany({
-    data: due.map(source => ({
-      sourceId: source.id,
-      jobType: 'CRAWL',
-      status: 'QUEUED',
-      priority: 50,
-      scheduledFor: now,
-      payload: JSON.stringify({ url: source.url }),
-    })),
-  })
+  const totals = results.reduce(
+    (acc, r) => ({
+      found: acc.found + r.found,
+      accepted: acc.accepted + r.accepted,
+      quarantined: acc.quarantined + r.quarantined,
+      rejected: acc.rejected + r.rejected,
+      failed: acc.failed + (r.status === 'FAILED' ? 1 : 0),
+    }),
+    { found: 0, accepted: 0, quarantined: 0, rejected: 0, failed: 0 }
+  )
 
-  return NextResponse.json({
-    ok: true,
-    mode,
-    scheduled: due.length,
-    sources: due.map(s => ({ id: s.id, domain: s.domain, url: s.url })),
-  })
+  return NextResponse.json({ ok: true, scheduled: results.length, totals, results })
 }
