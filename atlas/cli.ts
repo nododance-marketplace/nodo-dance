@@ -496,6 +496,9 @@ async function review(args: Args) {
   const candidates = await prisma.candidateEvent.findMany({
     where: {
       reviewStatus: 'PENDING',
+      // Expired candidates are records of things the source no longer lists.
+      // They are kept for the audit trail and kept out of the queue.
+      isExpired: false,
       ...(showAll ? {} : { qaStatus: { not: 'REJECT' } }),
     },
     include: { matches: true },
@@ -503,11 +506,15 @@ async function review(args: Args) {
     take: 100,
   })
   const rejectedCount = await prisma.candidateEvent.count({
-    where: { reviewStatus: 'PENDING', qaStatus: 'REJECT' },
+    where: { reviewStatus: 'PENDING', isExpired: false, qaStatus: 'REJECT' },
+  })
+  const expiredCount = await prisma.candidateEvent.count({
+    where: { reviewStatus: 'PENDING', isExpired: true },
   })
   if (candidates.length === 0) {
     console.log('  Queue is empty.')
     if (rejectedCount > 0) console.log(`  ${rejectedCount} candidate(s) were auto-rejected by QA (use --all to inspect).`)
+    if (expiredCount > 0) console.log(`  ${expiredCount} candidate(s) were superseded by a later crawl and are no longer listed.`)
     return
   }
   for (const c of candidates) {

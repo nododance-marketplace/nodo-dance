@@ -122,6 +122,29 @@ eq('bare hour range', parseTime('Doors 6-9pm').time, '18:00')
 check('recurrence phrase found', findRecurrencePhrase('Tango every Wednesday at 8pm') !== undefined)
 check('no recurrence phrase in plain text', findRecurrencePhrase('Come learn salsa with us tonight') === undefined)
 
+{
+  // A range with no meridiem is ambiguous. "5 - 9" is morning or evening
+  // and we do not guess.
+  eq('an unqualified range yields no time', parseTime('Doors 5 - 9').time, undefined)
+  eq('an unqualified range yields no end time', parseTime('Doors 5 - 9').endTime, undefined)
+  eq('a qualified range still works', parseTime('Doors 5 - 9 pm').time, '17:00')
+  eq('a meridiem on the range start is kept', parseTime('Doors 7pm until 9').time, '19:00')
+  eq('a meridiem before the range applies to it', parseTime('PM doors 5 - 9').time, '17:00')
+}
+
+{
+  // The time must belong to this event. A page listing a dozen events puts
+  // a dozen times in it; a time far from the date is a neighbour's.
+  const crowded =
+    'March 5, 2027 Meraki! Salsa Social. Doors open. Moonshine November 1, 2026 4:30 - 9 pm | 4 Level 1 Mambo on Monday'
+  const parsed = parseDateTime(crowded, new Date('2026-11-05T00:00:00Z'))
+  eq('the date is found', parsed.date, '2027-03-05')
+  eq('a neighbouring event time is not taken', parsed.time, undefined)
+
+  const own = 'March 5, 2027 doors open at 7:30 PM'
+  eq('a time next to the date is taken', parseDateTime(own, new Date('2026-11-05T00:00:00Z')).time, '19:30')
+}
+
 // ── Normalization ──────────────────────────────────────────────────────────
 section('Normalization')
 
@@ -272,6 +295,52 @@ section('Extraction quality')
     pageText: 'Salsa every Friday at The Loft.',
   })
   check('a dance record still passes', result.status === 'PASS', result.reasons)
+}
+
+{
+  // "Ecstatic Dance" is a partner-dance format the canonical vocabulary has
+  // no slot for. It must not be filtered out as "not a dance".
+  const ecstatic: ExtractedEvent = {
+    title: 'Rebirth Wednesdays! – Dance to remember who you are',
+    styles: ['Other'],
+    venueName: 'Austin Ecstatic Dance Center',
+    address: '10203 Old Manchaca Road',
+    localDate: '2027-03-05',
+    localTime: '19:00',
+    isRecurring: false,
+    recurrenceConfidence: 0,
+    sourceUrl: 'https://austinecstaticdancecenter.com/',
+    foundFields: ['title', 'startDateTime', 'localDate', 'localTime', 'venueName', 'address'],
+    extractionMethod: 'JSONLD',
+  }
+  const result = validateEvent(ecstatic, {
+    now: new Date('2026-11-04T00:00:00Z'),
+    pageText: 'Wednesday Night Dance at the Austin Ecstatic Dance Center!',
+  })
+  check('an ecstatic dance event passes', result.status === 'PASS', result.reasons)
+}
+
+{
+  // A venue that happens to be a dance center does not make every event at
+  // it a dance event.
+  const filmFest: ExtractedEvent = {
+    title: 'Submit Your Film',
+    styles: ['Other'],
+    venueName: 'BodyVox Dance Center',
+    address: '1201 NW 17th Ave, Portland, OR 97209',
+    localDate: '2027-03-05',
+    localTime: '19:00',
+    isRecurring: false,
+    recurrenceConfidence: 0,
+    sourceUrl: 'https://bodyvox.org/film-festival',
+    foundFields: ['title', 'startDateTime', 'localDate', 'localTime', 'venueName', 'address'],
+    extractionMethod: 'JSONLD',
+  }
+  const result = validateEvent(filmFest, {
+    now: new Date('2026-11-04T00:00:00Z'),
+    pageText: 'BodyVox Dance Center presents the CineVox dance film festival.',
+  })
+  check('a film submission at a dance center is quarantined', result.status === 'QUARANTINE', result.reasons)
 }
 
 // ── Dedupe ─────────────────────────────────────────────────────────────────

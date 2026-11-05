@@ -18,7 +18,12 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 200)
 
   const candidates = await prisma.candidateEvent.findMany({
-    where: status === 'ALL' ? {} : { reviewStatus: status },
+    // Expired candidates are records of things the source no longer lists.
+    // They are kept for the audit trail and kept out of the queue.
+    where:
+      status === 'ALL'
+        ? {}
+        : { reviewStatus: status, ...(status === 'PENDING' ? { isExpired: false } : {}) },
     orderBy: [{ confidence: 'desc' }, { createdAt: 'desc' }],
     take: limit,
     include: {

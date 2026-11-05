@@ -40,6 +40,17 @@ export function detectStyles(text: string): DanceStyle[] {
 }
 
 /**
+ * Partner-dance formats that are real dances but are not canonical Nodo
+ * styles. They are used only to decide whether a record is a dance event
+ * at all — never to set the style field.
+ *
+ * "Ecstatic Dance" is the commonest one: a free-flow partner dance that
+ * the canonical vocabulary has no slot for.
+ */
+export const DANCE_FORMAT_PATTERNS =
+  /\b(ecstatic|5\s*-?\s*rhythm|five\s+rhythm|contact\s+improv|improvisational\s+dance|freestyle\s+dance|social\s+dance|dance\s+night|dancing\s+night|dance\s+party)\b/i
+
+/**
  * Map free text to a Nodo event type.
  * Returns null when ambiguous — we never guess a type we cannot justify.
  */

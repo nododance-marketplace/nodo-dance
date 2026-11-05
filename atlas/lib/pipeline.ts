@@ -126,13 +126,13 @@ export class Atlas {
       data: {
         url: canonical,
         domain: domainOf(canonical),
-        organizationName: input.organizationName,
+        organizationName: sanitizeForDb(input.organizationName),
         cityId: input.cityId,
         sourceCategory: input.sourceCategory ?? 'EVENT_ORG',
         sourceType: input.sourceType ?? 'HTML',
         supportedStyles: JSON.stringify(input.supportedStyles ?? []),
         discoveredVia: input.discoveredVia ?? 'MANUAL',
-        notes: input.notes,
+        notes: sanitizeForDb(input.notes),
         nextCrawlAt: new Date(),
       },
     })
@@ -174,7 +174,7 @@ export class Atlas {
         data: {
           robotsStatus: desiredRobotsStatus,
           robotsCheckedAt: new Date(),
-          robotsDetail: decision.reason,
+          robotsDetail: sanitizeForDb(decision.reason),
         },
       })
     }
@@ -289,7 +289,7 @@ export class Atlas {
       await this.prisma.rawExtraction.create({
         data: {
           sourceId,
-          url: result.finalUrl,
+          url: sanitizeForDb(result.finalUrl) ?? '',
           contentHash: result.contentHash,
           rawPayload: JSON.stringify({ events, school }).slice(0, 200000),
           extractedFields: JSON.stringify(Array.from(new Set(events.flatMap(e => e.foundFields)))),
@@ -304,6 +304,7 @@ export class Atlas {
     let rejected = 0
     let quarantine = 0
     let duplicates = 0
+    const seenCandidateIds: string[] = []
 
     for (const event of events) {
       // Cancellation is judged on the event's own text, not the whole page -
@@ -326,7 +327,8 @@ export class Atlas {
       const matches = proposeMatches(event, existing)
 
       if (!this.dryRun) {
-        await this.persistCandidate(sourceId, event, qa.status, qa.confidence, qa.reasons, matches)
+        const candidateId = await this.persistCandidate(sourceId, event, qa.status, qa.confidence, qa.reasons, matches)
+        seenCandidateIds.push(candidateId)
       }
 
       if (qa.status === 'REJECT') rejected++
@@ -334,6 +336,28 @@ export class Atlas {
       else {
         accepted++
         if (matches.some(m => m.deterministic)) duplicates++
+      }
+    }
+
+    // 6b — expire what this crawl did not see.
+    //
+    // A page changes: an event is renamed, moved or withdrawn. When the
+    // extraction changes too, the old candidate keeps its own dedupe key and
+    // never matches again, so the review queue fills with records of
+    // things that no longer exist. Anything still awaiting a decision that
+    // this crawl did not see has been superseded.
+    if (!this.dryRun && seenCandidateIds.length > 0) {
+      const expired = await this.prisma.candidateEvent.updateMany({
+        where: {
+          sourceId,
+          reviewStatus: 'PENDING',
+          isExpired: false,
+          id: { notIn: seenCandidateIds },
+        },
+        data: { isExpired: true },
+      })
+      if (expired.count > 0) {
+        console.log(`[atlas] ${expired.count} superseded candidate(s) expired for ${source.domain}`)
       }
     }
 
@@ -529,7 +553,7 @@ export class Atlas {
     confidence: number,
     reasons: string[],
     matches: Array<{ existingId: string; matchType: string; score: number; reason: string; deterministic: boolean }>
-  ) {
+  ): Promise<string> {
     const key = dedupeKey(event)
     const startDateTime = event.localDate && event.localTime
       ? await this.toUtc(event.localDate, event.localTime, event.timeZone ?? this.defaultTimeZone)
@@ -605,6 +629,11 @@ export class Atlas {
       ? await this.prisma.candidateEvent.update({ where: { id: existing.id }, data })
       : await this.prisma.candidateEvent.create({ data })
 
+    // A candidate seen again is current again.
+    if (existing?.isExpired) {
+      await this.prisma.candidateEvent.update({ where: { id: existing.id }, data: { isExpired: false } })
+    }
+
     // Evidence rows
     for (const ev of event.evidence ?? []) {
       await this.prisma.sourceEvidence.create({
@@ -623,26 +652,33 @@ export class Atlas {
     // Recurrence rule record
     if (event.isRecurring && event.recurrenceRule) {
       const sKey = seriesKey(event)
-      await this.prisma.recurrenceRule.create({
-        data: {
-          candidateEventId: candidate.id,
-          seriesKey: sKey ?? stableHash(key),
-          ruleJson: JSON.stringify(event.recurrenceRule),
-          timeZone: event.recurrenceRule.timeZone,
-          interval: event.recurrenceRule.interval,
-          byDay: JSON.stringify(event.recurrenceRule.byDay),
-          until: event.recurrenceRule.until ? new Date(`${event.recurrenceRule.until}T00:00:00Z`) : null,
-          count: event.recurrenceRule.count ?? null,
-          exceptions: JSON.stringify(event.recurrenceRule.exceptions),
-          originalText: event.recurrenceRule.originalText ?? null,
-          confidence: event.recurrenceRule.confidence,
-          status: 'PROPOSED',
-          sourceUrl: sanitizeForDb(event.sourceUrl) ?? '',
-          expiresAt: event.recurrenceRule.until
-            ? new Date(`${event.recurrenceRule.until}T00:00:00Z`)
-            : new Date(Date.now() + 180 * 86400000),
-        },
-      })
+      try {
+        await this.prisma.recurrenceRule.create({
+          data: {
+            candidateEventId: candidate.id,
+            seriesKey: sKey ?? stableHash(key),
+            ruleJson: JSON.stringify(event.recurrenceRule),
+            timeZone: event.recurrenceRule.timeZone,
+            interval: event.recurrenceRule.interval,
+            byDay: JSON.stringify(event.recurrenceRule.byDay),
+            until: event.recurrenceRule.until ? new Date(`${event.recurrenceRule.until}T00:00:00Z`) : null,
+            count: event.recurrenceRule.count ?? null,
+            exceptions: JSON.stringify(event.recurrenceRule.exceptions),
+            originalText: sanitizeForDb(event.recurrenceRule.originalText) ?? null,
+            confidence: event.recurrenceRule.confidence,
+            status: 'PROPOSED',
+            sourceUrl: sanitizeForDb(event.sourceUrl) ?? '',
+            expiresAt: event.recurrenceRule.until
+              ? new Date(`${event.recurrenceRule.until}T00:00:00Z`)
+              : new Date(Date.now() + 180 * 86400000),
+          },
+        })
+      } catch (error) {
+        // A rule we cannot store must not cost us the candidate. The rule is
+        // a proposal for a human to check; the candidate is the evidence.
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(`[atlas] recurrence rule not stored for "${event.title}": ${message.slice(0, 120)}`)
+      }
     }
 
     // Proposed matches — never auto-merged
@@ -654,10 +690,12 @@ export class Atlas {
           matchType: m.matchType,
           score: m.score,
           status: m.deterministic ? 'PROPOSED' : 'PROPOSED',
-          reason: m.reason,
+          reason: sanitizeForDb(m.reason) ?? null,
         },
       })
     }
+
+    return candidate.id
   }
 
   private async persistSchool(sourceId: string, school: ReturnType<typeof extractSchool>) {
@@ -667,18 +705,18 @@ export class Atlas {
       where: { sourceId, dedupeKey: key },
     })
     const data = {
-      businessName: school.businessName,
-      websiteUrl: school.websiteUrl ?? null,
-      address: school.address ?? null,
+      businessName: sanitizeForDb(school.businessName) ?? '',
+      websiteUrl: sanitizeForDb(school.websiteUrl) ?? null,
+      address: sanitizeForDb(school.address) ?? null,
       city: school.city ?? null,
       state: school.state ?? null,
       zip: school.zip ?? null,
-      phone: school.phone ?? null,
-      contactChannel: school.contactChannel ?? null,
+      phone: sanitizeForDb(school.phone) ?? null,
+      contactChannel: sanitizeForDb(school.contactChannel) ?? null,
       styles: JSON.stringify(school.styles),
-      classScheduleUrl: school.classScheduleUrl ?? null,
-      instructorDirectoryUrl: school.instructorDirectoryUrl ?? null,
-      sourceUrl: school.sourceUrl,
+      classScheduleUrl: sanitizeForDb(school.classScheduleUrl) ?? null,
+      instructorDirectoryUrl: sanitizeForDb(school.instructorDirectoryUrl) ?? null,
+      sourceUrl: sanitizeForDb(school.sourceUrl) ?? '',
       dedupeKey: key,
       lastSeenAt: new Date(),
     }

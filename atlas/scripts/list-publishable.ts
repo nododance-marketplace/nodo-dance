@@ -4,7 +4,7 @@ const prisma = new PrismaClient()
 
 async function main() {
   const candidates = await prisma.candidateEvent.findMany({
-    where: { qaStatus: 'PASS', reviewStatus: 'PENDING' },
+    where: { qaStatus: 'PASS', reviewStatus: 'PENDING', isExpired: false },
     select: { id: true, title: true, city: true, state: true, localDate: true },
     orderBy: { localDate: 'asc' },
   })

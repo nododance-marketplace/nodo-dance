@@ -47,6 +47,7 @@ export function parseDateTime(
 ): ParsedDateTime {
   if (!text) return {}
   const result: ParsedDateTime = {}
+  let dateEnd = 0
 
   for (const pattern of DATE_PATTERNS) {
     const m = pattern.exec(text)
@@ -93,10 +94,14 @@ export function parseDateTime(
       )
     }
     result.raw = m[0]
+    dateEnd = (m.index ?? 0) + m[0].length
     break
   }
 
-  const time = parseTime(text)
+  // The time has to belong to this event. A page listing a dozen events
+  // puts a dozen times in it, and a time found anywhere in the text is
+  // usually a neighbour's. Only a time next to the date counts.
+  const time = parseTime(text.slice(Math.max(0, dateEnd - 40), dateEnd + 40))
   if (time.time) result.time = time.time
   if (time.endTime) result.endTime = time.endTime
 
@@ -120,27 +125,34 @@ function rollForward(date: string, reference: Date): string {
 export function parseTime(text: string): { time?: string; endTime?: string; raw?: string } {
   if (!text) return {}
 
-  // Range first: "7:00 - 9:00 PM", "7-9pm", "7:00pm - 9:00pm"
+  // Range first: "7:00 - 9:00 PM", "7-9pm", "7pm until 9"
   const range =
-    /\b(\d{1,2})(?::(\d{2}))?\s*(?:am|pm)?\s*(?:-|–|—|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(
+    /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to|until)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(
       text
     )
   if (range) {
-    // The meridiem for the START must appear before the range, otherwise
-    // "6-9pm" would wrongly make the start 6pm.
+    // The meridiem for the START may be attached to it ("7pm - 9pm") or
+    // appear before the range ("doors at 7pm, 5 - 9").
     const startAmPm = /\b(am|pm)\b/i.exec(text.slice(0, range.index))
-    const endAmPm = range[5]?.toLowerCase()
+    const rangeStartMeridiem = range[3]?.toLowerCase()
+    const endMeridiem = range[6]?.toLowerCase()
+
+    let startMeridiem = rangeStartMeridiem ?? startAmPm?.[1]?.toLowerCase()
     // "6-9pm" means 6pm-9pm: when only the end carries a meridiem, apply it
     // to the start too (unless the start is later than the end).
-    const effectiveEnd = endAmPm ?? startAmPm?.[1]?.toLowerCase()
-    let startMeridiem = startAmPm?.[1]?.toLowerCase()
+    const effectiveEnd = endMeridiem ?? startMeridiem
     if (!startMeridiem && effectiveEnd) {
       const rawStart = Number(range[1]) % 12
-      const rawEnd = Number(range[3]) % 12
+      const rawEnd = Number(range[4]) % 12
       if (rawStart <= rawEnd) startMeridiem = effectiveEnd
     }
+    // A range with no meridiem anywhere is ambiguous. "5 - 9" could be
+    // morning or evening, and dance listings are usually evening. We do
+    // not guess: an ambiguous time is no time, and the record is
+    // quarantined for a human to read.
+    if (!startMeridiem && !effectiveEnd) return {}
     const start = to24(Number(range[1]), Number(range[2] ?? 0), startMeridiem, range.index)
-    const end = to24(Number(range[3]), Number(range[4] ?? 0), effectiveEnd, 0)
+    const end = to24(Number(range[4]), Number(range[5] ?? 0), effectiveEnd, 0)
     if (start) return { time: start, endTime: end ?? undefined, raw: range[0] }
   }
 

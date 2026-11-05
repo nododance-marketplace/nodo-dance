@@ -7,7 +7,7 @@
  *
  * Confidence is a prioritisation signal, never a proof of correctness.
  */
-import { detectStyles } from './normalize'
+import { detectStyles, DANCE_FORMAT_PATTERNS } from './normalize'
 import type { ExtractedEvent } from './types'
 
 export type QaStatus = 'PASS' | 'QUARANTINE' | 'REJECT'
@@ -121,8 +121,15 @@ export function validateEvent(event: ExtractedEvent, ctx: QaContext): QaResult {
   {
     const own = `${event.title} ${event.description ?? ''} ${event.venueName ?? ''} ${event.organizerName ?? ''}`
     const ownStyles = detectStyles(own)
-    const ownSignal = /\b(salsa|bachata|tango|milonga|zouk|kizomba|shag|swing|cumbia|walle?z|foxtrot|cha\s?cha|jive|samba|ballroom|line\s?danc|partner)\b/i.test(own)
-    if (ownStyles.length === 0 && !ownSignal) {
+    // A partner-dance format that is not a canonical style still counts:
+    // "Ecstatic Dance" is a dance even though the vocabulary has no slot
+    // for it.
+    const ownFormat = DANCE_FORMAT_PATTERNS.test(own)
+    // A title that says what the event is is enough on its own. A venue
+    // called "... Dance Center" is not — that is where the event happens,
+    // not what it is.
+    const titleSaysDance = /\b(dance|dancing|social|socials|party|bashment)\b/i.test(event.title ?? '')
+    if (ownStyles.length === 0 && !ownFormat && !titleSaysDance) {
       reasons.push('Record carries no dance-related signal of its own')
     }
   }
