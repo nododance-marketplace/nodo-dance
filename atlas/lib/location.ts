@@ -45,17 +45,31 @@ export interface FoundLocation {
   zip?: string
 }
 
+/**
+ * Where an address stops and the rest of the page starts.
+ *
+ * A studio's address often runs straight on into the next thing on the
+ * page: "1711 S. Broad Street (entrance on Castle Ave) Payments: click to
+ * pay". The address ends at the first note or payment instruction, not at
+ * the end of the sentence.
+ */
+const ADDRESS_END = /\s(?:\(|\b(?:payments?|cost|costs|price|pricing|register|registration|rsvp|tickets?|free|free entry|more info|contact)\b)/i
+
 /** Find a street address in free text. */
 export function findAddress(text: string): string | undefined {
   const m = ADDRESS_RE.exec(text)
   if (!m) return undefined
-  const candidate = tidy(m[0])
+  let candidate = tidy(m[0])
   // Reject fragments that are really dates or prices.
   if (/^\d{1,2}[:.]\d{2}\s*(am|pm)?$/i.test(candidate)) return undefined
-  if (!/\b(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Ct|Court|Pl|Place|Sq|Square|Pkwy|Parkway)\b/i.test(candidate)) {
+  if (!/\b(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Ln|Lane|Way|Ct|Court|Pl|Place|Sq|Square)\b/i.test(candidate)) {
     return undefined
   }
-  return candidate
+  // Cut the address where the page moves on to something else.
+  const end = candidate.search(ADDRESS_END)
+  if (end > 0) candidate = candidate.slice(0, end)
+  candidate = candidate.replace(/[\s,;:]+$/, '').trim()
+  return candidate.length >= 6 ? candidate : undefined
 }
 
 /** Find "City, ST" and optional ZIP. */

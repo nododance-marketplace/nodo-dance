@@ -166,10 +166,27 @@ eq('address normalization strips unit', normalizeAddress('123 Main St, Suite 200
 // ── Location heuristics ────────────────────────────────────────────────────
 section('Location heuristics')
 
-eq('street address found', findAddress('Join us at 2935 Griffith St, Charlotte, NC 28203 every Monday'), '2935 Griffith St')
-eq('city and state found', findCityStateZip('Located in Charlotte, NC 28203').city, 'Charlotte')
-check('venue name found', (findVenueName('Venue: The Loft at 5th Street') ?? '').includes('Loft'))
-check('no false venue from weekday', !/^(mon|tue)/i.test(findVenueName('Monday Class') ?? ''))
+  eq('street address found', findAddress('Join us at 2935 Griffith St, Charlotte, NC 28203 every Monday'), '2935 Griffith St')
+  eq('city and state found', findCityStateZip('Located in Charlotte, NC 28203').city, 'Charlotte')
+  check('venue name found', (findVenueName('Venue: The Loft at 5th Street') ?? '').includes('Loft'))
+  check('no false venue from weekday', !/^(mon|tue)/i.test(findVenueName('Monday Class') ?? ''))
+
+  // An address runs into the next thing on the page.
+  eq(
+    'an address stops at a note',
+    findAddress('1711 S. Broad Street (entrance on Castle Ave) Payments: click to pay'),
+    '1711 S. Broad Street'
+  )
+  eq(
+    'an address stops at a price',
+    findAddress('6305 SE Foster Rd Cost: $20 for members'),
+    '6305 SE Foster Rd'
+  )
+  eq(
+    'an address stops at registration',
+    findAddress('2525 W Anderson Ln Register at the front desk'),
+    '2525 W Anderson Ln'
+  )
 
 // ── HTML parsing ───────────────────────────────────────────────────────────
 section('HTML parsing')
@@ -490,6 +507,13 @@ section('Quality assurance')
 
   const unbounded = validateEvent({ ...base, isRecurring: true, recurrenceRule: { rrule: 'FREQ=WEEKLY', interval: 1, byDay: [3], exceptions: [], timeZone: 'America/New_York', confidence: 0.9 }, recurrenceConfidence: 0.9 }, { now: new Date('2026-11-04T00:00:00Z'), pageText: 'salsa' })
   check('unbounded recurring claim is quarantined', unbounded.status === 'QUARANTINE', unbounded.reasons)
+
+  // "Closed: Thanksgiving" is a closure, not an event.
+  const closed = validateEvent(
+    { ...base, title: 'Closed: Thanksgiving', description: 'Closed: Thanksgiving' },
+    { now: new Date('2026-11-04T00:00:00Z'), pageText: 'Closed: Thanksgiving' }
+  )
+  check('a closure notice is rejected', closed.status === 'REJECT', closed.reasons)
 }
 
 // ── Database sanitisation ──────────────────────────────────────────────────

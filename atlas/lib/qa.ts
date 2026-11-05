@@ -72,6 +72,7 @@ const CANCEL_PATTERNS = [
   /\bcanceled\b/i,
   /\bpostponed\b/i,
   /\breschedul?ed\b/i,
+  /\bclosed\b/i,
   /\bno (?:class|event|social) (?:this|on)\b/i,
 ]
 
@@ -212,6 +213,10 @@ export function isCancellationNotice(text: string): boolean {
   // section. Only treat a notice as a cancellation when it reads like one.
   const scoped = CANCEL_PATTERNS.some(p => p.test(text))
   if (!scoped) return false
-  return /\b(cancell?ed|canceled|postponed|reschedul?ed)\b/i.test(text) &&
-    /\b(this|tonight|today|next|upcoming|the)\b.{0,40}\b(class|event|social|night|workshop|practica|milonga)\b/i.test(text)
+  return (
+    (/\b(cancell?ed|canceled|postponed|reschedul?ed|closed)\b/i.test(text) &&
+      /\b(this|tonight|today|next|upcoming|the)\b.{0,40}\b(class|event|social|night|workshop|practica|milonga)\b/i.test(text)) ||
+    // "Closed: Thanksgiving" names the closure in its own right.
+    /^\s*closed\b/i.test(text)
+  )
 }
