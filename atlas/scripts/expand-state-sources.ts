@@ -18,6 +18,7 @@
 import { createPrisma, type AtlasPrisma, type AtlasTarget } from '../lib/db'
 import { Atlas } from '../lib/pipeline'
 import { Fetcher } from '../lib/fetcher'
+import { isPartnerDanceBusiness } from '../lib/partner-dance'
 
 const prisma: AtlasPrisma = createPrisma(
   (process.argv.includes('--target=production') ? 'production' : 'local') as AtlasTarget
@@ -109,8 +110,11 @@ async function main() {
   const atlas = new Atlas({ prisma, fetcher })
 
   console.log(`censusing ${STATE}...`)
-  const places = await census(fetcher, STATE)
-  console.log(`  ${places.length} named places\n`)
+  const allPlaces = await census(fetcher, STATE)
+  // The name search catches anything with a dance word near its name. Only
+  // the partner dance businesses belong on the site.
+  const places = allPlaces.filter((p) => isPartnerDanceBusiness(p.name))
+  console.log(`  ${allPlaces.length} named places, ${places.length} of them partner dance\n`)
 
   const withSite = places.filter((p) => p.website)
   const towns = new Map<string, number>()
