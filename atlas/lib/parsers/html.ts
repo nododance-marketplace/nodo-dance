@@ -11,9 +11,14 @@ const ENTITIES: Record<string, string> = {
   amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—',
   ndash: '–', hellip: '…', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”',
   eacute: 'é', egrave: 'è', agrave: 'à', ccedil: 'ç', uuml: 'ü', ouml: 'ö', auml: 'ä',
+  rarr: '→', larr: '←', uarr: '↑', darr: '↓', bull: '•', middot: '·',
+  copy: '©', reg: '®', trade: '™', deg: '°', eacute2: 'é',
 }
 
 export function decodeEntities(input: string): string {
+  // One pass, the way a browser does it. "&amp;rarr;" is an encoded
+  // ampersand followed by the text "rarr;" — a browser shows "&rarr;",
+  // not an arrow, and decoding twice would be wrong.
   return input
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
@@ -262,14 +267,15 @@ export function findEnclosingTag(html: string, offset: number): { tag: string; a
 /** Link labels that are never useful as an event title. */
 const GENERIC_TITLES = [
   'view event', 'view events', 'event', 'events', 'details', 'detail', 'more info',
-  'more information', 'learn more', 'read more', 'register', 'registration',
+  'more information', 'learn more', 'read more', 'continue reading', 'read on',
+  'register', 'registration',
   'sign up', 'signup', 'rsvp', 'rsvp now', 'click here', 'join now', 'buy tickets',
   'tickets', 'get tickets', 'get your tickets', 'book now', 'book', 'reserve',
   'save the date', 'submit your film', 'open performing group', 'upcoming events',
   'here', 'letter', 'staff', 'our staff', 'jobs', 'job', 'contact', 'about',
   'home', 'faq', 'blog', 'news', 'menu', 'search', 'cart', 'privacy', 'terms',
   'donate', 'volunteer', 'faculty', 'scholarships', 'membership', 'sponsors',
-  'featured', 'read more →', 'read more ->',
+  'featured', 'read more →', 'read more ->', 'continue reading →', 'continue reading ->',
   'view event →', 'view event ->', 'learn more →', 'learn more ->',
 ]
 

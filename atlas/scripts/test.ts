@@ -180,6 +180,11 @@ section('Location heuristics')
     'Charlotte'
   )
   eq('a state and zip still work', findCityStateZip('Austin, TX 78701').state, 'TX')
+  eq(
+    'a phrase in front of the city is trimmed away',
+    findCityStateZip('134 Halton Road Greenville INSTRUCTION IN GREENVILLE, SC').city,
+    'GREENVILLE'
+  )
   check('venue name found', (findVenueName('Venue: The Loft at 5th Street') ?? '').includes('Loft'))
   check('no false venue from weekday', !/^(mon|tue)/i.test(findVenueName('Monday Class') ?? ''))
 
@@ -411,11 +416,12 @@ section('Source discovery')
       <h1 class="title"><a href="/calendar/go-west-11-10-2026">Go West: Weekly West Coast Swing Dance</a></h1>
       <ul><li><time datetime="2026-11-10">Tuesday, November 10, 2026   8:30 PM</time></li></ul>
     </div>
-    <p>Some   navigation   text   with &amp; entities &amp; irregular spacing</p>
+    <p>Some   navigation   text   with &amp; entities &amp; irregular spacing &rarr; more</p>
     </body></html>`
 
   const { text, offsets } = stripHtml(page)
   eq('entities are decoded', text.includes('&'), true)
+  eq('an arrow entity is decoded', text.includes('→'), true)
   check('whitespace is collapsed', !text.includes('  '), text.slice(0, 60))
   eq('offsets line up with the text', offsets.length, text.length)
 

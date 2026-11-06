@@ -81,12 +81,27 @@ const CITY_SEGMENT_RE = /,\s*([^,]{2,40}?)\s*,\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
 
 const CITY_STATE_ZIP_RE = /\b([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z]{2})\b(?:\s*(\d{5}))?/g
 
+/**
+ * A page often says more than the city before the state:
+ * "134 Halton Road Greenville INSTRUCTION IN GREENVILLE, SC". The city is
+ * the last word before the state, not the whole phrase in front of it.
+ */
+function trimToCity(phrase: string): string {
+  const parts = phrase.split(/\s+/)
+  for (let i = parts.length - 1; i > 0; i--) {
+    if (/^(?:in|at|near|from|of)$/i.test(parts[i - 1])) {
+      return parts.slice(i).join(' ')
+    }
+  }
+  return phrase
+}
+
 /** Find "City, ST" and optional ZIP. */
 export function findCityStateZip(text: string): FoundLocation {
   CITY_SEGMENT_RE.lastIndex = 0
   let m: RegExpExecArray | null
   while ((m = CITY_SEGMENT_RE.exec(text))) {
-    const city = tidy(m[1])
+    const city = tidy(trimToCity(m[1]))
     const state = m[2]
     if (!city || city.length < 3) continue
     // A segment that is really the street address, not a city.
@@ -97,7 +112,7 @@ export function findCityStateZip(text: string): FoundLocation {
 
   CITY_STATE_ZIP_RE.lastIndex = 0
   while ((m = CITY_STATE_ZIP_RE.exec(text))) {
-    const city = tidy(m[1])
+    const city = tidy(trimToCity(m[1]))
     const state = m[2]
     if (!city || city.length < 3) continue
     // Skip things like "Monday, Mar" and weekday fragments.

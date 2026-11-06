@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { MapPin, ChevronDown, Check } from 'lucide-react'
 
@@ -146,6 +147,16 @@ export function CitySwitcher() {
               </span>
             </button>
           ))}
+
+          {/* The towns we are covering but do not have events for yet. */}
+          <Link
+            href="/cities"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-primary border-t border-gray-100"
+          >
+            <span>Every city we cover</span>
+            <ChevronDown className="w-4 h-4 -rotate-90" aria-hidden="true" />
+          </Link>
         </div>
       )}
     </div>

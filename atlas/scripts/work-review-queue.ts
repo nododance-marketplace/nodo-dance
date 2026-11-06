@@ -74,6 +74,14 @@ const REJECT_PATTERNS: Array<{ match: RegExp; reason: string }> = [
     match: /^[—–-]/,
     reason: 'The title is a fragment of a sentence with nothing before it.',
   },
+  {
+    match: /^continue reading\b/i,
+    reason: 'The title is a link on the page, not an event.',
+  },
+  {
+    match: /read more/i,
+    reason: 'The title is a link on the page, not an event.',
+  },
 ]
 
 /**
