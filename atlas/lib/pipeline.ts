@@ -114,6 +114,8 @@ export class Atlas {
     timeZone?: string
     discoveredVia?: string
     notes?: string
+    /** Override the default 7-day poll cadence (channel sources use 1). */
+    crawlIntervalDays?: number
   }) {
     const canonical = canonicalUrl(input.url)
     const existing = await this.prisma.discoverySource.findFirst({ where: { url: canonical } })
@@ -137,6 +139,7 @@ export class Atlas {
         supportedStyles: JSON.stringify(input.supportedStyles ?? []),
         discoveredVia: input.discoveredVia ?? 'MANUAL',
         notes: sanitizeForDb(input.notes),
+        crawlIntervalDays: input.crawlIntervalDays ?? 7,
         nextCrawlAt: new Date(),
       },
     })

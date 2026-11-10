@@ -72,7 +72,11 @@ function flattenLd(node: any): any[] {
   if (typeof node !== 'object') return []
   const out: any[] = []
   const graph = node['@graph']
-  if (Array.isArray(graph)) out.push(...graph.flatMap(flattenLd))
+  if (Array.isArray(graph)) out.push(...node['@graph'].flatMap(flattenLd))
+  // Aggregator indexes nest records as ItemList → ListItem → item. Descend so
+  // the wrapped events are extracted, not just the outer list object.
+  const items = node.itemListElement
+  if (Array.isArray(items)) out.push(...items.flatMap(flattenLd))
   out.push(node)
   return out
 }
@@ -122,9 +126,13 @@ function addressToString(raw: unknown): string | undefined {
 
 function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate: Date): ExtractedEvent[] {
   const events: ExtractedEvent[] = []
-  for (const node of flattenLd(blocks)) {
-    const types = ldType(node).map(t => t.toLowerCase())
-    if (!types.includes('event')) continue
+  for (const raw of flattenLd(blocks)) {
+    const types = ldType(raw).map(t => t.toLowerCase())
+    // A ListItem wrapper carries the real record in .item.
+    const node = types.includes('listitem') ? raw.item : raw
+    if (!node || typeof node !== 'object') continue
+    const nodeTypes = ldType(node).map(t => t.toLowerCase())
+    if (!nodeTypes.includes('event')) continue
 
     const title = tidy(String(node.name ?? ''))
     if (!title) continue
@@ -176,6 +184,11 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
     const addressRegion = typeof rawAddress === 'object' ? rawAddress.addressRegion : undefined
     const addressPostal = typeof rawAddress === 'object' ? rawAddress.postalCode : undefined
     const venueName = tidy(String(location.name ?? '')) || undefined
+    // Coordinates when the source provides them, so the event can be mapped
+    // without a geocoding pass later.
+    const geo = location.geo
+    const geoLat = geo?.latitude != null ? Number(geo.latitude) : undefined
+    const geoLng = geo?.longitude != null ? Number(geo.longitude) : undefined
     // Only keep an address that actually reads like one.
     const usableAddress = looksLikeAddress(addressLine) ? tidy(String(addressLine)) : undefined
 
@@ -233,6 +246,8 @@ function fromJsonLd(blocks: any[], url: string, timeZone: string, referenceDate:
       city: addressCity ? tidy(String(addressCity)) : undefined,
       state: addressRegion ? tidy(String(addressRegion)) : undefined,
       zip: addressPostal ? tidy(String(addressPostal)) : undefined,
+      lat: geoLat,
+      lng: geoLng,
       price,
       priceText,
       organizerName,

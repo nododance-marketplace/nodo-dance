@@ -13,6 +13,7 @@
 > |---|---|
 > | See the state of the world | `npx tsx atlas/cli.ts report` |
 > | Work the review queue | `npx tsx atlas/cli.ts review` |
+> | Register channel sources for a city | `npx tsx atlas/cli.ts seed:channels --city <slug>` |
 > | Read the design | `docs/atlas/ATLAS-ARCHITECTURE.md` |
 > | Ship the schema to production | `docs/atlas/ATLAS-MIGRATION.md` — needs approval first |
 > | Continue the national lead census | `docs/atlas/ATLAS-LEAD-CENSUS.md` §6 |
@@ -48,6 +49,7 @@ npx prisma generate --schema atlas/prisma/schema.local.prisma
 # seed and run
 npx tsx atlas/cli.ts seed:cities            # 7 rollout cities
 npx tsx atlas/cli.ts seed:sources           # 9 verified Charlotte sources
+npx tsx atlas/cli.ts seed:channels          # Eventbrite / Meetup / DanceUS channels (21 per city)
 npx tsx atlas/cli.ts discover:osm --city charlotte-nc   # OSM census + search seeds
 npx tsx atlas/cli.ts expand                 # discover event pages via sitemaps
 npx tsx atlas/cli.ts crawl --force --limit 70
@@ -97,6 +99,63 @@ atlas/
   prisma/
     schema.local.prisma  generated — do not hand-edit
 ```
+
+---
+
+## Channel sources (added 2026-11-09)
+
+One public aggregator page covers a whole style in a whole city, so channels
+reach national scale before any per-organizer source is registered.
+
+```
+npx tsx atlas/cli.ts seed:channels --city charlotte-nc   # 21 sources / city (7 styles × 3 platforms)
+npx tsx atlas/cli.ts crawl --via CHANNEL --limit 50      # crawl only channel sources
+```
+
+**Worldwide DanceUS enumeration** — `discover:danceus` reads the public
+danceus.org style pages (salsa, argentine-tango, swing, latin-dance, bachata,
+kizomba) and registers every city style-calendar they link, worldwide, with a
+DiscoveryCity auto-seeded per country. US slugs resolve through the state
+registry; world slugs resolve through the world registry in
+`atlas/lib/channels.ts`, which covers the shapes they actually publish:
+`london-uk`, `berlin-germany`, `toronto-on-canada` and `montreal-qc-canada`
+(province → IANA zone), `sydney-australia` / `perth-australia` (city → zone,
+AU slugs carry no province) and the city-less `puerto-rico`. Unknown areas are
+skipped, never guessed:
+
+```
+npx tsx atlas/cli.ts discover:danceus                    # 109 calendars across 80 cities / 9 countries (2026-11-09)
+npx tsx atlas/cli.ts crawl --via CHANNEL_DANCEUS         # 476 found · 379 accepted (world pass included)
+```
+
+Every discovered URL passes the real robots gate before registration; the
+robots-blocked /events/bachata/ and /events/latin-dance/ trees are excluded.
+A style page that cross-links calendars of another style (the /bachata/ page
+links salsa calendars) dedupes through the source registry's canonical URL.
+
+Measured worldwide run (2026-11-09): 83 cities, 233 sources, 9 countries
+(US 50, DE 7, GB 7, AU 7, CA 6, ES 2, CO/FR/IE/PR 1 each); registry totals
+**1 649 candidates, 1 186 passed QA**. Eventbrite/Meetup channel owners stay
+US-scoped; only the DanceUS channel is worldwide so far.
+
+| Platform | URL pattern | Serves | Notes |
+|---|---|---|---|
+| Eventbrite | `/d/{st}--{city}/{style}/` | SSR JSON-LD (`ItemList` → `ListItem` → `Event`) | includes venue name, street address and GeoCoordinates |
+| Meetup | `/find/us--{st}--{city}/{style}/` | SSR JSON-LD | the `?keywords=` query form is robots-disallowed; the path form is not. Topic pages exist per style+city combo — 404s back off automatically |
+| DanceUS | `/events/{style}/{city}-{st}-{style}-calendar/` | HTML listing | per-city calendars exist for some styles only; `/events/bachata/`, `/events/zouk/` and several others are robots-disallowed |
+
+Design: every channel source is isolated (`ChannelSourceSeed` in
+`atlas/lib/channels.ts`), polled daily (`crawlIntervalDays: 1`), gated by
+robots.txt like everything else, and deduped against the same registry — a
+listing found on Eventbrite *and* DanceUS produces two candidates and a
+deterministic EXACT proposal, never a double publication.
+
+A bespoke organizer `.ics` feed can be added at seed time:
+`npx tsx atlas/cli.ts seed:channels --city <slug> --ics <feed-url> --styles '["Salsa"]'`.
+
+Measured Charlotte run (2026-11-09): 21 channels registered, 82 candidates
+extracted in one crawl, 56 passed QA at ≥0.90 confidence with venue, address
+and — for Eventbrite/DanceUS — exact coordinates.
 
 ---
 

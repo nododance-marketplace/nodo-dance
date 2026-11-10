@@ -16,6 +16,7 @@ import { looksLikeEventPage, isPastEventUrl } from '../lib/sitemap'
 import { findSocialLinks } from '../lib/social'
 import { validateEvent } from '../lib/qa'
 import { sanitizeForDb } from '../lib/pipeline'
+import { parseDanceUsCalendarLink } from '../lib/channels'
 import type { ExtractedEvent } from '../lib/types'
 
 let passed = 0
@@ -618,6 +619,39 @@ section('Database sanitisation')
     }
   })())
 }
+
+// ── DanceUS world calendar link parsing ────────────────────────────────────
+// The world registry ('london-uk', 'toronto-on-canada', 'puerto-rico') must
+// resolve side by side with the US registry, without changing US behaviour.
+section('DanceUS calendar link parsing')
+
+function worldCase(url: string, citySlug: string, name: string, country: string, timeZone: string): void {
+  const p = parseDanceUsCalendarLink(url)
+  check(
+    `${citySlug} (${country})`,
+    !!p && p.citySlug === citySlug && p.city.name === name && p.city.country === country && p.city.timeZone === timeZone,
+    p ? `${p.citySlug}|${p.city.name}|${p.city.country}|${p.city.timeZone}` : 'null'
+  )
+}
+
+worldCase('https://danceus.org/events/salsa/london-uk-salsa-calendar/', 'london-uk', 'London', 'GB', 'Europe/London')
+worldCase('https://danceus.org/events/salsa/barcelona-spain-salsa-calendar/', 'barcelona-spain', 'Barcelona', 'ES', 'Europe/Madrid')
+worldCase('https://danceus.org/events/salsa/toronto-on-canada-salsa-calendar/', 'toronto-on-canada', 'Toronto', 'CA', 'America/Toronto')
+worldCase('https://danceus.org/events/salsa/calgary-ab-canada-salsa-calendar/', 'calgary-ab-canada', 'Calgary', 'CA', 'America/Edmonton')
+worldCase('https://danceus.org/events/salsa/vancouver-bc-canada-salsa-calendar/', 'vancouver-bc-canada', 'Vancouver', 'CA', 'America/Vancouver')
+worldCase('https://danceus.org/events/salsa/cali-colombia-salsa-calendar/', 'cali-colombia', 'Cali', 'CO', 'America/Bogota')
+worldCase('https://danceus.org/events/salsa/paris-france-salsa-calendar/', 'paris-france', 'Paris', 'FR', 'Europe/Paris')
+worldCase('https://danceus.org/events/salsa/sydney-australia-salsa-calendar/', 'sydney-australia', 'Sydney', 'AU', 'Australia/Sydney')
+worldCase('https://danceus.org/events/salsa/perth-australia-salsa-calendar/', 'perth-australia', 'Perth', 'AU', 'Australia/Perth')
+worldCase('https://danceus.org/events/salsa/gold-coast-australia-salsa-calendar/', 'gold-coast-australia', 'Gold Coast', 'AU', 'Australia/Brisbane')
+worldCase('https://danceus.org/events/salsa/puerto-rico-salsa-calendar/', 'puerto-rico', 'Puerto Rico', 'PR', 'America/Puerto_Rico')
+
+// US shapes must keep parsing identically after the world registry landed.
+worldCase('https://danceus.org/events/salsa/charlotte-nc-salsa-calendar/', 'charlotte-nc', 'Charlotte', 'US', 'America/New_York')
+worldCase('https://danceus.org/events/tango/new-york-nyc-argentine-tango-calendar/', 'new-york-ny', 'New York', 'US', 'America/New_York')
+
+// Anything outside both registries stays rejected.
+eq('unknown world area is rejected', parseDanceUsCalendarLink('https://danceus.org/events/hip-hop/hip-hop-festivals-worldwide-hip-hop-calendar/'), null)
 
 // ── Summary ────────────────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(60)}`)

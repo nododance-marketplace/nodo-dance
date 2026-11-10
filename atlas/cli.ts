@@ -32,6 +32,7 @@ import { Discovery, discoverCity, looksLikeDanceSource } from './lib/discovery'
 import { OsmDiscovery, looksLikeDanceOrg, censusQuery, areaQuery, type OsmOrganisation } from './lib/osm'
 import { SitemapReader, looksLikeEventPage, isPastEventUrl, type SitemapUrl } from './lib/sitemap'
 import { RobotsCache } from './lib/robots'
+import { buildChannelSeeds, DANCEUS_STYLE_PAGES, parseDanceUsCalendarLink } from './lib/channels'
 import { DANCE_STYLES } from './lib/normalize'
 import { wallTimeToUtc } from './lib/recurrence'
 
@@ -338,6 +339,215 @@ async function discoverOsm(args: Args) {
   console.log(`  Seeds written to ${seedFile}`)
 }
 
+/**
+ * Register the channel sources (Eventbrite / Meetup / DanceUS) for a city.
+ *
+ * Channels cover a whole style of a whole city from one public listing page —
+ * the fastest way to reach national coverage before per-organizer sources are
+ * registered. Idempotent: re-running only tops up missing sources.
+ */
+async function seedChannels(args: Args) {
+  const slug = String(args.city ?? 'charlotte-nc')
+  const city = await prisma.discoveryCity.findUnique({ where: { slug } })
+  if (!city) throw new Error(`Unknown city "${slug}". Run: atlas seed:cities`)
+
+  header(`Seeding channel sources — ${city.name}, ${city.state}`)
+  const atlas = new Atlas({ prisma })
+  const seeds = buildChannelSeeds({ slug: city.slug, name: city.name, state: city.state })
+
+  if (args.ics) {
+    // A bespoke organizer .ics feed can be registered alongside the channels.
+    seeds.push({
+      url: String(args.ics),
+      organizationName: String(args.ics ?? '').split('//')[1] ?? 'iCal feed',
+      sourceCategory: 'EVENT_ORG',
+      sourceType: 'ICAL',
+      supportedStyles: JSON.parse(String(args.styles ?? '[]')),
+      discoveredVia: 'CHANNEL_ICAL',
+      intervalDays: 1,
+      notes: 'iCalendar feed provided directly.',
+    })
+  }
+
+  let created = 0
+  for (const seed of seeds) {
+    const { created: isNew } = await atlas.registerSource({
+      url: seed.url,
+      organizationName: seed.organizationName,
+      cityId: city.id,
+      sourceCategory: seed.sourceCategory,
+      sourceType: seed.sourceType,
+      supportedStyles: seed.supportedStyles,
+      discoveredVia: seed.discoveredVia,
+      crawlIntervalDays: seed.intervalDays,
+      notes: seed.notes,
+    })
+    if (isNew) {
+      created++
+      console.log(`  ✓ ${seed.organizationName}`)
+    }
+  }
+  console.log('')
+  console.log(`  ${created} channel source(s) registered.`)
+  console.log('  Next: atlas crawl --via CHANNEL')
+}
+
+/**
+ * Enumerate every DanceUS city style-calendar from the public style pages.
+ *
+ * danceus.org/{style}/ links every city calendar they maintain
+ * (/events/salsa/charlotte-nc-salsa-calendar/ and friends). Each link becomes
+ * one DanceUS channel source bound to its city — the national backbone,
+ * before a single per-organizer source is registered.
+ *
+ * Robots is a hard gate: the calendar paths live in the middle of a long
+ * disallow list (/events/bachata/, /events/zouk/, /events/lafin-dance/ …),
+ * so each discovered URL is checked against danceus.org/robots.txt before
+ * registration.
+ */
+async function discoverDanceUs() {
+  const fetcher = new Fetcher({ politenessDelayMs: 2500, requestTimeoutMs: 60000 })
+  const robots = new RobotsCache()
+  const atlas = new Atlas({ prisma, fetcher })
+
+  // robots.txt is a hard gate — every discovered URL must pass the same
+  // decision the crawler will make later.
+  const origin = 'https://danceus.org'
+  const groups = await robots.load(origin, fetcher.policy.userAgent, async robotsUrl => {
+    const res = await fetcher.fetch(robotsUrl)
+    return { status: res.status, body: res.body }
+  })
+  const isAllowed = (url: string): boolean =>
+    robots.decide(groups, url, fetcher.policy.userAgent).allowed
+
+  header('Discovering DanceUS city calendars')
+  interface DiscoveredCalendar {
+    url: string
+    citySlug: string
+    city: {
+      name: string
+      state: string
+      stateName: string
+      timeZone: string
+      country: string
+      countryName: string
+    }
+    styleLabel: string
+  }
+  const calendars = new Map<string, DiscoveredCalendar>()
+
+  for (const style of DANCEUS_STYLE_PAGES) {
+    const pageUrl = `https://danceus.org/${style}/`
+    let html = ''
+    try {
+      const res = await fetcher.fetch(pageUrl)
+      html = res.body
+    } catch (error) {
+      console.log(`  ✗ style page ${style}: ${error instanceof Error ? error.message : String(error).slice(0, 80)}`)
+      continue
+    }
+
+    const links = [...html.matchAll(/href="(\/events\/[a-z0-9-]+\/[a-z0-9-]+-calendar\/)"/g)]
+      .map(m => `https://danceus.org${m[1]}`)
+    const uniqueLinks = [...new Set(links)]
+    process.stdout.write(`  ${style.padEnd(16)} ${String(uniqueLinks.length).padStart(3)} city calendars`)
+
+    let kept = 0
+    let skippedRobots = 0
+    let skippedUnknown = 0
+    const found: DiscoveredCalendar[] = []
+    for (const link of uniqueLinks) {
+      if (!isAllowed(link)) {
+        skippedRobots++
+        continue
+      }
+      const parsed = parseDanceUsCalendarLink(link)
+      if (!parsed) {
+        skippedUnknown++
+        continue
+      }
+      found.push({
+        url: link,
+        citySlug: parsed.citySlug,
+        city: parsed.city,
+        styleLabel: parsed.styleLabel,
+      })
+      kept++
+    }
+    console.log(` → ${kept} kept, robots-blocked ${skippedRobots}, unknown area ${skippedUnknown}`)
+    for (const item of found) {
+      calendars.set(`${item.citySlug}|${item.url}`, item)
+    }
+  }
+
+  // Deduplicate across styles: one entry per (city, calendar URL).
+  const items = [...calendars.values()]
+  const byCity = new Map<string, DiscoveredCalendar[]>()
+  for (const item of items) {
+    const list = byCity.get(item.citySlug) ?? []
+    list.push(item)
+    byCity.set(item.citySlug, list)
+  }
+
+  console.log('')
+  console.log(`  ${items.length} calendar URL(s) across ${byCity.size} city/area slugs.`)
+
+  let citiesCreated = 0
+  let citiesExisted = 0
+  let sourcesCreated = 0
+  let sourcesExisted = 0
+  for (const [citySlug, calendarsForCity] of byCity) {
+    let city = await prisma.discoveryCity.findUnique({ where: { slug: citySlug } })
+    if (city) citiesExisted++
+    else {
+      city = await prisma.discoveryCity.create({
+        data: {
+          slug: citySlug,
+          name: calendarsForCity[0].city.name,
+          state: calendarsForCity[0].city.state,
+          stateName: calendarsForCity[0].city.stateName,
+          timeZone: calendarsForCity[0].city.timeZone,
+          country: calendarsForCity[0].city.country,
+          priority: 500, // census metros run first; these queue after
+          status: 'PENDING',
+          notes: `Discovered via DanceUS style calendars (${calendarsForCity[0].city.countryName}).`,
+        },
+      })
+      citiesCreated++
+    }
+
+    for (const item of calendarsForCity) {
+      const { created: isNew } = await atlas.registerSource({
+        url: item.url,
+        organizationName: `DanceUS · ${city.name} — ${item.styleLabel}`,
+        cityId: city.id,
+        sourceCategory: 'DIRECTORY',
+        sourceType: 'HTML',
+        supportedStyles: DANCEUS_STYLE_LABEL_TO_STYLES(item.styleLabel),
+        discoveredVia: 'CHANNEL_DANCEUS',
+        crawlIntervalDays: 1,
+        notes: 'Public DanceUS city style-calendar listing page (worldwide style-page census).',
+      })
+      if (isNew) sourcesCreated++
+      else sourcesExisted++
+    }
+  }
+
+  console.log('')
+  console.log(`  ✓ ${citiesCreated} new city (or area) seeded, ${citiesExisted} already known.`)
+  console.log(`  ✓ ${sourcesCreated} new calendar source(s) registered, ${sourcesExisted} already known.`)
+  console.log('  Next: atlas crawl --via CHANNEL_DANCEUS --limit 120')
+}
+
+function DANCEUS_STYLE_LABEL_TO_STYLES(label: string): string[] {
+  if (label === 'salsa') return ['Salsa']
+  if (label === 'argentine tango') return ['Tango']
+  if (label === 'kizomba') return ['Kizomba']
+  if (label === 'bachata') return ['Bachata']
+  if (label.startsWith('swing')) return ['West Coast Swing']
+  return []
+}
+
 async function listSources() {
   header('Source registry')
   const sources = await prisma.discoverySource.findMany({
@@ -423,12 +633,14 @@ async function crawl(args: Args) {
         data: { etag: null, lastModified: null, contentHash: null },
       })
     }
+    const via = args.via ? String(args.via) : null
     const due = prisma.discoverySource.findMany({
       where: {
         isPaused: false,
         optOut: false,
         // A source whose permissions are DENIED is never crawled.
         permissionsStatus: { not: 'DENIED' },
+        ...(via ? { discoveredVia: { startsWith: via } } : {}),
         OR: [{ nextCrawlAt: null }, { nextCrawlAt: { lte: new Date() } }],
       },
       orderBy: { nextCrawlAt: 'asc' },
@@ -711,6 +923,12 @@ async function main() {
     case 'seed:sources':
       await seedSources(args)
       break
+    case 'seed:channels':
+      await seedChannels(args)
+      break
+    case 'discover:danceus':
+      await discoverDanceUs()
+      break
     case 'expand':
       await expand(args)
       break
@@ -744,11 +962,14 @@ Nodo Atlas CLI
 
   atlas seed:cities                 register the rollout cities
   atlas seed:sources [--city slug]  register the pilot source seeds
+  atlas seed:channels [--city slug] register channel sources (Eventbrite / Meetup / DanceUS)
+  atlas discover:danceus           enumerate every DanceUS city style-calendar worldwide
   atlas discover --city <slug>      find candidate sources for a city
   atlas discover:osm --city <slug> find sources from OpenStreetMap (free, no key)
   atlas expand [--city slug]        expand sources via their own sitemaps
   atlas sources                     list the source registry
   atlas crawl [--limit N]           crawl sources that are due
+  atlas crawl --via CHANNEL         crawl only sources discovered via a prefix (e.g. CHANNEL)
   atlas review [--all]              show the candidate review queue
   atlas approve <candidateId>       approve a candidate
   atlas reject <candidateId>        reject a candidate

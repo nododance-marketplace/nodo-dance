@@ -1,7 +1,8 @@
 # Nodo Atlas — Database Migration Plan
 
-> Schema additions and the production migration procedure. Last updated: 2026-11-04.
-> **Status: designed and verified locally. NOT yet applied to production.**
+> Schema additions and the production migration procedure. Last updated: 2026-11-09.
+> **Status: schema applied to production. First worldwide publish done on 2026-11-09
+> (1,139 events → Neon, 1,218 Atlas-origin total). See §8 for the 443 transport rule.**
 
 ---
 
@@ -267,3 +268,45 @@ applies, so a silent divergence is not possible.
 - [ ] A source registered in staging appears in the registry and can be crawled
 - [ ] No public listing is published without a human decision
 - [ ] A rollback statement has been tested against the branch database
+
+---
+
+## 8. Publishing from the dev box — the port-443 rule
+
+`atlas/scripts/neon-sync.ts` is the one-shot operator tool for getting the
+reviewed local state into Neon and publishing it:
+
+```
+npx tsx atlas/scripts/neon-sync.ts --sync            # merge local atlas state (idempotent, inert)
+npx tsx atlas/scripts/neon-sync.ts --publish --yes   # dedupe + approve + publish QA-passed candidates
+```
+
+It exists because this dev box cannot complete the Postgres TLS handshake on
+5432 (TCP opens, TLS is reset by something between here and us-east-1, so the
+Prisma CLI/engine and `--target=production` fail), while Neon's HTTP driver on
+port 443 works. Everything runs through Neon's `Pool`
+(`webSocketConstructor: ws`), not the regular Prisma client.
+
+Merge semantics (nothing is deleted, ids of the older production pilot are
+preserved):
+
+| Table | Key | Behaviour |
+|---|---|---|
+| `DiscoveryCity` | slug | reuse the existing id, insert only unknown slugs |
+| `DiscoverySource` | url | reuse the existing id; new sources are queued (`nextCrawlAt` nulled) for the worker |
+| `CandidateEvent` | local cuid id | inserted fresh with `sourceId` remapped onto the merged registry |
+
+Publish semantics (`--publish --yes`):
+
+1. Load candidates with `qaStatus = 'PASS'`, `reviewStatus in ('PENDING','APPROVED')`, not expired.
+2. Group by `dedupeKey + city` — keep the highest-confidence row; discard keys
+   already present on a `PUBLISHED` candidate.
+3. Mark duplicates `MERGED`, mark keepers `APPROVED`, both with a
+   `ModerationDecision` audit row (`decidedBy = atlas-bulk`).
+4. Insert `Event` rows (`publishedVia = 'ATLAS'`, `status = 'APPROVED'`,
+   `timeZone` from the source city), then `PublicationRecord` plus the
+   candidate → `PUBLISHED` flip.
+
+Re-runs are safe: already-moved rows are skipped (the loader selects only
+PENDING/APPROVED candidates, and an existing `Event.atlasCandidateId` is
+reused, never duplicated).

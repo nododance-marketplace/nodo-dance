@@ -95,6 +95,11 @@ model InstructorProfile {
   neighborhood       String?
   address            String?
   travelRadiusMiles  Int?
+  // Which city the instructor teaches in. Nodo serves more than one city,
+  // so an instructor without a city cannot be found by anyone looking for
+  // one nearby.
+  city               String?
+  state              String?
 
   // Payment methods
   paymentCash    Boolean @default(false)
@@ -291,6 +296,11 @@ model DiscoverySource {
   sourceType     String @default("HTML") // HTML | RSS | ICAL | JSONLD | API
   supportedStyles String @default("[]") // JSON array of DANCE_STYLES
   extractionMethod String @default("DETERMINISTIC") // DETERMINISTIC | LLM | API
+
+  // Where this studio posts its events, found from its own website. Most
+  // small studios have an Instagram account and no website, so this is how
+  // we know where to look - and how a listing points back at its source.
+  socialLinks String? // JSON array of { platform, url }
 
   // Permissions & ethics
   robotsStatus      String    @default("UNKNOWN") // ALLOWED | DISALLOWED | UNKNOWN | NOT_FETCHED
