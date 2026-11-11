@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   description:
     'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
   manifest: '/manifest.json',
-  themeColor: '#1B1F3B',
+  themeColor: '#10121F',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -79,7 +79,7 @@ export default function RootLayout({
             <Footer />
             <MobileNav />
           </div>
-          <Toaster position="top-right" richColors />
+          <Toaster position="top-right" richColors theme="dark" />
         </SessionProvider>
       </body>
     </html>

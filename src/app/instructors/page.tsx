@@ -18,7 +18,7 @@ import { marketBySlug } from '@/lib/markets'
 
 export default function InstructorsPage() {
   return (
-    <Suspense fallback={<div className="page-shell"><div className="bg-white rounded-xl h-96 motion-safe:animate-pulse" /></div>}>
+    <Suspense fallback={<div className="page-shell"><div className="bg-surface rounded-xl h-96 motion-safe:animate-pulse" /></div>}>
       <InstructorsContent />
     </Suspense>
   )
@@ -218,24 +218,24 @@ function InstructorsContent() {
             density === 'tile' ? (
               <div className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-lg h-14 motion-safe:animate-pulse" />
+                  <div key={i} className="bg-surface rounded-lg h-14 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : density === 'compact' ? (
               <div className="grid min-[440px]:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-56 motion-safe:animate-pulse" />
+                  <div key={i} className="bg-surface rounded-xl h-56 motion-safe:animate-pulse" />
                 ))}
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-96 motion-safe:animate-pulse" />
+                  <div key={i} className="bg-surface rounded-xl h-96 motion-safe:animate-pulse" />
                 ))}
               </div>
             )
           ) : instructors.length === 0 ? (
-            <div className="text-center py-16 px-6 bg-white border border-gray-200 rounded-xl">
+            <div className="text-center py-16 px-6 bg-surface border border-gray-200 rounded-xl">
               <p className="text-xl text-gray-600 mb-4">No instructors found</p>
               <p className="text-gray-500">Try adjusting your filters</p>
             </div>

@@ -133,7 +133,7 @@ export default async function CityPage({ params }: PageProps) {
         {styles.size > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {[...styles].sort().map((s) => (
-              <span key={s} className="px-3 py-1 rounded-full bg-white border border-gray-200 text-sm text-gray-700">
+              <span key={s} className="px-3 py-1 rounded-full bg-surface border border-gray-200 text-sm text-gray-700">
                 {s}
               </span>
             ))}
@@ -170,7 +170,7 @@ export default async function CityPage({ params }: PageProps) {
                 socials = []
               }
               return (
-                <div key={studio.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                <div key={studio.id} className="bg-surface border border-gray-200 rounded-xl p-5">
                   <h3 className="font-semibold mb-2">{studio.organizationName ?? studio.url}</h3>
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <a
@@ -210,7 +210,7 @@ export default async function CityPage({ params }: PageProps) {
         <h2 className="text-2xl font-bold mb-6">Coming up in {market.name}</h2>
 
         {events.length === 0 ? (
-          <div className="text-center py-16 px-6 bg-white border border-gray-200 rounded-xl">
+          <div className="text-center py-16 px-6 bg-surface border border-gray-200 rounded-xl">
             <p className="text-xl text-gray-600 mb-2">No events listed yet</p>
             <p className="text-gray-500 mb-6">
               We are adding {market.name} now. If you know a studio that runs socials or classes, tell us about it.

@@ -1,15 +1,18 @@
 :root {
-  --primary-rgb: 27 31 59; --primary-light-rgb: 45 51 84; --primary-dark-rgb: 15 17 35;
-  --coral-rgb: 184 66 53; --magenta-rgb: 194 24 91; --orange-rgb: 197 89 29; --surface-rgb: 255 255 255;
-  --color-paper: #f5f5f3; --color-paper-2: #eeeeec; --color-paper-3: #e2e2e4;
-  --color-surface: #ffffff; --color-ink: #1b1f3b; --color-ink-2: #2d3354; --color-ink-dark: #0f1123;
-  --color-peach: #fff0e9; --color-lilac: #eeecff; --color-sea: #e7f6f9;
+  /* Night theme — partner dancing lives after dark. Deep navy canvas, warm
+   * light text, coral that glows. Primary = warm light (text + light buttons);
+   * primary-dark supplies dark text on those buttons. */
+  --primary-rgb: 243 241 234; --primary-light-rgb: 216 214 204; --primary-dark-rgb: 15 17 35;
+  --coral-rgb: 255 111 97; --magenta-rgb: 240 98 146; --orange-rgb: 255 140 66; --surface-rgb: 23 26 43;
+  --color-paper: #10121f; --color-paper-2: #161827; --color-paper-3: #1d2033;
+  --color-surface: #171a2b; --color-ink: #f3f1ea; --color-ink-2: #d9d8e2; --color-ink-dark: #0b0d18;
+  --color-peach: #2b201d; --color-lilac: #232033; --color-sea: #15252b;
   --color-brand-gradient: linear-gradient(110deg, #ff6f61, #ff8c42 52%, #c2185b);
   --color-button-gradient: linear-gradient(110deg, #ff8b7f, #ffb87a 52%, #f39abb);
-  --color-muted: #656577; --color-rule: #dcd9d2;
-  --color-accent: #ff6f61; --color-accent-ink: #b84235; --color-magenta: #c2185b; --color-orange: #ff8c42;
-  --color-focus: #b84235; --color-on-dark: #f7f5f0; --color-on-dark-muted: #cbcbd5; --color-dark-rule: #45485f;
-  --color-error: #b93535; --color-success: #24734e; --color-shadow: #1b1f3b0a;
+  --color-muted: #a2a5ba; --color-rule: #262a40;
+  --color-accent: #ff6f61; --color-accent-ink: #ff9a8f; --color-magenta: #c2185b; --color-orange: #ff8c42;
+  --color-focus: #ff8a7f; --color-on-dark: #f7f5f0; --color-on-dark-muted: #cbcbd5; --color-dark-rule: #2b2f47;
+  --color-error: #e07a72; --color-success: #5cae8b; --color-shadow: #00000059;
   --font-body: var(--font-satoshi), system-ui, sans-serif; --font-display: var(--font-body);
   --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px;
   --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;

@@ -109,7 +109,7 @@ export function EventsMonthCalendar({
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-surface rounded-xl border border-gray-200 overflow-hidden">
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
           {WEEKDAY_LABELS.map((day) => (
@@ -136,7 +136,7 @@ export function EventsMonthCalendar({
               <div
                 key={day.dateKey}
                 className={`min-h-24 sm:min-h-32 border-r border-b border-gray-200 p-1 sm:p-2 ${
-                  !day.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+                  !day.isCurrentMonth ? 'bg-gray-50' : 'bg-surface'
                 }`}
               >
                 {/* Date Number */}
@@ -144,7 +144,7 @@ export function EventsMonthCalendar({
                   <div
                     className={`text-sm font-medium ${
                       day.isToday
-                        ? 'bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center text-xs'
+                        ? 'bg-primary text-primary-dark rounded-full w-6 h-6 flex items-center justify-center text-xs'
                         : day.isCurrentMonth
                         ? 'text-gray-900'
                         : 'text-gray-400'

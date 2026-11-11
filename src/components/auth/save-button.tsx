@@ -39,7 +39,7 @@ export function SaveButton({ itemId, type, initialSaved = false, size = 'md', cl
       <Link href={`/auth/signin?callbackUrl=${callbackUrl}`}>
         <button
           className={cn(
-            'flex items-center gap-1 rounded-lg border border-gray-200 bg-white text-gray-500 hover:text-accent-coral hover:border-accent-coral/30 transition-colors',
+            'flex items-center gap-1 rounded-lg border border-gray-200 bg-surface text-gray-500 hover:text-accent-coral hover:border-accent-coral/30 transition-colors',
             size === 'sm' ? 'p-1.5' : 'px-3 py-2 text-sm',
             className
           )}
@@ -88,7 +88,7 @@ export function SaveButton({ itemId, type, initialSaved = false, size = 'md', cl
         'flex items-center gap-1 rounded-lg border transition-colors',
         saved
           ? 'border-accent-coral/30 bg-accent-coral/5 text-accent-coral'
-          : 'border-gray-200 bg-white text-gray-500 hover:text-accent-coral hover:border-accent-coral/30',
+          : 'border-gray-200 bg-surface text-gray-500 hover:text-accent-coral hover:border-accent-coral/30',
         size === 'sm' ? 'p-1.5' : 'px-3 py-2 text-sm',
         loading && 'opacity-50 cursor-not-allowed',
         className

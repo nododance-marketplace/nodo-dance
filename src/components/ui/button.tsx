@@ -14,10 +14,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           'nodo-button',
           {
-            'bg-primary text-white hover:bg-primary-light': variant === 'primary',
+            'bg-primary text-primary-dark hover:bg-primary-light': variant === 'primary',
             'brand-button': variant === 'gradient',
             'bg-gray-200 text-gray-900 hover:bg-gray-300': variant === 'secondary',
-            'border border-primary/25 text-primary hover:bg-primary hover:text-white': variant === 'outline',
+            'border border-primary/25 text-primary hover:bg-primary hover:text-primary-dark': variant === 'outline',
             'hover:bg-gray-100': variant === 'ghost',
             'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500': variant === 'destructive',
             'min-h-11 px-4 py-2 text-sm': size === 'sm',

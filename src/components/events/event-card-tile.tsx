@@ -36,7 +36,7 @@ export function EventCardTile({ event }: EventCardTileProps) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="flex items-center gap-3 px-4 py-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group"
+      className="flex items-center gap-3 px-4 py-4 bg-surface rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group"
       style={{ borderTop: `2px solid ${styleColor}` }}
     >
       {/* Date column */}

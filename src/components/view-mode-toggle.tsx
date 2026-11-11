@@ -28,7 +28,7 @@ export function ViewModeToggle({ mode, onChange }: ViewModeToggleProps) {
           className={cn(
             'p-1.5 rounded-md transition-colors',
             mode === value
-              ? 'bg-white shadow-sm text-primary'
+              ? 'bg-surface shadow-sm text-primary'
               : 'text-gray-400 hover:text-gray-600'
           )}
         >

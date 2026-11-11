@@ -81,7 +81,7 @@ const DEFAULT_VALUES: Partial<FormData> = {
 
 export default function SubmitEventPage() {
   return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-8"><div className="bg-white rounded-xl h-96 animate-pulse" /></div>}>
+    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-8"><div className="bg-surface rounded-xl h-96 animate-pulse" /></div>}>
       <SubmitEventContent />
     </Suspense>
   )
@@ -376,7 +376,7 @@ function SubmitEventContent() {
   return (
     <div className="form-page">
       {editLoading ? (
-        <div className="bg-white rounded-xl h-96 animate-pulse" />
+        <div className="bg-surface rounded-xl h-96 animate-pulse" />
       ) : (<>
       <div className="mb-8">
         <h1 className="page-heading mb-4">

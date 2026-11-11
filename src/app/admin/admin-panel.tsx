@@ -278,7 +278,7 @@ export function AdminPanel({ adminEmail }: { adminEmail: string }) {
         {loading ? (
           <div className="space-y-4">
             {[1, 2].map((i) => (
-              <div key={i} className="bg-white rounded-xl h-48 animate-pulse border" />
+              <div key={i} className="bg-surface rounded-xl h-48 animate-pulse border" />
             ))}
           </div>
         ) : pendingEvents.length === 0 ? (

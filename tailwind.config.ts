@@ -20,11 +20,14 @@ const config: Config = {
           orange: 'rgb(var(--orange-rgb) / <alpha-value>)',
         },
         background: 'var(--color-paper)',
-        white: 'rgb(var(--surface-rgb) / <alpha-value>)',
+        surface: 'rgb(var(--surface-rgb) / <alpha-value>)',
+        white: '#ffffff',
+        /* Night-scale: 100–200 are dark hairlines/fills, 400–600 muted light
+         * text, 700–900 bright emphasis text. */
         gray: {
-          50: '#f7f5f0', 100: '#eeece6', 200: '#dcd9d2', 300: '#c6c3bd',
-          400: '#898894', 500: '#717180', 600: '#656577', 700: '#484b60',
-          800: '#2d3354', 900: '#1b1f3b',
+          50: '#1b1e30', 100: '#22253c', 200: '#2b2f45', 300: '#9a9eb5',
+          400: '#6f7390', 500: '#7d8093', 600: '#a2a5ba', 700: '#bfc2d2',
+          800: '#e2e3ec', 900: '#f4f2eb',
         },
       },
       fontFamily: {

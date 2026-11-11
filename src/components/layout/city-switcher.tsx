@@ -89,7 +89,7 @@ export function CitySwitcher() {
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={`City: ${label}`}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-gray-300 transition-colors text-sm font-medium text-gray-700"
+        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 bg-surface hover:border-gray-300 transition-colors text-sm font-medium text-gray-700"
       >
         <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
         <span className="hidden sm:inline">{label}</span>
@@ -100,7 +100,7 @@ export function CitySwitcher() {
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 mt-2 w-72 max-h-[70vh] overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl z-50"
+          className="absolute right-0 mt-2 w-72 max-h-[70vh] overflow-y-auto bg-surface border border-gray-200 rounded-xl shadow-xl z-50"
         >
           <button
             onClick={() => choose('all')}

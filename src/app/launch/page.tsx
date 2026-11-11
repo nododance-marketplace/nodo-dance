@@ -340,7 +340,7 @@ export default function LaunchPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Reveal>
             <div className="max-w-4xl">
-              <div className="relative bg-white rounded-xl border border-gray-200 p-6 sm:p-10 md:p-12">
+              <div className="relative bg-surface rounded-xl border border-gray-200 p-6 sm:p-10 md:p-12">
                 {/* Corner tag */}
                 <span className="inline-flex mb-6 text-sm font-medium text-primary border border-gray-200 rounded-full px-3 py-1">
                   Productized Service
@@ -596,7 +596,7 @@ export default function LaunchPage() {
           >
             {WORK.map((item, i) => (
               <Reveal key={item.url + i} delay={i * 100}>
-                <article className="group bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <article className="group bg-surface rounded-xl border border-gray-200 overflow-hidden">
                   {/* 16:10 video frame */}
                   <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
                     <LazyVideo

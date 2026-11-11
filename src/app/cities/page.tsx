@@ -46,7 +46,7 @@ export default async function CitiesPage() {
               <Link
                 key={m.slug}
                 href={`/cities/${m.slug}`}
-                className="bg-white border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors group"
+                className="bg-surface border border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors group"
               >
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
                   <MapPin className="w-4 h-4 text-primary" aria-hidden="true" />
@@ -85,7 +85,7 @@ export default async function CitiesPage() {
                     <Link
                       key={m.slug}
                       href={`/cities/${m.slug}`}
-                      className="bg-white border border-gray-200 rounded-lg px-4 py-2.5 hover:border-gray-300 transition-colors"
+                      className="bg-surface border border-gray-200 rounded-lg px-4 py-2.5 hover:border-gray-300 transition-colors"
                     >
                       <span className="font-medium text-sm">{m.name}</span>
                     </Link>

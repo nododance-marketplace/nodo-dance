@@ -458,7 +458,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-primary-dark">
                         Venmo: @{instructor.paymentVenmo}
                       </Badge>
                     </a>
@@ -469,7 +469,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-primary-dark">
                         Cash App: ${instructor.paymentCashApp}
                       </Badge>
                     </a>
@@ -480,7 +480,7 @@ export function InstructorProfileView({ instructor, isLoggedIn = false }: Instru
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Badge className="cursor-pointer hover:bg-primary hover:text-white">
+                      <Badge className="cursor-pointer hover:bg-primary hover:text-primary-dark">
                         PayPal: {instructor.paymentPayPal}
                       </Badge>
                     </a>

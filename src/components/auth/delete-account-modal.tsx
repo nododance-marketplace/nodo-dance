@@ -45,7 +45,7 @@ export function DeleteAccountModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 sm:p-8 max-h-[85svh] overflow-y-auto"
+        className="bg-surface rounded-xl shadow-xl max-w-md w-full mx-4 p-6 sm:p-8 max-h-[85svh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">

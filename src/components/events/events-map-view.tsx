@@ -1,11 +1,37 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { Component, useEffect, useMemo, type ReactNode } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { parseJsonArray, formatDate, formatTime } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
 import { DANCE_STYLE_COLORS, getStyleColor } from '@/lib/styleColors'
+
+/**
+ * Leaflet binds itself to one DOM node for life. In dev, StrictMode's
+ * mount-unmount-mount cycle and Fast Refresh can hand it back a node that
+ * already holds a map. Catch that and remount on a fresh container.
+ */
+class MapErrorBoundary extends Component<{ children: ReactNode }, { epoch: number; failed: boolean }> {
+  state = { epoch: 0, failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    if (String(error).includes('already initialized')) {
+      this.setState((s) => ({ epoch: s.epoch + 1, failed: false }))
+    }
+  }
+
+  render() {
+    if (this.state.failed) {
+      return <div className="bg-surface rounded-xl h-[520px] flex items-center justify-center text-gray-500 text-sm">Map could not load. Refresh the page.</div>
+    }
+    return <div key={this.state.epoch}>{this.props.children}</div>
+  }
+}
 
 // --- Event type → marker shape ---
 type PinShape = 'circle' | 'ring' | 'square' | 'diamond' | 'triangle'
@@ -161,12 +187,13 @@ export function EventsMapView({ events, center, zoom }: EventsMapViewProps) {
 
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200">
-      <MapContainer
-        center={initialCenter}
-        zoom={initialZoom}
-        style={{ height: '520px', width: '100%' }}
-        scrollWheelZoom={true}
-      >
+      <MapErrorBoundary>
+        <MapContainer
+          center={initialCenter}
+          zoom={initialZoom}
+          style={{ height: '520px', width: '100%' }}
+          scrollWheelZoom={true}
+        >
         <FitToEvents events={events} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -230,10 +257,11 @@ export function EventsMapView({ events, center, zoom }: EventsMapViewProps) {
             </Marker>
           )
         })}
-      </MapContainer>
+        </MapContainer>
+      </MapErrorBoundary>
 
       {/* Legend */}
-      <div className="bg-white border-t border-gray-200 px-4 py-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
+      <div className="bg-surface border-t border-gray-200 px-4 py-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600">
         <span className="font-medium mr-1">Shapes:</span>
         {SHAPE_LEGEND.map(({ label, unicode }) => (
           <span key={label} className="flex items-center gap-1">

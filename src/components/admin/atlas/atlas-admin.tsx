@@ -334,7 +334,7 @@ function OverviewTab({ overview }: { overview: Overview }) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {funnel.map(item => (
-          <div key={item.label} className="rounded-xl border border-gray-200 bg-white p-5">
+          <div key={item.label} className="rounded-xl border border-gray-200 bg-surface p-5">
             <p className="text-xs uppercase tracking-wide text-gray-500">{item.label}</p>
             <p className={cn('mt-2 text-3xl font-bold leading-none', item.tone)}>{item.value}</p>
           </div>
@@ -342,7 +342,7 @@ function OverviewTab({ overview }: { overview: Overview }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-surface p-5">
           <h2 className="font-semibold mb-4">Extraction funnel</h2>
           <div className="space-y-2.5 text-sm">
             <Row label="Extracted" value={overview.candidates} max={overview.candidates} />
@@ -357,7 +357,7 @@ function OverviewTab({ overview }: { overview: Overview }) {
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-surface p-5">
           <h2 className="font-semibold mb-4">Crawl health</h2>
           {overview.attempts.length === 0 ? (
             <p className="text-sm text-gray-500">No crawl attempts recorded yet.</p>
@@ -423,7 +423,7 @@ function ReviewTab({
 }) {
   if (candidates.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center">
+      <div className="rounded-xl border border-dashed border-gray-300 bg-surface p-12 text-center">
         <CheckCircle2 className="mx-auto h-10 w-10 text-[var(--color-success)]" aria-hidden="true" />
         <h2 className="mt-3 font-semibold">The review queue is empty</h2>
         <p className="mt-1 text-sm text-gray-600">
@@ -440,7 +440,7 @@ function ReviewTab({
         Nothing reaches the public site without a decision here.
       </p>
       {candidates.map(c => (
-        <article key={c.id} className="rounded-xl border border-gray-200 bg-white">
+        <article key={c.id} className="rounded-xl border border-gray-200 bg-surface">
           <div className="flex flex-col lg:flex-row">
             <div className="flex-1 p-5">
               <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -586,7 +586,7 @@ function SourcesTab({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-surface p-4">
         <ShieldAlert className="h-5 w-5 text-gray-500 shrink-0 mt-0.5" aria-hidden="true" />
         <p className="text-sm text-gray-700">
           <span className="font-semibold">Permission status gates publication.</span> A source marked
@@ -597,7 +597,7 @@ function SourcesTab({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-surface">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
@@ -633,7 +633,7 @@ function SourcesTab({
                     value={s.permissionsStatus}
                     onChange={e => onPermissions(s.id, e.target.value)}
                     disabled={busyId === s.id}
-                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-surface"
                     aria-label={`Permissions for ${s.domain}`}
                   >
                     <option value="UNKNOWN">UNKNOWN</option>
@@ -673,7 +673,7 @@ function SourcesTab({
 function CoverageTab({ overview }: { overview: Overview }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-gray-200 bg-surface p-5">
         <h2 className="font-semibold mb-1">Coverage is measured, never claimed</h2>
         <p className="text-sm text-gray-600 mb-4">
           Atlas tracks the sources it has registered and the listings it has verified for each city.
@@ -710,7 +710,7 @@ function CoverageTab({ overview }: { overview: Overview }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-gray-200 bg-surface p-5">
         <h2 className="font-semibold mb-3">Operating principles</h2>
         <ul className="space-y-2 text-sm text-gray-700 list-disc pl-5">
           <li>Nothing is published without a human decision, until a source is explicitly approved for auto-publication.</li>

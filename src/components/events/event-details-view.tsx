@@ -69,7 +69,7 @@ END:VCALENDAR`
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d18] via-[#0b0d18]/30 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10">
             <Badge variant="primary" className="mb-2">{eventType?.label || event.eventType}</Badge>
             <h1 className="text-3xl sm:text-5xl font-bold leading-tight text-white">{event.title}</h1>

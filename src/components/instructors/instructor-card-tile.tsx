@@ -27,7 +27,7 @@ export function InstructorCardTile({ instructor }: InstructorCardTileProps) {
     : rawStyles
 
   return (
-    <div className="flex items-center gap-3 px-4 py-4 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
+    <div className="flex items-center gap-3 px-4 py-4 bg-surface rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors group">
       {/* Avatar */}
       <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center overflow-hidden flex-shrink-0">
         {instructor.photoUrl ? (

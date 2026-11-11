@@ -76,8 +76,8 @@ export function LessonRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85svh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div className="bg-surface rounded-xl max-w-2xl w-full max-h-[85svh] overflow-y-auto">
+        <div className="sticky top-0 bg-surface border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Request a Lesson</h2>
           <button onClick={onClose} aria-label="Close lesson request" className="p-3 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />

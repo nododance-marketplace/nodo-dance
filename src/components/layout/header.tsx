@@ -45,7 +45,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center mr-4 md:mr-6 flex-shrink-0" aria-label="Nodo Dance home">
             <Image
-              src="/Title.png"
+              src="/Title-white.png"
               alt="Nodo Dance"
               width={800}
               height={225}
