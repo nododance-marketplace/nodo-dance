@@ -57,3 +57,5 @@ atlas/generated/
 # Uploaded files
 /public/uploads/*
 !/public/uploads/**/.gitkeep
+
+.env*

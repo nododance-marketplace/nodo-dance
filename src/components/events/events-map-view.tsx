@@ -12,7 +12,7 @@ import { DANCE_STYLE_COLORS, getStyleColor } from '@/lib/styleColors'
  * mount-unmount-mount cycle and Fast Refresh can hand it back a node that
  * already holds a map. Catch that and remount on a fresh container.
  */
-class MapErrorBoundary extends Component<{ children: ReactNode }, { epoch: number; failed: boolean }> {
+export class MapErrorBoundary extends Component<{ children: ReactNode }, { epoch: number; failed: boolean }> {
   state = { epoch: 0, failed: false }
 
   static getDerivedStateFromError() {
@@ -47,6 +47,9 @@ const EVENT_TYPE_SHAPES: Record<string, PinShape> = {
 function getEventTypeShape(eventType: string): PinShape {
   return EVENT_TYPE_SHAPES[eventType] || 'circle'
 }
+// The homepage map demo reuses the same shape/color/jitter logic so its pins
+// read exactly like the events page's.
+export { getEventTypeShape }
 
 // Legend data: shape unicode + short label
 const SHAPE_LEGEND: { shape: PinShape; label: string; unicode: string }[] = [
@@ -58,7 +61,7 @@ const SHAPE_LEGEND: { shape: PinShape; label: string; unicode: string }[] = [
 ]
 
 // --- SVG icon builder ---
-function makeSvg(color: string, shape: PinShape): string {
+export function makeSvg(color: string, shape: PinShape): string {
   const size = 26
   let shapeEl: string
 
@@ -107,7 +110,7 @@ function makeIcon(color: string, shape: PinShape): L.Icon {
 }
 
 // --- Jitter for overlapping pins ---
-function applyJitter(
+export function applyJitter(
   events: MapEvent[]
 ): (MapEvent & { jLat: number; jLng: number })[] {
   const buckets = new Map<string, number>()

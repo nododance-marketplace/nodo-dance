@@ -7,11 +7,14 @@ import { HeroEmblem } from '@/components/home/HeroEmblem'
 import { MagneticLink } from '@/components/home/MagneticLink'
 import { EventTicker, type TickerItem } from '@/components/home/EventTicker'
 import { LiveClock } from '@/components/home/LiveClock'
+import { HomeMapDemo } from '@/components/home/HomeMapDemo'
+import { Counter } from '@/components/home/Counter'
+import type { MapEvent } from '@/components/events/events-map-view'
 import { DANCE_STYLES } from '@/lib/constants'
 import { DANCE_STYLE_COLORS } from '@/lib/styleColors'
 import { prisma } from '@/lib/prisma'
 import { MARKETS } from '@/lib/markets'
-import { formatTime } from '@/lib/utils'
+import { formatTime, parseJsonArray } from '@/lib/utils'
 import type { CSSProperties } from 'react'
 
 export const dynamic = 'force-dynamic'
@@ -28,11 +31,13 @@ function shortDate(date: Date): string {
 }
 
 export default async function HomePage() {
+  const now = new Date()
+
   // The cities that actually have something on right now. A city with no
   // events yet is still coming, but it is not somewhere to send a visitor.
   const counts = await prisma.event.groupBy({
     by: ['city'],
-    where: { status: 'APPROVED', startDateTime: { gte: new Date() } },
+    where: { status: 'APPROVED', startDateTime: { gte: now } },
     _count: { _all: true },
   })
   const byCity = new Map(counts.map((c) => [c.city ?? '', c._count._all]))
@@ -47,7 +52,7 @@ export default async function HomePage() {
 
   // Real events make the ticker: title, city and start time, soonest first.
   const upcoming = await prisma.event.findMany({
-    where: { status: 'APPROVED', startDateTime: { gte: new Date() } },
+    where: { status: 'APPROVED', startDateTime: { gte: now } },
     orderBy: { startDateTime: 'asc' },
     take: 12,
     select: { id: true, title: true, city: true, startDateTime: true },
@@ -59,6 +64,74 @@ export default async function HomePage() {
     when: `${shortDate(e.startDateTime)} · ${formatTime(e.startDateTime)}`,
   }))
 
+  // The live-map demo rides the market with the busiest calendar — the same
+  // groupBy pattern as above decides it, so it always follows the real data.
+  const demoMarket = liveMarkets[0]
+  const weekAhead = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+  const [eventsThisWeek, instructorCount, demoEvents, showcase] = await Promise.all([
+    prisma.event.count({
+      where: { status: 'APPROVED', startDateTime: { gte: now, lte: weekAhead } },
+    }),
+    prisma.instructorProfile.count(),
+    demoMarket
+      ? prisma.event.findMany({
+          where: {
+            status: 'APPROVED',
+            startDateTime: { gte: now },
+            city: { in: demoMarket.cities },
+            lat: { not: null },
+            lng: { not: null },
+          },
+          orderBy: { startDateTime: 'asc' },
+          take: 90,
+          select: {
+            id: true,
+            title: true,
+            eventType: true,
+            venueName: true,
+            address: true,
+            styles: true,
+            startDateTime: true,
+            endDateTime: true,
+            price: true,
+            lat: true,
+            lng: true,
+          },
+        })
+      : Promise.resolve([]),
+    // The showcase shows real faces only. A profile without a photo is a
+    // listing, not a card, so it waits on the directory page.
+    prisma.instructorProfile.findMany({
+      where: { photoUrl: { not: null } },
+      orderBy: { rating: 'desc' },
+      take: 6,
+      select: {
+        slug: true,
+        displayName: true,
+        headline: true,
+        photoUrl: true,
+        styles: true,
+        city: true,
+        neighborhood: true,
+      },
+    }),
+  ])
+
+  const demoMapEvents: MapEvent[] = demoEvents.map((e) => ({
+    id: e.id,
+    title: e.title,
+    eventType: e.eventType,
+    venueName: e.venueName,
+    address: e.address,
+    styles: e.styles,
+    startDateTime: e.startDateTime,
+    endDateTime: e.endDateTime,
+    lat: e.lat as number,
+    lng: e.lng as number,
+    price: e.price,
+  }))
+
   const styles = DANCE_STYLES.filter(s => s !== 'Other')
 
   return (
@@ -68,7 +141,7 @@ export default async function HomePage() {
           <div className="home-hero-grid">
             <div className="home-hero-copy">
               <HeroTitle />
-              <p>Find instructors, discover events, and join your city&apos;s partner dance community.</p>
+              <p>Find your instructors. Find your socials. Find your people.</p>
               <div className="home-actions">
                 <MagneticLink href="/events">
                   <Button variant="gradient" size="lg">Explore Events</Button>
@@ -109,13 +182,13 @@ export default async function HomePage() {
       <section className="home-section">
         <div className="home-container">
           <Reveal>
-            <div className="home-section-head"><h2>How It Works</h2><p>Get started in three simple steps.</p></div>
+            <div className="home-section-head"><h2>How It Works</h2><p>Three steps. No wrong footwork.</p></div>
           </Reveal>
           <div className="home-steps">
             {[
-              { n: '01', title: 'Browse', copy: 'Explore our directory of experienced dance instructors and upcoming events.' },
-              { n: '02', title: 'Connect', copy: 'Request lessons with instructors or register for events that interest you.' },
-              { n: '03', title: 'Dance', copy: 'Start your dance journey and become part of our vibrant community.' },
+              { n: '01', title: 'Browse', copy: 'Scout the instructors and the socials — who\u2019s teaching, what\u2019s on, where.' },
+              { n: '02', title: 'Connect', copy: 'Say hello. Book a lesson, save a social, claim your spot.' },
+              { n: '03', title: 'Dance', copy: 'Show up. Nobody remembers their first night except as the night they started.' },
             ].map((step, i) => (
               <Reveal key={step.n} as="article" className="home-step" delay={i * 110} y={28}>
                 <span>{step.n}</span>
@@ -127,10 +200,100 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <HomeMapDemo events={demoMapEvents} marketName={demoMarket?.name ?? ''} />
+
       <section className="home-section">
         <div className="home-container">
           <Reveal>
-            <div className="home-section-head"><h2>Find Your City</h2><p>{totalEvents} upcoming events across {liveMarkets.length} partner dance {liveMarkets.length === 1 ? 'community' : 'communities'}.</p></div>
+            <div className="home-section-head">
+              <div>
+                <h2>Nothing <em>staged</em>.</h2>
+                <p>Counted from the directory the moment this page loaded.</p>
+              </div>
+            </div>
+          </Reveal>
+          <div className="home-proof-band">
+            <Reveal className="home-proof-item" y={16}>
+              <Counter value={counts.length} />
+              <span className="home-proof-label">cities covered</span>
+            </Reveal>
+            <Reveal className="home-proof-item" delay={90} y={16}>
+              <Counter value={eventsThisWeek} />
+              <span className="home-proof-label">events this week</span>
+            </Reveal>
+            <Reveal className="home-proof-item" delay={180} y={16}>
+              <span className="home-proof-number">$0</span>
+              <span className="home-proof-label">what it costs to list</span>
+            </Reveal>
+            <Reveal className="home-proof-item" delay={270} y={16}>
+              <Counter value={instructorCount} />
+              <span className="home-proof-label">instructors on the platform</span>
+            </Reveal>
+          </div>
+          <Reveal>
+            <p className="home-proof-foot">real numbers, counted live — every page load.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      {showcase.length > 0 && (
+        <section className="home-section">
+          <div className="home-container">
+            <Reveal>
+              <div className="home-section-head">
+                <div>
+                  <h2>On the floor, <em>now</em>.</h2>
+                  <p>Every profile here is live — request a lesson and it goes straight to them.</p>
+                </div>
+                <Link href="/instructors" className="showcase-all">Meet every instructor <span aria-hidden="true">→</span></Link>
+              </div>
+            </Reveal>
+            <div className="showcase-row">
+              {showcase.map((p, i) => {
+                const profileStyles = parseJsonArray(p.styles)
+                const primary = profileStyles[0] ?? 'Other'
+                return (
+                  <Reveal key={p.slug} delay={(i % 3) * 80} y={20}>
+                    <Link
+                      href={`/instructors/${p.slug}`}
+                      className="showcase-card"
+                      aria-label={`Request a lesson with ${p.displayName}`}
+                    >
+                      <span className="showcase-chrome" aria-hidden="true">
+                        <i /><i /><i />
+                      </span>
+                      <span className="showcase-photo-frame">
+                        <img src={p.photoUrl!} alt={`Portrait of ${p.displayName}`} loading="lazy" />
+                      </span>
+                      <span className="showcase-body">
+                        <strong>{p.displayName}</strong>
+                        {p.headline && <span className="showcase-headline">{p.headline}</span>}
+                        <span className="showcase-dots" aria-hidden="true">
+                          {profileStyles.slice(0, 4).map(style => (
+                            <i
+                              key={style}
+                              className="showcase-dot"
+                              style={{ background: DANCE_STYLE_COLORS[style] ?? DANCE_STYLE_COLORS.Other }}
+                            />
+                          ))}
+                          <span className="showcase-style-name">{primary}</span>
+                        </span>
+                        <span className="showcase-city">{p.city ?? p.neighborhood ?? 'near you'}</span>
+                        <span className="showcase-cta">request a lesson <span aria-hidden="true">→</span></span>
+                      </span>
+                    </Link>
+                  </Reveal>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="home-section">
+        <div className="home-container">
+          <Reveal>
+            <div className="home-section-head"><h2>Find Your City</h2><p>{totalEvents} events on the calendar across {liveMarkets.length} {liveMarkets.length === 1 ? 'city' : 'cities'}.</p></div>
           </Reveal>
           <div className="city-index">
             {liveMarkets.map((m, i) => (
@@ -159,7 +322,7 @@ export default async function HomePage() {
       <section className="home-section home-styles">
         <div className="home-container">
           <Reveal>
-            <div className="home-section-head"><h2>Dance Styles We Love</h2><p>Find instructors and events for your favorite partner dance.</p></div>
+            <div className="home-section-head"><h2>Dance Styles We Love</h2><p>Pick a dance. There&apos;s a teacher and a social for it.</p></div>
           </Reveal>
           <div className="style-flood-list">
             {styles.map((style, i) => (
@@ -180,18 +343,18 @@ export default async function HomePage() {
           <Reveal>
             <div className="home-section-head drop-head">
               <h2>Every City&apos;s Scene, In One Place</h2>
-              <p>Your city&apos;s dance scene, all in one place. Join the community.</p>
+              <p>One directory for every social, class, and festival we know about.</p>
             </div>
           </Reveal>
           <div className="drop-grid">
             <Reveal as="article" y={28}>
               <h2>Have an Event?</h2>
-              <p>Share your dance social, workshop, or festival with the community. It&apos;s free!</p>
+              <p>Your social, your workshop, your festival — in front of the dancers who&apos;ll actually come. Free, always.</p>
               <Link href="/submit-event"><Button variant="gradient">Submit an Event</Button></Link>
             </Reveal>
             <Reveal as="article" delay={120} y={28}>
               <h2>Teach Dance?</h2>
-              <p>Join our directory and connect with students looking for instructors like you.</p>
+              <p>Get listed where dancers are already looking. They find you; you just show up.</p>
               <Link href="/become-an-instructor"><Button className="drop-button-ghost">Become an Instructor</Button></Link>
             </Reveal>
           </div>
