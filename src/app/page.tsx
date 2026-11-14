@@ -3,7 +3,7 @@ import { Heart, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Reveal } from '@/components/ui/reveal'
 import { HeroTitle } from '@/components/home/HeroTitle'
-import { HeroEmblem } from '@/components/home/HeroEmblem'
+import { HeroVideo } from '@/components/home/HeroVideo'
 import { MagneticLink } from '@/components/home/MagneticLink'
 import { EventTicker, type TickerItem } from '@/components/home/EventTicker'
 import { LiveClock } from '@/components/home/LiveClock'
@@ -137,28 +137,20 @@ export default async function HomePage() {
   return (
     <div>
       <section className="home-hero">
+        <div className="home-hero-video" aria-hidden="true">
+          <HeroVideo />
+        </div>
         <div className="home-container">
-          <div className="home-hero-grid">
-            <div className="home-hero-copy">
-              <HeroTitle />
-              <p>Find your instructors. Find your socials. Find your people.</p>
-              <div className="home-actions">
-                <MagneticLink href="/events">
-                  <Button variant="gradient" size="lg">Explore Events</Button>
-                </MagneticLink>
-                <MagneticLink href="/instructors">
-                  <Button variant="outline" size="lg">Find Instructors</Button>
-                </MagneticLink>
-              </div>
-            </div>
-            <div className="community-visual">
-              <HeroEmblem />
-              <div className="community-styles" aria-label="Partner dance communities">
-                {['Salsa', 'Bachata', 'Kizomba', 'West Coast Swing', 'Tango', 'Zouk'].map(style => (
-                  <span key={style} style={{ '--style-color': DANCE_STYLE_COLORS[style] } as CSSProperties}>{style}</span>
-                ))}
-              </div>
-              <p className="community-caption">Connecting the Dance Community.</p>
+          <div className="home-hero-copy">
+            <HeroTitle />
+            <p>Find your instructors. Find your socials. Find your people.</p>
+            <div className="home-actions">
+              <MagneticLink href="/events">
+                <Button variant="gradient" size="lg">Explore Events</Button>
+              </MagneticLink>
+              <MagneticLink href="/instructors">
+                <Button variant="outline" size="lg">Find Instructors</Button>
+              </MagneticLink>
             </div>
           </div>
           <div className="home-location"><MapPin className="h-4 w-4" aria-hidden="true" /><span>Rooted in {liveMarkets.length} dance {liveMarkets.length === 1 ? 'community' : 'communities'}</span></div>
