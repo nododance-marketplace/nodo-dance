@@ -149,7 +149,7 @@ export default function MapDemoMap({ events }: { events: MapEvent[] }) {
   const stops = useMemo(() => pickTourStops(jittered, 4), [jittered])
 
   return (
-    <MapErrorBoundary>
+    <MapErrorBoundary className="h-full">
       <MapContainer
         center={[35.2271, -80.8431]}
         zoom={FIT_MAX_ZOOM}

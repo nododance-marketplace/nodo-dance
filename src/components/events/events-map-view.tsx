@@ -12,7 +12,7 @@ import { DANCE_STYLE_COLORS, getStyleColor } from '@/lib/styleColors'
  * mount-unmount-mount cycle and Fast Refresh can hand it back a node that
  * already holds a map. Catch that and remount on a fresh container.
  */
-export class MapErrorBoundary extends Component<{ children: ReactNode }, { epoch: number; failed: boolean }> {
+export class MapErrorBoundary extends Component<{ children: ReactNode; className?: string }, { epoch: number; failed: boolean }> {
   state = { epoch: 0, failed: false }
 
   static getDerivedStateFromError() {
@@ -29,7 +29,7 @@ export class MapErrorBoundary extends Component<{ children: ReactNode }, { epoch
     if (this.state.failed) {
       return <div className="bg-surface rounded-xl h-[520px] flex items-center justify-center text-gray-500 text-sm">Map could not load. Refresh the page.</div>
     }
-    return <div key={this.state.epoch}>{this.props.children}</div>
+    return <div key={this.state.epoch} className={this.props.className}>{this.props.children}</div>
   }
 }
 
