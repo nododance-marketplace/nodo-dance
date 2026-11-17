@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { Header } from '@/components/layout/header'
@@ -30,11 +30,11 @@ const satoshi = localFont({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://nododance.com'),
   title: "Nodo Dance - Partner Dance Events & Instructors",
   description:
     'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
   manifest: '/manifest.json',
-  themeColor: '#10121F',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -54,6 +54,10 @@ export const metadata: Metadata = {
     description:
       'Find dance instructors and events in Charlotte, Austin, Seattle and more. Salsa, Bachata, Kizomba, Tango, and Zouk.',
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#10121F',
 }
 
 export default function RootLayout({

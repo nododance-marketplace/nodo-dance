@@ -73,8 +73,8 @@ export function Header() {
             <Link href="/submit-event" aria-current={pathname.startsWith('/submit-event') ? 'page' : undefined} className="nav-link">
               Submit Event
             </Link>
-            <Link href="/launch" aria-current={pathname.startsWith('/launch') ? 'page' : undefined} className="nav-link">
-              Websites
+            <Link href="/blog" aria-current={pathname.startsWith('/blog') ? 'page' : undefined} className="nav-link">
+              Blog
             </Link>
             {!session ? (
               <>
@@ -172,24 +172,24 @@ export function Header() {
               Submit Event
             </Link>
             <Link
-              href="/launch" aria-current={pathname.startsWith('/launch') ? 'page' : undefined}
+              href="/blog" aria-current={pathname.startsWith('/blog') ? 'page' : undefined}
               className="mobile-panel-link"
               style={{ '--i': 4 } as CSSProperties}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Websites
+              Blog
             </Link>
             {!session ? (
               <>
                 <Link
                   href="/become-an-instructor"
                   className="mobile-panel-link"
-                  style={{ '--i': 4 } as CSSProperties}
+                  style={{ '--i': 5 } as CSSProperties}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Become an Instructor
                 </Link>
-                <div className="mobile-panel-action" style={{ '--i': 5 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 6 } as CSSProperties}>
                   <Link href="/auth/signin">
                     <Button size="sm" className="w-full">Sign In</Button>
                   </Link>
@@ -201,7 +201,7 @@ export function Header() {
                   <Link
                     href="/become-an-instructor"
                     className="mobile-panel-link"
-                    style={{ '--i': 4 } as CSSProperties}
+                    style={{ '--i': 5 } as CSSProperties}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Become an Instructor
@@ -209,7 +209,7 @@ export function Header() {
                 )}
                 {/* @ts-ignore */}
                 {session.user?.isAdmin && (
-                  <div className="mobile-panel-action" style={{ '--i': 5 } as CSSProperties}>
+                  <div className="mobile-panel-action" style={{ '--i': 6 } as CSSProperties}>
                     <Link href="/admin" className="block">
                       <Button variant="outline" size="sm" className="w-full border-amber-400 text-amber-700">
                         <Shield className="w-4 h-4 mr-2" />
@@ -218,7 +218,7 @@ export function Header() {
                     </Link>
                   </div>
                 )}
-                <div className="mobile-panel-action" style={{ '--i': 6 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 7 } as CSSProperties}>
                   <Link href={dashboardUrl} className="block">
                     <Button variant="outline" size="sm" className="w-full">
                       <User className="w-4 h-4 mr-2" />
@@ -226,7 +226,7 @@ export function Header() {
                     </Button>
                   </Link>
                 </div>
-                <div className="mobile-panel-action" style={{ '--i': 7 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 8 } as CSSProperties}>
                   <Button variant="ghost" size="sm" className="w-full" onClick={() => signOut()}>
                     Sign Out
                   </Button>

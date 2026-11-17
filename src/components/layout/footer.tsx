@@ -77,6 +77,11 @@ export function Footer() {
                   Browse Events
                 </Link>
               </li>
+              <li>
+                <Link href="/blog" className="footer-link text-[var(--color-on-dark-muted)] hover:text-white">
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
