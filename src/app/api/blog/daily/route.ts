@@ -7,7 +7,7 @@ export const maxDuration = 300
 export const runtime = 'nodejs'
 
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5'
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash'
 const LLM_PROVIDER = (process.env.BLOG_LLM_PROVIDER || 'gemini').toLowerCase()
 const CATEGORIES: BlogCategory[] = ['benefits', 'styles', 'world-dancing']
 
@@ -22,7 +22,7 @@ interface Topic {
 
 const GITHUB_API = 'https://api.github.com'
 const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages'
-const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models'
+const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta'
 
 function env(name: string): string {
   const v = process.env[name]
@@ -108,29 +108,71 @@ tags: ["tag1", "tag2", "tag3", "tag4", "tag5"]
 <the article body>`
 }
 
-async function writePostWithGemini(prompt: string): Promise<string> {
+async function geminiCall(model: string, prompt: string, useSearch: boolean): Promise<string> {
   const apiKey = env('GEMINI_API_KEY')
 
-  const res = await fetch(`${GEMINI_API}/${GEMINI_MODEL}:generateContent`, {
-    method: 'POST',
-    headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      // Google Search grounding = the "live research" step, free tier supported.
-      tools: [{ google_search: {} }],
-      generationConfig: { temperature: 0.8, maxOutputTokens: 16384 },
-    }),
-  })
-  if (!res.ok) throw new Error(`Gemini error (${res.status}): ${await res.text()}`)
+  const body: Record<string, unknown> = {
+    model,
+    input: prompt,
+    store: false,
+    generation_config: { thinking_level: 'low', max_output_tokens: 32768 },
+  }
+  if (useSearch) body.tools = [{ type: 'google_search' }]
 
-  const json = await res.json()
-  const parts = json.candidates?.[0]?.content?.parts || []
-  const text = parts
-    .filter((p: { text?: string }) => typeof p.text === 'string')
-    .map((p: { text: string }) => p.text)
-    .join('')
-  if (!text) throw new Error('Gemini returned no text')
+  let text = ''
+  let token: string | undefined
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (token) body.continuation_token = token
+    const res = await fetch(`${GEMINI_API}/interactions`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`Gemini error (${res.status}): ${await res.text()}`)
+
+    const json = await res.json()
+    text += ((json.steps || []) as Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>)
+      .filter((s) => s.type === 'model_output')
+      .flatMap((s) => s.content || [])
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text || '')
+      .join('')
+    token = json.continuation_token
+    if (json.status !== 'requires_continuation' || !token) break
+  }
   return text.trim()
+}
+
+// Try smarter models first with live search, then degrade: ungrounded on the
+// same model (quota/demand fallback), then lighter models that stay available.
+const GEMINI_FALLBACK_MODELS = [
+  GEMINI_MODEL,
+  'gemini-flash-latest',
+  'gemini-3.5-flash',
+  'gemini-3.7-flash',
+  'gemini-3.1-flash-lite',
+]
+
+async function writePostWithGemini(prompt: string): Promise<string> {
+  let lastError: unknown
+  for (const model of GEMINI_FALLBACK_MODELS) {
+    for (const useSearch of [true, false]) {
+      try {
+        const text = await geminiCall(model, prompt, useSearch)
+        if (!text) throw new Error('Gemini returned no text')
+        return text
+      } catch (err) {
+        lastError = err
+        const msg = String(err instanceof Error ? err.message : err)
+        const retryableWithoutSearch =
+          useSearch &&
+          /too_many_requests|service_unavailable|quota|google_search|web_search|tool/i.test(msg)
+        if (retryableWithoutSearch) continue
+        break
+      }
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError))
 }
 
 async function writePostWithAnthropic(prompt: string): Promise<string> {
