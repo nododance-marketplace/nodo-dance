@@ -13,11 +13,12 @@
  *   atlas report                  coverage + quality report
  *   atlas kill-switch [--on]      stop all crawling
  *
- * The CLI runs against the LOCAL SQLite database only (atlas/prisma/atlas.db).
- * It cannot touch the production Neon database: the Prisma client it uses is
- * generated from atlas/prisma/schema.local.prisma and points at a file.
- * Production ingestion runs from the deployed worker, which is configured
- * separately and writes only to the Atlas ingestion tables.
+ * The CLI runs against the LOCAL SQLite database by default
+ * (atlas/prisma/atlas.db). Pass --target=production to run against the live
+ * Neon database instead: crawling and discovery only create inert candidate
+ * records there, and publishing additionally requires --publish-to-production.
+ * The scheduled GitHub Actions job (see .github/workflows/) runs the weekly
+ * cycle against production.
  */
 import { resolve } from 'node:path'
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs'
@@ -32,7 +33,7 @@ import { Discovery, discoverCity, looksLikeDanceSource } from './lib/discovery'
 import { OsmDiscovery, looksLikeDanceOrg, censusQuery, areaQuery, type OsmOrganisation } from './lib/osm'
 import { SitemapReader, looksLikeEventPage, isPastEventUrl, type SitemapUrl } from './lib/sitemap'
 import { RobotsCache } from './lib/robots'
-import { buildChannelSeeds, DANCEUS_STYLE_PAGES, parseDanceUsCalendarLink } from './lib/channels'
+import { buildChannelSeeds, buildWorldChannelSeeds, DANCEUS_STYLE_PAGES, parseDanceUsCalendarLink, WORLD_METROS } from './lib/channels'
 import { DANCE_STYLES } from './lib/normalize'
 import { wallTimeToUtc } from './lib/recurrence'
 
@@ -389,6 +390,61 @@ async function seedChannels(args: Args) {
   }
   console.log('')
   console.log(`  ${created} channel source(s) registered.`)
+  console.log('  Next: atlas crawl --via CHANNEL')
+}
+
+/**
+ * Register the curated world metros (Latin America focus) and their channel
+ * sources. Idempotent: existing cities and sources are left untouched.
+ *
+ * Cities are created ACTIVE so the live site can list them; the crawl only
+ * needs the source registry. Eventbrite directories are verified-live
+ * patterns; DanceUS pages that don't exist yet simply back off on first crawl.
+ */
+async function seedWorld() {
+  header('Seeding world metros & channels (Latin America focus)')
+  const atlas = new Atlas({ prisma })
+  let citiesCreated = 0
+  let sourcesCreated = 0
+
+  for (const metro of WORLD_METROS) {
+    let city = await prisma.discoveryCity.findUnique({ where: { slug: metro.slug } })
+    if (!city) {
+      city = await prisma.discoveryCity.create({
+        data: {
+          slug: metro.slug,
+          name: metro.name,
+          state: metro.country,
+          stateName: metro.countryName,
+          country: metro.country,
+          timeZone: metro.timeZone,
+          priority: metro.priority,
+          status: 'ACTIVE',
+          notes: 'Curated world metro (see atlas/lib/channels.ts WORLD_METROS).',
+        },
+      })
+      citiesCreated++
+      console.log(`  ✓ city ${metro.name}, ${metro.countryName} (${metro.timeZone})`)
+    }
+
+    for (const seed of buildWorldChannelSeeds(metro)) {
+      const { created: isNew } = await atlas.registerSource({
+        url: seed.url,
+        organizationName: seed.organizationName,
+        cityId: city.id,
+        sourceCategory: seed.sourceCategory,
+        sourceType: seed.sourceType,
+        supportedStyles: seed.supportedStyles,
+        discoveredVia: seed.discoveredVia,
+        crawlIntervalDays: seed.intervalDays,
+        notes: seed.notes,
+      })
+      if (isNew) sourcesCreated++
+    }
+  }
+
+  console.log('')
+  console.log(`  ${citiesCreated} city(ies) created, ${sourcesCreated} channel source(s) registered.`)
   console.log('  Next: atlas crawl --via CHANNEL')
 }
 
@@ -766,19 +822,16 @@ async function decide(candidateId: string, decision: 'APPROVED' | 'REJECTED', by
   console.log(`  ✓ ${candidate.title} → ${decision}`)
 }
 
-async function publish(candidateId: string, by = 'cli') {
-  const target: AtlasTarget = process.argv.includes('--target=production') ? 'production' : 'local'
-  assertPublishAllowed(target, process.argv.includes('--publish-to-production'))
+type CandidateWithSource = NonNullable<Awaited<ReturnType<typeof prisma.candidateEvent.findFirst>>> & {
+  source: NonNullable<Awaited<ReturnType<typeof prisma.discoverySource.findFirst>>>
+}
 
-  const candidate = await prisma.candidateEvent.findFirst({
-    where: { id: { startsWith: candidateId } },
-    include: { source: true },
-  })
-  if (!candidate) throw new Error(`No candidate matching "${candidateId}"`)
-  if (candidate.reviewStatus !== 'APPROVED') {
-    throw new Error(`Candidate is ${candidate.reviewStatus}. Approve it first.`)
-  }
-
+/**
+ * Publish one approved candidate as a live Event. Shared by the manual
+ * publish command and the auto-publish policy so the audit trail
+ * (PublicationRecord) records who or what made the decision.
+ */
+async function publishCandidate(candidate: CandidateWithSource, by: string, method: 'MANUAL' | 'ATLAS_AUTO') {
   const startDateTime =
     candidate.startDateTime ??
     (candidate.localDate && candidate.localTime
@@ -826,7 +879,7 @@ async function publish(candidateId: string, by = 'cli') {
       eventId: event.id,
       sourceId: candidate.sourceId,
       publishedBy: by,
-      method: 'MANUAL',
+      method,
       snapshot: JSON.stringify({ title: candidate.title, startDateTime, venueName: candidate.venueName }),
     },
   })
@@ -835,6 +888,216 @@ async function publish(candidateId: string, by = 'cli') {
     data: { reviewStatus: 'PUBLISHED', publishedEventId: event.id },
   })
   console.log(`  ✓ published "${event.title}" (${event.id})`)
+  return event
+}
+
+async function publish(candidateId: string, by = 'cli') {
+  const target: AtlasTarget = process.argv.includes('--target=production') ? 'production' : 'local'
+  assertPublishAllowed(target, process.argv.includes('--publish-to-production'))
+
+  const candidate = await prisma.candidateEvent.findFirst({
+    where: { id: { startsWith: candidateId } },
+    include: { source: true },
+  })
+  if (!candidate) throw new Error(`No candidate matching "${candidateId}"`)
+  if (candidate.reviewStatus !== 'APPROVED') {
+    throw new Error(`Candidate is ${candidate.reviewStatus}. Approve it first.`)
+  }
+  await publishCandidate(candidate as CandidateWithSource, by, 'MANUAL')
+}
+
+/**
+ * Auto-publish the machine-verified candidate backlog.
+ *
+ * Policy: only candidates that came from channel sources (Eventbrite / Meetup
+ * / DanceUS / operator-supplied .ics), passed QA at ≥ min-confidence, carry
+ * coordinates, point at a future date, and have no unresolved EXACT duplicate
+ * against something already live. Everything else stays in the human review
+ * queue at /admin/atlas — the hard rule "never publish without a decision"
+ * still applies to anything the machine cannot verify.
+ */
+async function publishAuto(args: Args) {
+  const target: AtlasTarget = process.argv.includes('--target=production') ? 'production' : 'local'
+  assertPublishAllowed(target, process.argv.includes('--publish-to-production'))
+
+  const dryRun = Boolean(args['dry-run'])
+  const minConfidence = Number(args['min-confidence'] ?? 0.9)
+  const limit = Number(args.limit ?? 300)
+  const todayIso = new Date().toISOString().slice(0, 10)
+
+  header(`Auto-publish — confidence ≥ ${minConfidence}${dryRun ? ' (dry run)' : ''}`)
+
+  const candidates = await prisma.candidateEvent.findMany({
+    where: {
+      qaStatus: 'PASS',
+      reviewStatus: 'PENDING',
+      isExpired: false,
+      confidence: { gte: minConfidence },
+      lat: { not: null },
+      lng: { not: null },
+      source: {
+        discoveredVia: { startsWith: 'CHANNEL' },
+        permissionsStatus: { not: 'DENIED' },
+        isPaused: false,
+        optOut: false,
+      },
+      OR: [{ startDateTime: { gte: new Date() } }, { localDate: { gte: todayIso } }],
+    },
+    include: { source: true },
+    orderBy: [{ confidence: 'desc' }],
+    take: limit * 3,
+  })
+  console.log(`  ${candidates.length} machine-verified candidate(s) eligible.`)
+  if (candidates.length === 0) return
+
+  const ids = candidates.map(c => c.id)
+  const idSet = new Set(ids)
+
+  // 1. Anything deterministically matched to an already-live event is a
+  //    duplicate — suppressed, never published twice.
+  const exact = await prisma.entityMatch.findMany({
+    where: { candidateEventId: { in: ids }, matchType: 'EXACT' },
+    select: { candidateEventId: true, existingEventId: true, reason: true },
+  })
+  const dupesOfEvents = new Set(exact.filter(m => m.existingEventId).map(m => m.candidateEventId))
+
+  // 2. EXACT matches against another candidate keep that reference in the
+  //    reason ("[ref: <candidateId>]"). Connected candidates form groups;
+  //    only the highest-confidence member of each group publishes.
+  const refOf = new Map<string, string[]>() // candidateId → referenced candidate ids
+  for (const m of exact) {
+    const exec = /\[ref: ([A-Za-z0-9]+)\]/.exec(m.reason ?? '')
+    if (exec) {
+      const refs = refOf.get(m.candidateEventId) ?? []
+      refs.push(exec[1])
+      refOf.set(m.candidateEventId, refs)
+    }
+  }
+  const refs = [...new Set([...refOf.values()].flat())].filter(r => idSet.has(r))
+  const publishedRefs = refs.length
+    ? await prisma.candidateEvent.findMany({ where: { id: { in: refs }, reviewStatus: 'PUBLISHED' }, select: { id: true } })
+    : []
+  const dupesOfPublishedCandidates = new Set(publishedRefs.map(r => r.id))
+
+  // union-find over EXACT-connected candidates
+  const parent = new Map<string, string>()
+  const find = (x: string): string => {
+    let root = parent.get(x) ?? x
+    if (root === x) return x
+    root = find(root)
+    parent.set(x, root)
+    return root
+  }
+  const union = (a: string, b: string) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(ra, rb)
+  }
+  for (const c of candidates) if (!parent.has(c.id)) parent.set(c.id, c.id)
+  for (const [candidateId, refsList] of refOf) {
+    for (const r of refsList) if (idSet.has(r)) union(candidateId, r)
+  }
+  const bestInGroup = new Map<string, typeof candidates[number]>()
+  for (const c of candidates) {
+    const root = find(c.id)
+    const current = bestInGroup.get(root)
+    if (!current || c.confidence > current.confidence) bestInGroup.set(root, c)
+  }
+
+  // 3. Same dedupeKey → one publication (highest confidence wins).
+  const bestByKey = new Map<string, typeof candidates[number]>()
+  for (const c of candidates) {
+    if (!c.dedupeKey) continue
+    const current = bestByKey.get(c.dedupeKey)
+    if (!current || c.confidence > current.confidence) bestByKey.set(c.dedupeKey, c)
+  }
+
+  const selected: typeof candidates = []
+  const selectedIds = new Set<string>()
+  for (const c of candidates) {
+    if (selected.length >= limit) break
+    if (dupesOfEvents.has(c.id) || dupesOfPublishedCandidates.has(c.id)) continue
+    // An EXACT-connected twin with higher confidence was already selected.
+    if (refOf.get(c.id)?.some(r => selectedIds.has(r))) continue
+    // A dedupeKey twin with higher confidence was already selected.
+    if (c.dedupeKey && selectedIds.has(bestByKey.get(c.dedupeKey)?.id ?? '')) continue
+    const groupBest = bestInGroup.get(find(c.id))
+    if (groupBest && groupBest.id !== c.id && selectedIds.has(groupBest.id)) continue
+    if (bestByKey.get(c.dedupeKey ?? '')?.id === c.id || !c.dedupeKey) {
+      selected.push(c)
+      selectedIds.add(c.id)
+    }
+  }
+
+  console.log(`  ${selected.length} candidate(s) after duplicate suppression${dryRun ? ' (dry run — nothing written)' : ''}.`)
+  if (dryRun || selected.length === 0) {
+    for (const c of selected.slice(0, 25)) {
+      console.log(`    · [${c.id.slice(0, 8)}] ${c.title.slice(0, 60)} — ${c.city ?? '—'} · conf ${c.confidence.toFixed(2)}`)
+    }
+    return
+  }
+
+  let published = 0
+  let failed = 0
+  for (const c of selected) {
+    try {
+      await prisma.candidateEvent.update({
+        where: { id: c.id },
+        data: { reviewStatus: 'APPROVED', reviewedBy: 'atlas-auto', reviewedAt: new Date() },
+      })
+      await prisma.moderationDecision.create({
+        data: { candidateEventId: c.id, decision: 'APPROVE', decidedBy: 'atlas-auto', reason: 'auto-publish policy (channel source, QA PASS, confidence ≥ threshold)' },
+      })
+      await publishCandidate(c as CandidateWithSource, 'atlas-auto', 'ATLAS_AUTO')
+      published++
+    } catch (error) {
+      failed++
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`  ! publish failed for ${c.id.slice(0, 8)}: ${message.slice(0, 100)}`)
+      // Roll the review status back so the human queue still sees it.
+      await prisma.candidateEvent.update({
+        where: { id: c.id },
+        data: { reviewStatus: 'PENDING', reviewedBy: null, reviewedAt: null },
+      }).catch(() => undefined)
+    }
+  }
+  console.log('')
+  console.log(`  ✓ ${published} published, ${failed} failed, ${candidates.length - selected.length} left for human review.`)
+}
+
+/**
+ * The weekly run: discovery refresh → channel crawl → organizer crawl →
+ * auto-publish → report. Built for the scheduled GitHub Actions job, but it
+ * is a normal CLI command, so it can be run by hand the same way.
+ */
+async function week(args: Args) {
+  const startedAt = Date.now()
+  header('Atlas weekly run')
+
+  // 1. Refresh the world DanceUS calendar registry — new cities appear weekly.
+  await discoverDanceUs()
+
+  // 2. Top up the curated world metros & channels (idempotent).
+  await seedWorld()
+
+  // 3. Channel sources first: aggregators carry the freshest data and the
+  //    bulk of the volume. One pass covers CHANNEL_* (Eventbrite, Meetup,
+  //    DanceUS, operator .ics).
+  await crawl({ ...args, via: 'CHANNEL', limit: args.limit ?? '500' })
+
+  // 4. Organizer sites that are due. Sources just crawled had their schedule
+  //    advanced, so this only picks up non-channel work.
+  await crawl({ ...args, limit: args.limit ?? '200' })
+
+  // 5. Publish the machine-verified backlog under the agreed policy.
+  await publishAuto({ ...args })
+
+  // 6. Close with the coverage report.
+  await report()
+
+  const minutes = Math.round((Date.now() - startedAt) / 60000)
+  console.log('')
+  console.log(`  Weekly run finished in ~${minutes} minute(s).`)
 }
 
 async function report() {
@@ -926,6 +1189,9 @@ async function main() {
     case 'seed:channels':
       await seedChannels(args)
       break
+    case 'seed:world':
+      await seedWorld()
+      break
     case 'discover:danceus':
       await discoverDanceUs()
       break
@@ -950,6 +1216,12 @@ async function main() {
     case 'publish':
       await publish(positional(args))
       break
+    case 'publish:auto':
+      await publishAuto(args)
+      break
+    case 'week':
+      await week(args)
+      break
     case 'report':
       await report()
       break
@@ -963,6 +1235,7 @@ Nodo Atlas CLI
   atlas seed:cities                 register the rollout cities
   atlas seed:sources [--city slug]  register the pilot source seeds
   atlas seed:channels [--city slug] register channel sources (Eventbrite / Meetup / DanceUS)
+  atlas seed:world                  register curated world metros (Latin America) + channels
   atlas discover:danceus           enumerate every DanceUS city style-calendar worldwide
   atlas discover --city <slug>      find candidate sources for a city
   atlas discover:osm --city <slug> find sources from OpenStreetMap (free, no key)
@@ -974,6 +1247,11 @@ Nodo Atlas CLI
   atlas approve <candidateId>       approve a candidate
   atlas reject <candidateId>        reject a candidate
   atlas publish <candidateId>       publish an approved candidate
+  atlas publish:auto [--dry-run]    auto-publish machine-verified candidates
+                                    (channel sources, QA PASS, confidence ≥ 0.90,
+                                    coordinates, future date, no live duplicate)
+  atlas week [--limit N]            full weekly run: discover + crawl +
+                                    auto-publish + report
   atlas report                      coverage + quality report
   atlas kill-switch [--on|--off]    pause or resume all crawling
 

@@ -162,7 +162,81 @@ const WORLD_COUNTRY_TOKENS: Record<string, WorldArea> = {
   'costa-rica': { country: 'CR', countryName: 'Costa Rica', timeZone: 'America/Costa_Rica', suffix: 'costa-rica' },
   panama: { country: 'PA', countryName: 'Panama', timeZone: 'America/Panama', suffix: 'panama' },
   'dominican-republic': { country: 'DO', countryName: 'Dominican Republic', timeZone: 'America/Santo_Domingo', suffix: 'dominican-republic' },
+  chile: { country: 'CL', countryName: 'Chile', timeZone: 'America/Santiago', suffix: 'chile' },
+  peru: { country: 'PE', countryName: 'Peru', timeZone: 'America/Lima', suffix: 'peru' },
+  ecuador: { country: 'EC', countryName: 'Ecuador', timeZone: 'America/Guayaquil', suffix: 'ecuador' },
+  uruguay: { country: 'UY', countryName: 'Uruguay', timeZone: 'America/Montevideo', suffix: 'uruguay' },
+  venezuela: { country: 'VE', countryName: 'Venezuela', timeZone: 'America/Caracas', suffix: 'venezuela' },
+  cuba: { country: 'CU', countryName: 'Cuba', timeZone: 'America/Havana', suffix: 'cuba' },
+  guatemala: { country: 'GT', countryName: 'Guatemala', timeZone: 'America/Guatemala', suffix: 'guatemala' },
+  honduras: { country: 'HN', countryName: 'Honduras', timeZone: 'America/Tegucigalpa', suffix: 'honduras' },
+  'el-salvador': { country: 'SV', countryName: 'El Salvador', timeZone: 'America/El_Salvador', suffix: 'el-salvador' },
+  nicaragua: { country: 'NI', countryName: 'Nicaragua', timeZone: 'America/Managua', suffix: 'nicaragua' },
+  bolivia: { country: 'BO', countryName: 'Bolivia', timeZone: 'America/La_Paz', suffix: 'bolivia' },
+  paraguay: { country: 'PY', countryName: 'Paraguay', timeZone: 'America/Asuncion', suffix: 'paraguay' },
 }
+
+/**
+ * Curated world metros for direct channel seeding.
+ *
+ * DanceUS only publishes city calendars for the cities it covers, so its
+ * discovery pass finds some of these on its own. This list makes sure the
+ * partner-dance capitals of Latin America get Eventbrite + DanceUS channel
+ * coverage regardless — the scenes there are enormous and the live site
+ * currently shows almost nothing.
+ *
+ * Every slug ends with the Eventbrite country slug (verified live 2026-11-22:
+ * /d/mexico--guadalajara/salsa/, /d/brazil--sao-paulo/salsa/ and
+ * /d/argentina--buenos-aires/tango/ all serve real event listings).
+ */
+export interface WorldMetro {
+  slug: string // 'sao-paulo-brazil' — matches DiscoveryCity.slug
+  name: string
+  country: string // ISO code, e.g. 'BR'
+  countryName: string
+  timeZone: string
+  priority: number
+}
+
+export const WORLD_METROS: WorldMetro[] = [
+  // Brazil
+  { slug: 'sao-paulo-brazil', name: 'São Paulo', country: 'BR', countryName: 'Brazil', timeZone: 'America/Sao_Paulo', priority: 30 },
+  { slug: 'rio-de-janeiro-brazil', name: 'Rio de Janeiro', country: 'BR', countryName: 'Brazil', timeZone: 'America/Sao_Paulo', priority: 40 },
+  { slug: 'belo-horizonte-brazil', name: 'Belo Horizonte', country: 'BR', countryName: 'Brazil', timeZone: 'America/Sao_Paulo', priority: 60 },
+  { slug: 'brasilia-brazil', name: 'Brasília', country: 'BR', countryName: 'Brazil', timeZone: 'America/Sao_Paulo', priority: 70 },
+  { slug: 'porto-alegre-brazil', name: 'Porto Alegre', country: 'BR', countryName: 'Brazil', timeZone: 'America/Sao_Paulo', priority: 80 },
+  // Mexico
+  { slug: 'mexico-city-mexico', name: 'Mexico City', country: 'MX', countryName: 'Mexico', timeZone: 'America/Mexico_City', priority: 30 },
+  { slug: 'guadalajara-mexico', name: 'Guadalajara', country: 'MX', countryName: 'Mexico', timeZone: 'America/Mexico_City', priority: 50 },
+  { slug: 'monterrey-mexico', name: 'Monterrey', country: 'MX', countryName: 'Mexico', timeZone: 'America/Monterrey', priority: 60 },
+  // Argentina
+  { slug: 'buenos-aires-argentina', name: 'Buenos Aires', country: 'AR', countryName: 'Argentina', timeZone: 'America/Argentina/Buenos_Aires', priority: 30 },
+  { slug: 'cordoba-argentina', name: 'Córdoba', country: 'AR', countryName: 'Argentina', timeZone: 'America/Argentina/Cordoba', priority: 70 },
+  { slug: 'rosario-argentina', name: 'Rosario', country: 'AR', countryName: 'Argentina', timeZone: 'America/Argentina/Buenos_Aires', priority: 90 },
+  // Colombia
+  { slug: 'bogota-colombia', name: 'Bogotá', country: 'CO', countryName: 'Colombia', timeZone: 'America/Bogota', priority: 40 },
+  { slug: 'medellin-colombia', name: 'Medellín', country: 'CO', countryName: 'Colombia', timeZone: 'America/Bogota', priority: 40 },
+  { slug: 'cali-colombia', name: 'Cali', country: 'CO', countryName: 'Colombia', timeZone: 'America/Bogota', priority: 50 },
+  // Chile / Peru / Ecuador
+  { slug: 'santiago-chile', name: 'Santiago', country: 'CL', countryName: 'Chile', timeZone: 'America/Santiago', priority: 50 },
+  { slug: 'lima-peru', name: 'Lima', country: 'PE', countryName: 'Peru', timeZone: 'America/Lima', priority: 50 },
+  { slug: 'quito-ecuador', name: 'Quito', country: 'EC', countryName: 'Ecuador', timeZone: 'America/Guayaquil', priority: 80 },
+  { slug: 'guayaquil-ecuador', name: 'Guayaquil', country: 'EC', countryName: 'Ecuador', timeZone: 'America/Guayaquil', priority: 90 },
+  // Central America & Caribbean
+  { slug: 'san-jose-costa-rica', name: 'San José', country: 'CR', countryName: 'Costa Rica', timeZone: 'America/Costa_Rica', priority: 90 },
+  { slug: 'panama-city-panama', name: 'Panama City', country: 'PA', countryName: 'Panama', timeZone: 'America/Panama', priority: 90 },
+  { slug: 'santo-domingo-dominican-republic', name: 'Santo Domingo', country: 'DO', countryName: 'Dominican Republic', timeZone: 'America/Santo_Domingo', priority: 90 },
+  { slug: 'havana-cuba', name: 'Havana', country: 'CU', countryName: 'Cuba', timeZone: 'America/Havana', priority: 100 },
+  { slug: 'caracas-venezuela', name: 'Caracas', country: 'VE', countryName: 'Venezuela', timeZone: 'America/Caracas', priority: 100 },
+  { slug: 'guatemala-city-guatemala', name: 'Guatemala City', country: 'GT', countryName: 'Guatemala', timeZone: 'America/Guatemala', priority: 110 },
+  { slug: 'san-salvador-el-salvador', name: 'San Salvador', country: 'SV', countryName: 'El Salvador', timeZone: 'America/El_Salvador', priority: 110 },
+  { slug: 'tegucigalpa-honduras', name: 'Tegucigalpa', country: 'HN', countryName: 'Honduras', timeZone: 'America/Tegucigalpa', priority: 120 },
+  { slug: 'managua-nicaragua', name: 'Managua', country: 'NI', countryName: 'Nicaragua', timeZone: 'America/Managua', priority: 120 },
+  // South America — remaining
+  { slug: 'montevideo-uruguay', name: 'Montevideo', country: 'UY', countryName: 'Uruguay', timeZone: 'America/Montevideo', priority: 100 },
+  { slug: 'la-paz-bolivia', name: 'La Paz', country: 'BO', countryName: 'Bolivia', timeZone: 'America/La_Paz', priority: 120 },
+  { slug: 'asuncion-paraguay', name: 'Asunción', country: 'PY', countryName: 'Paraguay', timeZone: 'America/Asuncion', priority: 120 },
+]
 
 /** Canadian province slugs seen in DanceUS calendar URLs → timezone. */
 const CANADA_PROVINCE_TZ: Record<string, string> = {
@@ -472,6 +546,62 @@ export function buildChannelSeeds(city: ChannelCityInfo): ChannelSourceSeed[] {
       discoveredVia: 'CHANNEL_DANCEUS',
       intervalDays: 1,
       notes: 'Public DanceUS city style-calendar listing page.',
+    })
+  }
+
+  return seeds
+}
+
+/**
+ * Channel seeds for a world (non-US) metro.
+ *
+ * Eventbrite serves the same SSR JSON-LD directory internationally under
+ * /d/{country}--{city}/{style}/ — verified live on 2026-11-22 for Mexico,
+ * Brazil and Argentina. DanceUS calendars follow their world slug shapes
+ * ('sao-paulo-brazil'); a page that doesn't exist 404s and the source backs
+ * off automatically, so seeding a slug DanceUS hasn't built yet is harmless.
+ *
+ * Meetup is deliberately absent: their international style/topic path pages
+ * (/find/{cc}--{city}/{topic}/) 404 for the Latin American metros tested
+ * (são-paulo, guadalajara) while serving London fine — so there is nothing
+ * reliable to register yet. Revisit if Meetup ships the path form worldwide.
+ */
+export function buildWorldChannelSeeds(metro: {
+  slug: string
+  name: string
+  country: string
+  countryName: string
+}): ChannelSourceSeed[] {
+  // 'sao-paulo-brazil' → city 'sao-paulo', country slug 'brazil'
+  const idx = metro.slug.lastIndexOf('-')
+  if (idx === -1) throw new Error(`World metro slug "${metro.slug}" must end with a country segment`)
+  const cityPart = metro.slug.slice(0, idx)
+  const countryPart = metro.slug.slice(idx + 1)
+  const seeds: ChannelSourceSeed[] = []
+
+  for (const s of CHANNEL_STYLES) {
+    seeds.push({
+      url: `https://www.eventbrite.com/d/${countryPart}--${cityPart}/${s.eventbrite}/`,
+      organizationName: `Eventbrite — ${s.style} · ${metro.name}`,
+      sourceCategory: 'AGGREGATOR',
+      sourceType: 'JSONLD',
+      supportedStyles: [s.style],
+      discoveredVia: 'CHANNEL_EVENTBRITE',
+      intervalDays: 1,
+      notes: `Public Eventbrite directory page (${metro.countryName}). SSR HTML carries JSON-LD Event records.`,
+    })
+  }
+
+  for (const s of CHANNEL_STYLES) {
+    seeds.push({
+      url: `https://danceus.org/events/${s.danceUs}/${metro.slug}-${s.danceUs}-calendar/`,
+      organizationName: `DanceUS — ${s.style} · ${metro.name}`,
+      sourceCategory: 'DIRECTORY',
+      sourceType: 'HTML',
+      supportedStyles: [s.style],
+      discoveredVia: 'CHANNEL_DANCEUS',
+      intervalDays: 1,
+      notes: `Public DanceUS city style-calendar (${metro.countryName}); 404s back off until they publish it.`,
     })
   }
 

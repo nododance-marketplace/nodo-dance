@@ -1,11 +1,17 @@
-# Nodo Atlas — local proof of concept
+# Nodo Atlas — the worldwide event ingestion engine
 
 > **Mission: map the dance world. Keep it connected.**
 >
-> **Status: paused (2026-11-04).** Core pipeline built, tested and running against
-> live Charlotte sources. Nine deliverable documents plus a lead census written.
-> Sixteen Obsidian notes written. Committed and pushed as `5fba47f`, `ca6e874`,
-> `119f4b0`. Production migration still needs explicit approval.
+> **Status: live weekly agent (2026-11-22).** The pipeline runs on a schedule
+> against production: the `Atlas weekly` GitHub Actions workflow crawls twice
+> a week (Sun + Wed 06:00 UTC), refreshes the DanceUS world registry, seeds
+> curated world metros (Latin America focus), auto-publishes machine-verified
+> candidates (QA PASS, confidence ≥0.90, coordinates, no live duplicate —
+> recorded as `ATLAS_AUTO`) and leaves everything else in the human review
+> queue at `/admin/atlas`. The daily Vercel cron (`/api/atlas/tick`, up to
+> `ATLAS_MAX_SOURCES` sources) keeps channels fresh between runs. The
+> production schema migration runs on demand via the `Atlas migrate` workflow
+> (the dev box cannot reach Neon on 5432; Actions runners can).
 >
 > **Start here when picking it back up:**
 >

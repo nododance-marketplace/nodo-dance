@@ -1,0 +1,71 @@
+# Nodo Atlas — weekly worldwide crawl + auto-publish
+#
+# Runs the full ingestion cycle against the live Neon database twice a week:
+#   DanceUS calendar discovery → world metro seeding → channel crawl
+#   → organizer crawl → auto-publish (machine-verified candidates) → report
+#
+# Why GitHub Actions: the founder's dev box cannot complete a Postgres TLS
+# handshake to Neon on 5432, and the box sleeps anyway. Runners can reach
+# Neon directly, so the migration, the crawl and the publish all live here.
+#
+# Publish policy (agreed 2026-11-22): only candidates from channel sources
+# that passed QA at ≥0.90 confidence, carry coordinates, point at a future
+# date, and have no EXACT duplicate against something already live are
+# published automatically (PublicationRecord.method = ATLAS_AUTO). Everything
+# else stays in the human review queue at /admin/atlas.
+
+name: Atlas weekly
+
+on:
+  schedule:
+    # Sunday and Wednesday, 06:00 UTC — twice a week as agreed.
+    - cron: '0 6 * * 0,3'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max sources per crawl phase'
+        default: '500'
+        required: false
+
+concurrency:
+  group: atlas-weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  week:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # db.ts always imports the local (SQLite) client alongside the
+      # production one, so both must be generated before the CLI runs.
+      - name: Generate Prisma clients
+        run: |
+          npx prisma generate
+          npx prisma generate --schema atlas/prisma/schema.local.prisma
+
+      - name: Weekly cycle (discover → crawl → auto-publish → report)
+        run: |
+          npx tsx atlas/cli.ts week \
+            --target=production \
+            --publish-to-production \
+            --limit ${{ github.event.inputs.limit || '500' }}
+
+      - name: Job summary
+        if: always()
+        run: echo "Atlas weekly run finished — see the step log above for the coverage report." >> $GITHUB_STEP_SUMMARY

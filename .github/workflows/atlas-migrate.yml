@@ -1,0 +1,45 @@
+# One-off / on-demand: push the Prisma schema to the production Neon database.
+#
+# This is the migration that was blocked on the founder's dev box (Postgres
+# TLS on 5432 is reset by something between the box and Neon). GitHub Actions
+# runners have no such restriction. The schema change is additive (Atlas
+# ingestion tables + Event publication columns — see docs/atlas/ATLAS-MIGRATION.md).
+#
+# Run this once (manually) before the first Atlas weekly run. Re-run any time
+# prisma/schema.prisma changes deliberately.
+
+name: Atlas migrate
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: atlas-migrate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Push schema to Neon
+        run: npx prisma db push
+
+      - name: Verify production schema
+        run: npx prisma db push --skip-generate
