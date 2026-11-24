@@ -112,9 +112,14 @@ from transactional email).
 
 ## Open questions for the founder
 
-1. Platform fee: Stripe Connect "separate charges and transfers" needs a
-   platform account and a fee decision — confirm before M2.
-2. Stripe account: create the sandbox Stripe account + give test keys.
+RESOLVED 2026-11-24:
+1. Platform fee: **0%** launch fee to onboard businesses. Stripe Connect in
+   "separate charges and transfers" mode with a zero application fee; revisit
+   when monetizing.
+2. Stripe account: founder will reuse the Vizus Stripe account in **test
+   mode** for the M2 preview. For production launch, prefer a dedicated
+   NodoDance Stripe account (Connect platform identity, payouts branding,
+   clean accounting) — flag at M2.
 3. Brand: does the customer-facing ticket say "NodoDance" or the business name?
 4. Domain strategy: booking pages under nododance.com/b/{slug} (default) or
    subdomains?
