@@ -1,0 +1,45 @@
+# Strix — AI penetration test of nododance.com (owner-authorized only)
+#
+# Manual trigger. Points autonomous AI pentest agents at the production site.
+# Only run this against systems you own — nododance.com qualifies; do NOT
+# point it at third parties.
+#
+# Requires two repository secrets:
+#   STRIX_LLM    e.g. "openrouter/z-ai/glm-5.3" or "anthropic/claude-opus-5-5"
+#   LLM_API_KEY  the matching provider API key
+# (An OpenCode Go subscription is not an API key — create one at the provider.)
+#
+# Quick mode keeps the run short and scoped; findings land in the job log.
+# For a full validated pentest with PoCs, use the local CLI + `strix view`
+# dashboard (see the penetration-testing-with-strix skill).
+
+name: Strix security scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target (only nododance.com is authorized)'
+        default: 'https://nododance.com'
+        required: false
+
+concurrency:
+  group: strix-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Install Strix
+        run: curl -sSL https://strix.ai/install | bash
+
+      - name: Run quick scan
+        env:
+          STRIX_LLM: ${{ secrets.STRIX_LLM }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: strix -n --target ${{ github.event.inputs.target || 'https://nododance.com' }} --scan-mode quick

@@ -59,3 +59,7 @@ atlas/generated/
 !/public/uploads/**/.gitkeep
 
 .env*
+
+# graphify knowledge graph (rebuilt locally by the graphify hook)
+graphify-out/
+.graphify*
