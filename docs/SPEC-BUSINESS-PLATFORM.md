@@ -131,3 +131,6 @@ RESOLVED 2026-11-24:
   → build → review). `npm run build` must pass; the webpack flag is required.
 - Payment status must be reported per method as: verified in sandbox,
   simulated, or blocked with the exact dependency.
+
+## Pending owner action
+- Rotate the Neon database password (the old one lived in git history via neon-sync.ts). After rotating: update .env, GitHub secrets, and Vercel env vars.
