@@ -207,6 +207,18 @@ export default async function BusinessDashboardPage({
         </div>
       </section>
 
+      <nav aria-label="Operations" className="max-w-3xl mt-8 flex flex-wrap gap-4 text-sm">
+        <Link href={`/manage/${slug}/bookings`} className="font-medium text-accent-ink hover:underline">
+          Class rosters →
+        </Link>
+        <Link href={`/manage/${slug}/guests`} className="font-medium text-accent-ink hover:underline">
+          Event guest lists →
+        </Link>
+        <Link href="/checkin" className="font-medium text-accent-ink hover:underline">
+          Door check-in →
+        </Link>
+      </nav>
+
       <section aria-labelledby="offerings-heading" className="max-w-3xl">
         <h2 id="offerings-heading" className="text-xl font-bold text-primary mb-4">
           Your offerings
