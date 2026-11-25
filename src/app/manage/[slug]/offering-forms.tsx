@@ -101,6 +101,10 @@ export function OfferingForms({ businessId, timeZone }: Props) {
   // Event fields
   const [eventStart, setEventStart] = useState('')
   const [eventEnd, setEventEnd] = useState('')
+  const [ticketed, setTicketed] = useState(false)
+  const [tiers, setTiers] = useState([
+    { name: 'General Admission', price: '', inventory: '40' },
+  ])
 
   function toggleStyle(style: string) {
     setStyles((prev) =>
@@ -126,6 +130,8 @@ export function OfferingForms({ businessId, timeZone }: Props) {
     setLocalStartTime('')
     setEventStart('')
     setEventEnd('')
+    setTicketed(false)
+    setTiers([{ name: 'General Admission', price: '', inventory: '40' }])
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -186,6 +192,29 @@ export function OfferingForms({ businessId, timeZone }: Props) {
         setError('Pick a start and end date and time for the event')
         return
       }
+      const parsedTiers = ticketed
+        ? tiers.map((t) => ({
+            name: t.name.trim(),
+            price: parseFloat(t.price),
+            inventory: parseInt(t.inventory, 10),
+          }))
+        : []
+      if (ticketed) {
+        if (parsedTiers.length === 0) {
+          setError('Add at least one ticket tier')
+          return
+        }
+        for (const t of parsedTiers) {
+          if (!t.name || !Number.isFinite(t.price) || t.price <= 0) {
+            setError('Each tier needs a name and a price above 0')
+            return
+          }
+          if (!Number.isInteger(t.inventory) || t.inventory < 1) {
+            setError(`Tier "${t.name}" needs an inventory of at least 1`)
+            return
+          }
+        }
+      }
       payload = {
         businessId,
         type: 'EVENT',
@@ -195,12 +224,13 @@ export function OfferingForms({ businessId, timeZone }: Props) {
         description: description || null,
         venueName,
         city: city || null,
-        price: price === '' ? null : parseFloat(price),
+        price: null,
         capacity: capacityNum,
         partnerRequired,
         timeZone,
         startDateTime: eventStart,
         endDateTime: eventEnd,
+        ...(ticketed ? { tiers: parsedTiers } : {}),
       }
     }
 
@@ -323,8 +353,8 @@ export function OfferingForms({ businessId, timeZone }: Props) {
             />
             {tab === 'EVENT' && (
               <p className="mt-1 text-xs text-gray-500">
-                Free events can take RSVPs now — ticketed events arrive with paid
-                bookings.
+                Leave empty and use ticket tiers below to sell tickets — or
+                leave both out for a free RSVP event.
               </p>
             )}
           </div>
@@ -437,32 +467,136 @@ export function OfferingForms({ businessId, timeZone }: Props) {
             </div>
           </fieldset>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-xl">
-            <div>
-              <label htmlFor="event-start" className={inputLabel}>
-                Starts
-              </label>
-              <Input
-                id="event-start"
-                type="datetime-local"
-                value={eventStart}
-                onChange={(e) => setEventStart(e.target.value)}
-                required
-              />
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-xl">
+              <div>
+                <label htmlFor="event-start" className={inputLabel}>
+                  Starts
+                </label>
+                <Input
+                  id="event-start"
+                  type="datetime-local"
+                  value={eventStart}
+                  onChange={(e) => setEventStart(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="event-end" className={inputLabel}>
+                  Ends
+                </label>
+                <Input
+                  id="event-end"
+                  type="datetime-local"
+                  value={eventEnd}
+                  onChange={(e) => setEventEnd(e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="event-end" className={inputLabel}>
-                Ends
+
+            <fieldset className="sm:max-w-xl">
+              <legend className="text-sm font-medium text-gray-800 mb-1">
+                Tickets
+              </legend>
+              <label className="flex items-start gap-3 text-sm text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={ticketed}
+                  onChange={(e) => setTicketed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span>
+                  Sell tickets with tiers
+                  <span className="block text-xs text-gray-500">
+                    Early Bird / GA / VIP pricing with per-tier inventory. Buyers
+                    pay through Stripe; unchecked, the event stays a free RSVP.
+                  </span>
+                </span>
               </label>
-              <Input
-                id="event-end"
-                type="datetime-local"
-                value={eventEnd}
-                onChange={(e) => setEventEnd(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+
+              {ticketed && (
+                <div className="mt-3 space-y-3">
+                  {tiers.map((tier, i) => (
+                    <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_6rem_6rem_auto] gap-2 items-end">
+                      <div>
+                        <label htmlFor={`tier-name-${i}`} className="block text-xs text-gray-600 mb-1">
+                          Tier name
+                        </label>
+                        <Input
+                          id={`tier-name-${i}`}
+                          value={tier.name}
+                          onChange={(e) =>
+                            setTiers((prev) =>
+                              prev.map((t, j) => (j === i ? { ...t, name: e.target.value } : t))
+                            )
+                          }
+                          required
+                          maxLength={60}
+                          placeholder="Early Bird"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor={`tier-price-${i}`} className="block text-xs text-gray-600 mb-1">
+                          Price ($)
+                        </label>
+                        <Input
+                          id={`tier-price-${i}`}
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={tier.price}
+                          onChange={(e) =>
+                            setTiers((prev) =>
+                              prev.map((t, j) => (j === i ? { ...t, price: e.target.value } : t))
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor={`tier-inventory-${i}`} className="block text-xs text-gray-600 mb-1">
+                          Spots
+                        </label>
+                        <Input
+                          id={`tier-inventory-${i}`}
+                          type="number"
+                          min="1"
+                          max="1000"
+                          value={tier.inventory}
+                          onChange={(e) =>
+                            setTiers((prev) =>
+                              prev.map((t, j) => (j === i ? { ...t, inventory: e.target.value } : t))
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTiers((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-xs text-gray-500 hover:text-[var(--color-error)] pb-2.5"
+                        aria-label={`Remove tier ${tier.name || i + 1}`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  {tiers.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTiers((prev) => [...prev, { name: '', price: '', inventory: '20' }])
+                      }
+                      className="text-xs font-medium text-accent-ink hover:underline"
+                    >
+                      + Add another tier
+                    </button>
+                  )}
+                </div>
+              )}
+            </fieldset>
+          </>
         )}
 
         <div>

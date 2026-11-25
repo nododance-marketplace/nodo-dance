@@ -62,6 +62,13 @@ export async function POST(
         { status: 409 }
       )
     }
+    // Ticketed events (M2) sell through the checkout flow, never the free RSVP
+    if (offering.isTicketed) {
+      return NextResponse.json(
+        { error: 'TICKETED_EVENT', message: 'This event sells tickets — use Get tickets' },
+        { status: 409 }
+      )
+    }
 
     // Resolve identity: signed-in users RSVP as themselves, everyone else
     // must supply guest contact info

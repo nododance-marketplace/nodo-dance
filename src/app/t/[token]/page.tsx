@@ -29,9 +29,13 @@ function googleCalendarUrl(title: string, start: Date, end: Date, location: stri
 }
 
 /**
- * Ticket / confirmation view keyed by the guest's secure token. Works for both
- * free-event tickets (Ticket row) and guest class reservations (Reservation
- * row carries its own token). A bad or unknown token is a plain 404.
+ * Ticket / confirmation view keyed by the guest's secure token. Resolves, in
+ * order:
+ *  1. a Ticket (events — free RSVP and paid, issued by the webhook);
+ *  2. a Reservation (guest class bookings);
+ *  3. an Order (M2 paid checkout before the webhook lands — shows "processing
+ *     payment"; refunded shows a refund banner).
+ * A bad or unknown token is a plain 404.
  */
 export default async function TicketPage({
   params,
@@ -62,28 +66,78 @@ export default async function TicketPage({
         },
       })
 
-  if (!ticket && !reservation) notFound()
+  // M2: a paid checkout creates the Order first — /t/{token} shows the
+  // processing state until the webhook flips it and issues the ticket or
+  // confirms the reservation (both carry this same token).
+  const order =
+    ticket || reservation
+      ? null
+      : await prisma.order.findUnique({
+          where: { guestToken: token },
+          include: {
+            offering: {
+              include: {
+                business: { select: { name: true, slug: true } },
+                sessions: { orderBy: { startDateTime: 'asc' }, take: 1 },
+              },
+            },
+            tier: true,
+            session: true,
+          },
+        })
 
-  const offeringId = ticket ? ticket.offeringId : reservation!.offeringId
-  const offering = await prisma.offering.findUnique({
-    where: { id: offeringId },
-    include: {
-      business: { select: { name: true, slug: true } },
-      sessions: { orderBy: { startDateTime: 'asc' }, take: 1 },
-    },
-  })
-  if (!offering) notFound()
+  if (!ticket && !reservation && !order) notFound()
+
+  const offeringRow = ticket
+    ? await prisma.offering.findUnique({
+        where: { id: ticket.offeringId },
+        include: {
+          business: { select: { name: true, slug: true } },
+          sessions: { orderBy: { startDateTime: 'asc' }, take: 1 },
+        },
+      })
+    : reservation
+      ? reservation.offering
+      : order!.offering
+  if (!offeringRow) notFound()
+  const offering = offeringRow
 
   const eventSession = offering.sessions[0] ?? null
-  const classSession = reservation?.session ?? null
-  const when = classSession ? classSession.startDateTime : eventSession?.startDateTime
+  const classSession = reservation?.session ?? order?.session ?? null
+  const when = classSession
+    ? classSession.startDateTime
+    : eventSession?.startDateTime
   const whenEnd = classSession ? classSession.endDateTime : eventSession?.endDateTime
-  const holderName = ticket?.holderName ?? reservation?.guestName ?? null
-  const holderEmail = ticket?.holderEmail ?? reservation?.guestEmail ?? null
+  const holderName =
+    ticket?.holderName ?? order?.guestName ?? reservation?.guestName ?? null
+  const holderEmail =
+    ticket?.holderEmail ?? order?.guestEmail ?? reservation?.guestEmail ?? null
+
   const canceled =
     (classSession && classSession.status === 'CANCELED') ||
     (eventSession && eventSession.status === 'CANCELED') ||
     reservation?.status === 'CANCELED'
+  const refunded = ticket?.status === 'REFUNDED' || order?.status === 'REFUNDED'
+  // Paid hold waiting on the webhook — also what a success_url return shows
+  const processing =
+    !canceled &&
+    !refunded &&
+    (reservation?.status === 'PENDING_PAYMENT' ||
+      order?.status === 'PENDING_PAYMENT')
+  const holdExpired =
+    processing && order?.expiresAt !== null && order?.expiresAt !== undefined
+      ? order.expiresAt < new Date()
+      : false
+
+  const statusLabel = canceled
+    ? 'Canceled'
+    : refunded
+      ? 'Refunded'
+      : processing
+        ? 'Processing'
+        : ticket
+          ? 'Ticket code'
+          : 'Confirmed'
 
   return (
     <main className="page-shell">
@@ -102,27 +156,60 @@ export default async function TicketPage({
         </h1>
         <p className="mt-2 text-sm text-gray-600">
           {offering.type === 'CLASS' ? 'Class confirmation' : 'Your ticket'}
+          {order?.tier ? ` · ${order.tier.name}` : ''}
         </p>
+
+        {refunded && (
+          <div
+            role="alert"
+            className="mt-6 bg-surface border border-[var(--color-error)] rounded-xl p-5"
+          >
+            <p className="font-bold text-[var(--color-error)]">
+              This ticket was refunded
+            </p>
+            <p className="mt-1 text-sm text-gray-700">
+              The payment was returned and this ticket no longer admits entry.
+              Contact the organizer if you think this is a mistake.
+            </p>
+          </div>
+        )}
 
         <div className="mt-8 bg-surface border border-gray-200 rounded-xl overflow-hidden">
           <div className="p-6 sm:p-8 text-center border-b border-dashed border-gray-200">
             <p className="text-xs uppercase tracking-wide text-gray-500">
-              {canceled ? 'Status' : offering.type === 'CLASS' ? 'Confirmed' : 'Ticket code'}
+              {statusLabel}
             </p>
             {canceled ? (
               <p className="mt-2 text-2xl font-bold text-[var(--color-error)]">
                 Canceled
               </p>
+            ) : refunded ? (
+              <p className="mt-2 text-2xl font-bold text-[var(--color-error)]">
+                Refunded
+              </p>
+            ) : processing ? (
+              <>
+                <p className="mt-2 text-2xl font-bold text-primary">
+                  Processing payment…
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {holdExpired
+                    ? 'This payment hold expired — if you were charged, your booking is still being confirmed. Refresh in a moment.'
+                    : 'Your payment is being confirmed — usually a few seconds. Refresh this page to see your ticket.'}
+                </p>
+              </>
             ) : (
               <p className="mt-2 text-3xl font-bold text-primary tracking-wide">
                 {ticket ? ticket.code : 'Confirmed ✓'}
               </p>
             )}
-            <p className="mt-2 text-xs text-gray-500">
-              {ticket
-                ? 'Show this code at the door.'
-                : 'No ticket needed for classes — just check in with your name.'}
-            </p>
+            {!canceled && !refunded && !processing && (
+              <p className="mt-2 text-xs text-gray-500">
+                {ticket
+                  ? 'Show this code at the door.'
+                  : 'No ticket needed for classes — just check in with your name.'}
+              </p>
+            )}
           </div>
 
           <dl className="p-6 sm:p-8 space-y-4 text-sm">
@@ -148,10 +235,19 @@ export default async function TicketPage({
                 <dd className="mt-0.5 text-gray-900 font-medium">{holderEmail}</dd>
               </div>
             )}
+            {order && (
+              <div>
+                <dt className="text-gray-500">Amount</dt>
+                <dd className="mt-0.5 text-gray-900 font-medium">
+                  ${order.amount % 1 === 0 ? order.amount.toFixed(0) : order.amount.toFixed(2)}{' '}
+                  {order.currency.toUpperCase()}
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
 
-        {when && whenEnd && (
+        {!canceled && !refunded && !processing && when && whenEnd && (
           <p className="mt-6 text-center">
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a

@@ -62,10 +62,13 @@ function formatPrice(price: number | null): string {
  */
 export default async function OfferingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const { slug } = await params
+  const { error } = await searchParams
 
   const offering = await prisma.offering.findUnique({
     where: { slug },
@@ -84,14 +87,56 @@ export default async function OfferingPage({
   const isSignedIn = Boolean(session?.user?.email)
 
   const next = offering.sessions[0] ?? null
+
+  // Confirmed head-count. Paid offerings count live payment holds too (a spot
+  // someone is paying for is not available); free ones keep the M1 count.
+  const paid = offering.price !== null
   const confirmed = next
-    ? await prisma.reservation.count({
-        where: { sessionId: next.id, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
-      })
+    ? paid
+      ? await prisma.reservation.count({
+          where: {
+            sessionId: next.id,
+            OR: [
+              { status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
+              {
+                status: 'PENDING_PAYMENT',
+                order: { status: 'PENDING_PAYMENT', expiresAt: { gt: new Date() } },
+              },
+            ],
+          },
+        })
+      : await prisma.reservation.count({
+          where: { sessionId: next.id, status: { in: ['CONFIRMED', 'CHECKED_IN'] } },
+        })
     : 0
   const capacity = next ? (next.capacityOverride ?? offering.capacity) : offering.capacity
   const styles = parseStyles(offering.styles)
   const eventWhen = next && offering.type === 'EVENT' ? formatDayTime(next.startDateTime) : null
+
+  // Ticketed events: per-tier availability = inventory - sold - live holds
+  let tiers: { id: string; name: string; price: number; remaining: number }[] = []
+  if (offering.isTicketed) {
+    const rows = await prisma.ticketTier.findMany({
+      where: { offeringId: offering.id },
+      orderBy: { createdAt: 'asc' },
+    })
+    const holds = await prisma.order.groupBy({
+      by: ['tierId'],
+      where: {
+        offeringId: offering.id,
+        status: 'PENDING_PAYMENT',
+        expiresAt: { gt: new Date() },
+      },
+      _count: { _all: true },
+    })
+    const holdsByTier = new Map(holds.map((h) => [h.tierId, h._count._all]))
+    tiers = rows.map((t) => ({
+      id: t.id,
+      name: t.name,
+      price: t.price,
+      remaining: Math.max(t.inventory - t.sold - (holdsByTier.get(t.id) ?? 0), 0),
+    }))
+  }
 
   return (
     <main className="page-shell">
@@ -132,7 +177,23 @@ export default async function OfferingPage({
           {offering.title}
         </h1>
 
-        <p className="mt-3 text-lg text-gray-700">{formatPrice(offering.price)}</p>
+        <p className="mt-3 text-lg text-gray-700">
+          {offering.isTicketed && tiers.length > 0
+            ? `From $${Math.min(...tiers.map((t) => t.price)) % 1 === 0 ? Math.min(...tiers.map((t) => t.price)).toFixed(0) : Math.min(...tiers.map((t) => t.price)).toFixed(2)} — pick a tier below`
+            : formatPrice(offering.price)}
+        </p>
+
+        {error && (
+          <div role="alert" className="mt-4 bg-surface border border-[var(--color-error)] rounded-xl p-4 text-sm text-[var(--color-error)]">
+            {error === 'CLASS_FULL' || error === 'EVENT_FULL' || error === 'TIER_SOLD_OUT'
+              ? 'That spot was just taken — it sold out before your payment started.'
+              : error === 'STRIPE_NOT_CONNECTED'
+                ? 'The organizer has not finished connecting payouts yet — payments are paused.'
+                : error === 'PAYMENTS_UNAVAILABLE'
+                  ? 'Payments are temporarily unavailable — please try again later.'
+                  : 'Checkout could not start. Please try again.'}
+          </div>
+        )}
 
         {next && (
           <p className="mt-1 text-sm text-gray-600">
@@ -228,6 +289,7 @@ export default async function OfferingPage({
                 confirmed={confirmed}
                 capacity={capacity}
                 sessionId={next.id}
+                tiers={tiers.length > 0 ? tiers : undefined}
               />
             )}
           </div>

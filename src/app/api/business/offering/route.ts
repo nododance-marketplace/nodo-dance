@@ -54,12 +54,21 @@ const classSchema = baseSchema.extend({
   weeks: z.number().int().min(1).max(26).default(8),
 })
 
+const tierSchema = z.object({
+  name: z.string().min(1).max(60),
+  price: z.number().positive().max(10000),
+  inventory: z.number().int().min(1).max(1000),
+})
+
 const eventSchema = baseSchema.extend({
   type: z.literal('EVENT'),
   startDateTime: z.string().regex(localDateTimeRegex, 'YYYY-MM-DDTHH:MM'),
   endDateTime: z.string().regex(localDateTimeRegex, 'YYYY-MM-DDTHH:MM'),
   djCredits: z.string().max(200).optional().nullable(),
   coverImageUrl: z.string().regex(urlishRegex).max(500).optional().nullable(),
+  // Paid ticket tiers (M2): present → the event sells tickets per tier and
+  // isTicketed flips on. Absent → M1 behavior (free RSVP or single-price).
+  tiers: z.array(tierSchema).max(10).optional(),
 })
 
 const schema = z.discriminatedUnion('type', [classSchema, eventSchema])
@@ -164,7 +173,9 @@ export async function POST(request: NextRequest) {
       return Boolean(taken)
     })
 
-    // M1 keeps it simple: everything publishes immediately
+    // M1 keeps it simple: everything publishes immediately. Tiered events
+    // (M2) create their TicketTier rows in the same call and flip isTicketed.
+    const tiers = data.type === 'EVENT' ? data.tiers ?? [] : []
     const offering = await prisma.offering.create({
       data: {
         businessId: data.businessId,
@@ -183,6 +194,7 @@ export async function POST(request: NextRequest) {
         capacity: data.capacity,
         partnerRequired: data.partnerRequired,
         status: 'PUBLISHED',
+        isTicketed: tiers.length > 0,
         isRecurring,
         recurrenceGroupId,
         recurrenceRule,
@@ -191,8 +203,15 @@ export async function POST(request: NextRequest) {
         sessions: {
           create: sessions,
         },
+        tiers: {
+          create: tiers.map((t) => ({
+            name: t.name,
+            price: t.price,
+            inventory: t.inventory,
+          })),
+        },
       },
-      include: { sessions: true },
+      include: { sessions: true, tiers: true },
     })
 
     return NextResponse.json(

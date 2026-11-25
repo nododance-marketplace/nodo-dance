@@ -744,6 +744,7 @@ model Offering {
   bookingWindowHours Int      @default(1)
   partnerRequired    Boolean  @default(false)
   status             String   @default("DRAFT") // DRAFT | PUBLISHED | CANCELED
+  isTicketed         Boolean  @default(false) // true = sold via paid TicketTiers (M2)
   isRecurring        Boolean  @default(false)
   recurrenceGroupId  String?
   recurrenceRule     String? // JSON: { byDay: number[], interval: 1, weeks } — mirrors RecurrenceRule.ruleJson
@@ -756,6 +757,7 @@ model Offering {
   sessions     ClassSession[]
   tiers        TicketTier[]
   reservations Reservation[]
+  orders       Order[]
 }
 
 model ClassSession {
@@ -771,6 +773,7 @@ model ClassSession {
 
   reservations Reservation[]
   waitlist     WaitlistEntry[]
+  orders       Order[]
 
   @@index([offeringId, startDateTime])
 }
@@ -786,8 +789,9 @@ model Reservation {
   guestName  String?
   guestToken String? // secure link token for guest access
   source     String        @default("ACCOUNT") // ACCOUNT | PACK | DROPIN | WAITLIST
-  status     String        @default("CONFIRMED") // CONFIRMED | WAITLISTED | CANCELED | NO_SHOW | CHECKED_IN
-  paymentRef String?
+  status     String        @default("CONFIRMED") // CONFIRMED | PENDING_PAYMENT | WAITLISTED | CANCELED | NO_SHOW | CHECKED_IN
+  paymentRef String? @unique // Order.id for paid drop-ins (M2)
+  order      Order?  @relation(fields: [paymentRef], references: [id], onDelete: SetNull)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -822,6 +826,7 @@ model TicketTier {
   createdAt  DateTime  @default(now())
 
   tickets Ticket[]
+  orders  Order[]
 }
 
 model Ticket {
@@ -830,6 +835,8 @@ model Ticket {
   offeringId   String
   tierId       String?
   tier         TicketTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  orderId      String?     @unique
+  order        Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
   holderEmail  String
   holderName   String?
   holderUserId String?
@@ -849,4 +856,36 @@ model CheckIn {
   createdAt DateTime @default(now())
 
   @@unique([ticketId]) // first scan wins; repeat scans report the original
+}
+
+// M2 payment state machine: hold (PENDING_PAYMENT, expiresAt) → PAID →
+// REFUNDED / CANCELED. Stripe metadata carries orderId; webhooks reconcile.
+model Order {
+  id                    String        @id @default(cuid())
+  offeringId            String
+  offering              Offering      @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  sessionId             String? // class drop-in session (event sessions kept for reference)
+  session               ClassSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  tierId                String?
+  tier                  TicketTier?   @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  userId                String?
+  guestEmail            String?
+  guestName             String?
+  guestToken            String?       @unique // secure /t/{token} link — shows "processing" until the webhook lands
+  amount                Float
+  currency              String        @default("usd")
+  status                String        @default("PENDING_PAYMENT") // PENDING_PAYMENT | PAID | REFUNDED | CANCELED
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String?
+  expiresAt             DateTime? // inventory hold — expired holds release lazily on read/write
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  ticket      Ticket?
+  reservation Reservation?
+
+  @@index([offeringId, status])
+  @@index([sessionId, status])
+  @@index([tierId, status])
+  @@index([status, expiresAt])
 }
