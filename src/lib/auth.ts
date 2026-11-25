@@ -4,6 +4,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import { createTransport } from 'nodemailer'
 import { prisma } from './prisma'
+import { checkRateLimit } from './rate-limit'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -58,6 +59,24 @@ export const authOptions: NextAuthOptions = {
       async sendVerificationRequest({ identifier: email, url, provider }) {
         const { host } = new URL(url)
         const transport = createTransport(provider.server)
+
+        // Rate limit magic-link sends per recipient email to prevent email spam (fail-open)
+        try {
+          const allowed = await checkRateLimit({
+            identifier: email.toLowerCase(),
+            action: 'magic-link',
+            limit: 5,
+            window: 3600, // 1 hour
+          })
+
+          if (!allowed) {
+            console.warn(`[AUTH] Rate limit reached for magic link to ${email}, skipping send`)
+            return
+          }
+        } catch (error) {
+          // Never block legitimate users if the limiter itself fails
+          console.error('[AUTH] Rate limit check failed, sending magic link anyway:', error)
+        }
 
         console.log(`[AUTH] Sending magic link to ${email} (via ${process.env.EMAIL_SERVER_HOST}, from ${provider.from})`)
         console.log(`[AUTH] Magic link host: ${host}, URL prefix: ${url.substring(0, 60)}...`)

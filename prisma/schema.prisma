@@ -18,12 +18,17 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts           Account[]
-  sessions           Session[]
-  instructorProfile  InstructorProfile?
-  submittedEvents    Event[]
-  savedInstructors   SavedInstructor[]
-  savedEvents        SavedEvent[]
+  // Trust ladder: starts at 0. +1 when one of their events is auto-published
+  // or approved, −2 on a rejection or a reported event. High trust lowers
+  // the auto-publish bar in the validity agent.
+  trustScore Int @default(0)
+
+  accounts          Account[]
+  sessions          Session[]
+  instructorProfile InstructorProfile?
+  submittedEvents   Event[]
+  savedInstructors  SavedInstructor[]
+  savedEvents       SavedEvent[]
 }
 
 model Account {
@@ -76,30 +81,30 @@ model InstructorProfile {
   styles         String // JSON array
   otherStyle     String? // Free text for "Other" dance style
   skillLevels    String // JSON array (beginner/intermediate/advanced)
-  offerings      String @default("[]") // JSON array of offerings
-  languages      String @default("[]") // JSON array of languages
+  offerings      String  @default("[]") // JSON array of offerings
+  languages      String  @default("[]") // JSON array of languages
   yearsTeaching  Int? // Years of teaching experience
   studentsTaught Int? // Number of students taught
   certifications String? // Newline-separated certifications
-  rating         Float @default(4.9) // Default placeholder rating
+  rating         Float   @default(4.9) // Default placeholder rating
 
   // Pricing
-  offersPrivate       Boolean @default(false)
-  privateRateHourly   Int?
-  offersGroup         Boolean @default(false)
-  groupRatePerClass   Int?
-  groupClassNotes     String?
+  offersPrivate     Boolean @default(false)
+  privateRateHourly Int?
+  offersGroup       Boolean @default(false)
+  groupRatePerClass Int?
+  groupClassNotes   String?
 
   // Location
-  locationType       String?
-  neighborhood       String?
-  address            String?
-  travelRadiusMiles  Int?
+  locationType      String?
+  neighborhood      String?
+  address           String?
+  travelRadiusMiles Int?
   // Which city the instructor teaches in. Nodo serves more than one city,
   // so an instructor without a city cannot be found by anyone looking for
   // one nearby.
-  city               String?
-  state              String?
+  city              String?
+  state             String?
 
   // Payment methods
   paymentCash    Boolean @default(false)
@@ -108,13 +113,13 @@ model InstructorProfile {
   paymentPayPal  String?
 
   // Contact
-  contactEmail           String?  // Instructor's public contact email (gated behind auth)
-  preferredContactMethod String?  // "Email", "Instagram DM", "Website Form", "Text"
-  contactNotes           String?  // e.g. "Best time to reach me: evenings"
+  contactEmail           String? // Instructor's public contact email (gated behind auth)
+  preferredContactMethod String? // "Email", "Instagram DM", "Website Form", "Text"
+  contactNotes           String? // e.g. "Best time to reach me: evenings"
 
   // DJ
-  isDJ      Boolean @default(false)
-  djStyles  String? // JSON array of DJ styles (uses same DANCE_STYLES)
+  isDJ     Boolean @default(false)
+  djStyles String? // JSON array of DJ styles (uses same DANCE_STYLES)
 
   // Social
   instagramUrl String?
@@ -123,12 +128,12 @@ model InstructorProfile {
   youtubeUrl   String? // YouTube video URL
   tiktokUrl    String? // TikTok profile URL
 
-  isPublished Boolean @default(true)
+  isPublished Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  lessonRequests   LessonRequest[]
-  savedBy          SavedInstructor[]
+  lessonRequests LessonRequest[]
+  savedBy        SavedInstructor[]
 }
 
 model SavedInstructor {
@@ -158,17 +163,17 @@ model SavedEvent {
 }
 
 model LessonRequest {
-  id                  String   @id @default(cuid())
+  id                  String            @id @default(cuid())
   instructorProfileId String
   instructorProfile   InstructorProfile @relation(fields: [instructorProfileId], references: [id], onDelete: Cascade)
 
-  studentName      String
-  studentEmail     String
-  studentPhone     String?
-  style            String
-  lessonType       String
-  preferredTimes   String
-  message          String
+  studentName    String
+  studentEmail   String
+  studentPhone   String?
+  style          String
+  lessonType     String
+  preferredTimes String
+  message        String
 
   createdAt DateTime @default(now())
 
@@ -176,29 +181,29 @@ model LessonRequest {
 }
 
 model Event {
-  id     String      @id @default(cuid())
+  id     String @id @default(cuid())
   status String @default("PENDING")
 
-  title       String
-  eventType   String
-  styles      String    // JSON array
-  otherStyle  String?   // Free text for "Other" dance style
+  title      String
+  eventType  String
+  styles     String // JSON array
+  otherStyle String? // Free text for "Other" dance style
 
   startDateTime DateTime
   endDateTime   DateTime?
 
-  venueName    String
-  address      String?
-  lat          Float?
-  lng          Float?
-  venueId      String?
-  venue        Venue?  @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  venueName String
+  address   String?
+  lat       Float?
+  lng       Float?
+  venueId   String?
+  venue     Venue?  @relation(fields: [venueId], references: [id], onDelete: SetNull)
 
   // Geography & time
-  city      String?
-  state     String?
-  zip       String?
-  timeZone  String?   // IANA, e.g. "America/New_York". Legacy rows are assumed America/New_York.
+  city     String?
+  state    String?
+  zip      String?
+  timeZone String? // IANA, e.g. "America/New_York". Legacy rows are assumed America/New_York.
 
   price Int? // null = free
 
@@ -214,30 +219,35 @@ model Event {
   submittedBy       User?   @relation(fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
   // Provenance — every published record is traceable to a source
-  sourceId       String?   // DiscoverySource.id (Atlas) — null for organizer-submitted
-  sourceUrl      String?   // original event URL
-  sourceName     String?   // organization name as published
-  publishedVia   String    @default("ORGANIZER") // ORGANIZER | ATLAS | MANUAL
-  verifiedAt     DateTime?
+  sourceId         String? // DiscoverySource.id (Atlas) — null for organizer-submitted
+  sourceUrl        String? // original event URL
+  sourceName       String? // organization name as published
+  publishedVia     String    @default("ORGANIZER") // ORGANIZER | ATLAS | MANUAL
+  verifiedAt       DateTime?
   atlasCandidateId String?
 
   // Organizer claim
   claimedByUserId String?
   claimedAt       DateTime?
-  claimStatus     String?   // PENDING | VERIFIED | REJECTED
+  claimStatus     String? // PENDING | VERIFIED | REJECTED
 
   // Recurrence fields (null/false = one-off event)
-  isRecurring         Boolean   @default(false)
-  recurrenceGroupId   String?
-  recurrenceDay       Int?       // 0=Sun..6=Sat
-  recurrenceInterval  Int?       // 1=weekly, 2=biweekly
-  recurrenceCount     Int?       // total occurrences in series
-  recurrenceIndex     Int?       // 1-based position (e.g. 3 of 12)
+  isRecurring        Boolean @default(false)
+  recurrenceGroupId  String?
+  recurrenceDay      Int? // 0=Sun..6=Sat
+  recurrenceInterval Int? // 1=weekly, 2=biweekly
+  recurrenceCount    Int? // total occurrences in series
+  recurrenceIndex    Int? // 1-based position (e.g. 3 of 12)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   savedBy SavedEvent[]
+  reports EventReport[]
+
+  // How many distinct reporters have flagged this event. At 3+ the event
+  // drops back to PENDING for admin review.
+  reportCount Int @default(0)
 
   @@index([status])
   @@index([startDateTime])
@@ -247,11 +257,26 @@ model Event {
   @@index([city, state])
 }
 
+// Community flagging: one report per (event, reporter). reporterKey is a
+// hashed session/IP so anonymous reporters can't double-report but never
+// store personal data.
+model EventReport {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reporterKey String // hashed session token + IP
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([eventId, reporterKey])
+  @@index([eventId])
+}
+
 model RateLimitEntry {
-  id         String   @id @default(cuid())
-  identifier String   // IP or email
-  action     String   // e.g., "submit-event", "lesson-request"
-  count      Int      @default(1)
+  id          String   @id @default(cuid())
+  identifier  String // IP or email
+  action      String // e.g., "submit-event", "lesson-request"
+  count       Int      @default(1)
   windowStart DateTime @default(now())
 
   @@unique([identifier, action])
@@ -265,19 +290,19 @@ model RateLimitEntry {
 // ─────────────────────────────────────────────────────────────
 
 model DiscoveryCity {
-  id        String   @id @default(cuid())
-  slug      String   @unique // "charlotte-nc"
-  name      String // "Charlotte"
-  state     String // "NC"
-  stateName String?
-  country   String   @default("US")
-  timeZone  String // IANA, e.g. "America/New_York"
-  priority  Int      @default(50) // lower runs first
-  status    String   @default("PENDING") // PENDING | ACTIVE | PAUSED | COMPLETE
+  id         String   @id @default(cuid())
+  slug       String   @unique // "charlotte-nc"
+  name       String // "Charlotte"
+  state      String // "NC"
+  stateName  String?
+  country    String   @default("US")
+  timeZone   String // IANA, e.g. "America/New_York"
+  priority   Int      @default(50) // lower runs first
+  status     String   @default("PENDING") // PENDING | ACTIVE | PAUSED | COMPLETE
   population Int?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   sources DiscoverySource[]
 
@@ -285,16 +310,16 @@ model DiscoveryCity {
 }
 
 model DiscoverySource {
-  id        String  @id @default(cuid())
-  url       String  @unique // canonical site URL
-  domain    String
+  id               String         @id @default(cuid())
+  url              String         @unique // canonical site URL
+  domain           String
   organizationName String?
-  cityId    String?
-  city      DiscoveryCity? @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  cityId           String?
+  city             DiscoveryCity? @relation(fields: [cityId], references: [id], onDelete: SetNull)
 
-  sourceCategory String @default("EVENT_ORG") // SCHOOL | STUDIO | EVENT_ORG | VENUE | DIRECTORY | INSTRUCTOR | AGGREGATOR
-  sourceType     String @default("HTML") // HTML | RSS | ICAL | JSONLD | API
-  supportedStyles String @default("[]") // JSON array of DANCE_STYLES
+  sourceCategory   String @default("EVENT_ORG") // SCHOOL | STUDIO | EVENT_ORG | VENUE | DIRECTORY | INSTRUCTOR | AGGREGATOR
+  sourceType       String @default("HTML") // HTML | RSS | ICAL | JSONLD | API
+  supportedStyles  String @default("[]") // JSON array of DANCE_STYLES
   extractionMethod String @default("DETERMINISTIC") // DETERMINISTIC | LLM | API
 
   // Where this studio posts its events, found from its own website. Most
@@ -312,13 +337,13 @@ model DiscoverySource {
   optOutReason      String?
 
   // Health & reliability
-  reliability         Float    @default(0.5)
-  extractionSuccessRate Float  @default(0)
-  lastCrawledAt       DateTime?
-  lastSuccessAt       DateTime?
-  nextCrawlAt         DateTime?
-  crawlIntervalDays   Int      @default(7)
-  consecutiveFailures Int      @default(0)
+  reliability           Float     @default(0.5)
+  extractionSuccessRate Float     @default(0)
+  lastCrawledAt         DateTime?
+  lastSuccessAt         DateTime?
+  nextCrawlAt           DateTime?
+  crawlIntervalDays     Int       @default(7)
+  consecutiveFailures   Int       @default(0)
 
   // Change detection
   contentHash  String?
@@ -330,12 +355,12 @@ model DiscoverySource {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  crawlJobs       CrawlJob[]
-  rawExtractions  RawExtraction[]
-  candidates      CandidateEvent[]
-  evidence        SourceEvidence[]
-  health          SourceHealth[]
-  schools         CandidateSchool[]
+  crawlJobs      CrawlJob[]
+  rawExtractions RawExtraction[]
+  candidates     CandidateEvent[]
+  evidence       SourceEvidence[]
+  health         SourceHealth[]
+  schools        CandidateSchool[]
 
   @@index([domain])
   @@index([nextCrawlAt])
@@ -343,23 +368,23 @@ model DiscoverySource {
 }
 
 model CrawlJob {
-  id       String  @id @default(cuid())
+  id       String           @id @default(cuid())
   sourceId String?
   source   DiscoverySource? @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
-  jobType   String @default("CRAWL") // CRAWL | DISCOVER | GEOCODE | DEDUPE | RESOLVE
-  status    String @default("QUEUED") // QUEUED | RUNNING | SUCCEEDED | FAILED | SKIPPED | CANCELLED
-  priority  Int    @default(50)
-  scheduledFor DateTime @default(now())
-  startedAt DateTime?
-  finishedAt DateTime?
-  attempts  Int     @default(0)
-  maxAttempts Int  @default(3)
-  lastError String?
-  payload   String  @default("{}")
-  costUsd   Float   @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  jobType      String    @default("CRAWL") // CRAWL | DISCOVER | GEOCODE | DEDUPE | RESOLVE
+  status       String    @default("QUEUED") // QUEUED | RUNNING | SUCCEEDED | FAILED | SKIPPED | CANCELLED
+  priority     Int       @default(50)
+  scheduledFor DateTime  @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(3)
+  lastError    String?
+  payload      String    @default("{}")
+  costUsd      Float     @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   crawlAttempts CrawlAttempt[]
 
@@ -367,46 +392,46 @@ model CrawlJob {
 }
 
 model CrawlAttempt {
-  id        String   @id @default(cuid())
-  jobId     String
-  job       CrawlJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  attemptNumber Int
-  status    String // SUCCESS | FAILED | SKIPPED_BLOCKED | SKIPPED_UNCHANGED
-  httpStatus Int?
-  url       String?
-  durationMs Int?
-  bytes     Int?
-  contentHash String?
-  errorCode String?
-  errorMessage String?
-  extractionMethod String?
-  candidatesFound Int @default(0)
-  candidatesAccepted Int @default(0)
-  costUsd   Float @default(0)
-  createdAt DateTime @default(now())
+  id                 String   @id @default(cuid())
+  jobId              String
+  job                CrawlJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  attemptNumber      Int
+  status             String // SUCCESS | FAILED | SKIPPED_BLOCKED | SKIPPED_UNCHANGED
+  httpStatus         Int?
+  url                String?
+  durationMs         Int?
+  bytes              Int?
+  contentHash        String?
+  errorCode          String?
+  errorMessage       String?
+  extractionMethod   String?
+  candidatesFound    Int      @default(0)
+  candidatesAccepted Int      @default(0)
+  costUsd            Float    @default(0)
+  createdAt          DateTime @default(now())
 
   @@index([jobId])
 }
 
 model RawExtraction {
-  id         String   @id @default(cuid())
-  sourceId   String
-  source     DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  url        String
-  contentHash String
-  rawPayload String // JSON of the extracted structure
-  extractedFields String @default("[]") // JSON array of field names found
-  extractor  String // JSONLD | RSS | ICAL | HTML | LLM
-  confidence Float    @default(0)
-  fetchedAt  DateTime @default(now())
+  id              String          @id @default(cuid())
+  sourceId        String
+  source          DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  url             String
+  contentHash     String
+  rawPayload      String // JSON of the extracted structure
+  extractedFields String          @default("[]") // JSON array of field names found
+  extractor       String // JSONLD | RSS | ICAL | HTML | LLM
+  confidence      Float           @default(0)
+  fetchedAt       DateTime        @default(now())
 
   @@index([sourceId, fetchedAt])
 }
 
 model CandidateEvent {
-  id         String  @id @default(cuid())
-  sourceId   String
-  source     DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  id              String          @id @default(cuid())
+  sourceId        String
+  source          DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   rawExtractionId String?
 
   title       String
@@ -417,14 +442,14 @@ model CandidateEvent {
 
   startDateTime DateTime?
   endDateTime   DateTime?
-  localDate  String? // YYYY-MM-DD as stated on the page (wall time)
-  localTime  String? // HH:MM wall time
-  timeZone   String? // IANA
+  localDate     String? // YYYY-MM-DD as stated on the page (wall time)
+  localTime     String? // HH:MM wall time
+  timeZone      String? // IANA
 
-  isRecurring        Boolean @default(false)
-  recurrenceRule     String? // JSON RRULE
-  recurrenceText     String? // original source phrase
-  recurrenceConfidence Float @default(0)
+  isRecurring          Boolean @default(false)
+  recurrenceRule       String? // JSON RRULE
+  recurrenceText       String? // original source phrase
+  recurrenceConfidence Float   @default(0)
 
   venueName String?
   address   String?
@@ -437,29 +462,29 @@ model CandidateEvent {
   price     Int?
   priceText String?
 
-  organizerName    String?
-  registrationUrl  String?
-  sourceUrl        String
+  organizerName      String?
+  registrationUrl    String?
+  sourceUrl          String
   sourceUrlCanonical String?
 
-  confidence Float   @default(0)
-  qaStatus   String  @default("PENDING") // PENDING | PASS | QUARANTINE | REJECTED
-  qaReasons  String  @default("[]") // JSON array
-  reviewStatus String @default("PENDING") // PENDING | APPROVED | REJECTED | PUBLISHED | MERGED
-  reviewedBy  String?
-  reviewedAt  DateTime?
+  confidence       Float     @default(0)
+  qaStatus         String    @default("PENDING") // PENDING | PASS | QUARANTINE | REJECTED
+  qaReasons        String    @default("[]") // JSON array
+  reviewStatus     String    @default("PENDING") // PENDING | APPROVED | REJECTED | PUBLISHED | MERGED
+  reviewedBy       String?
+  reviewedAt       DateTime?
   publishedEventId String?
-  dedupeKey   String?
-  isExpired   Boolean @default(false)
-  lastSeenAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  dedupeKey        String?
+  isExpired        Boolean   @default(false)
+  lastSeenAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  evidence SourceEvidence[]
-  matches  EntityMatch[]
-  recurrenceRules RecurrenceRule[]
+  evidence            SourceEvidence[]
+  matches             EntityMatch[]
+  recurrenceRules     RecurrenceRule[]
   moderationDecisions ModerationDecision[]
-  publicationRecords PublicationRecord[]
+  publicationRecords  PublicationRecord[]
 
   @@index([sourceId])
   @@index([reviewStatus])
@@ -468,109 +493,109 @@ model CandidateEvent {
 }
 
 model CandidateSchool {
-  id       String @id @default(cuid())
+  id       String          @id @default(cuid())
   sourceId String
   source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
-  businessName       String
-  websiteUrl         String?
-  address            String?
-  city               String?
-  state              String?
-  zip                String?
-  lat                Float?
-  lng                Float?
-  phone              String? // published business contact only
-  contactChannel     String?
-  styles             String @default("[]") // JSON array of DANCE_STYLES
-  classScheduleUrl   String?
+  businessName           String
+  websiteUrl             String?
+  address                String?
+  city                   String?
+  state                  String?
+  zip                    String?
+  lat                    Float?
+  lng                    Float?
+  phone                  String? // published business contact only
+  contactChannel         String?
+  styles                 String  @default("[]") // JSON array of DANCE_STYLES
+  classScheduleUrl       String?
   instructorDirectoryUrl String?
 
-  confidence  Float  @default(0)
-  qaStatus    String @default("PENDING")
-  qaReasons   String @default("[]")
-  reviewStatus String @default("PENDING")
-  reviewedBy  String?
-  reviewedAt  DateTime?
-  dedupeKey   String?
-  sourceUrl   String
-  lastSeenAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  confidence   Float     @default(0)
+  qaStatus     String    @default("PENDING")
+  qaReasons    String    @default("[]")
+  reviewStatus String    @default("PENDING")
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  dedupeKey    String?
+  sourceUrl    String
+  lastSeenAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([reviewStatus])
   @@index([dedupeKey])
 }
 
 model CandidateVenue {
-  id        String @id @default(cuid())
-  name      String
-  address   String?
-  city      String?
-  state     String?
-  zip       String?
-  lat       Float?
-  lng       Float?
-  websiteUrl String?
-  sourceUrl String
+  id                String   @id @default(cuid())
+  name              String
+  address           String?
+  city              String?
+  state             String?
+  zip               String?
+  lat               Float?
+  lng               Float?
+  websiteUrl        String?
+  sourceUrl         String
   normalizedAddress String?
-  confidence Float @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  confidence        Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([normalizedAddress])
 }
 
 model CandidateInstructor {
-  id          String @id @default(cuid())
-  displayName String
-  sourceUrl   String
-  styles      String @default("[]") // JSON array of DANCE_STYLES
-  city        String?
-  state       String?
-  websiteUrl  String?
-  confidence  Float  @default(0)
-  qaStatus    String @default("PENDING")
-  reviewStatus String @default("PENDING")
-  lastSeenAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  displayName  String
+  sourceUrl    String
+  styles       String   @default("[]") // JSON array of DANCE_STYLES
+  city         String?
+  state        String?
+  websiteUrl   String?
+  confidence   Float    @default(0)
+  qaStatus     String   @default("PENDING")
+  reviewStatus String   @default("PENDING")
+  lastSeenAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([reviewStatus])
 }
 
 model RecurrenceRule {
-  id       String @id @default(cuid())
+  id               String          @id @default(cuid())
   candidateEventId String?
-  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
-  seriesKey String // stable key for a detected series
+  candidateEvent   CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  seriesKey        String // stable key for a detected series
 
-  ruleJson String // JSON RRULE
-  timeZone String
-  interval Int    @default(1)
-  byDay    String @default("[]") // JSON array of weekday numbers
-  until    DateTime?
-  count    Int?
-  exceptions String @default("[]") // JSON array of YYYY-MM-DD cancelled dates
+  ruleJson     String // JSON RRULE
+  timeZone     String
+  interval     Int       @default(1)
+  byDay        String    @default("[]") // JSON array of weekday numbers
+  until        DateTime?
+  count        Int?
+  exceptions   String    @default("[]") // JSON array of YYYY-MM-DD cancelled dates
   originalText String?
-  confidence Float @default(0)
-  status    String @default("PROPOSED") // PROPOSED | VERIFIED | REJECTED | EXPIRED
-  sourceUrl String?
-  verifiedAt DateTime?
-  expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  confidence   Float     @default(0)
+  status       String    @default("PROPOSED") // PROPOSED | VERIFIED | REJECTED | EXPIRED
+  sourceUrl    String?
+  verifiedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([seriesKey])
   @@index([status])
 }
 
 model SourceEvidence {
-  id       String @id @default(cuid())
-  sourceId String
-  source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  id               String          @id @default(cuid())
+  sourceId         String
+  source           DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   candidateEventId String?
-  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  candidateEvent   CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
 
   url        String
   fieldName  String
@@ -584,80 +609,283 @@ model SourceEvidence {
 }
 
 model EntityMatch {
-  id       String @id @default(cuid())
+  id               String         @id @default(cuid())
   candidateEventId String
-  candidateEvent CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  candidateEvent   CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
   existingEventId  String?
   existingSchoolId String?
-  matchType String // EXACT | NORMALIZED | FUZZY_TITLE | VENUE_TIME | SERIES | RECURRENCE
-  score    Float @default(0)
-  status   String @default("PROPOSED") // PROPOSED | CONFIRMED | REJECTED
-  reason   String?
-  createdAt DateTime @default(now())
+  matchType        String // EXACT | NORMALIZED | FUZZY_TITLE | VENUE_TIME | SERIES | RECURRENCE
+  score            Float          @default(0)
+  status           String         @default("PROPOSED") // PROPOSED | CONFIRMED | REJECTED
+  reason           String?
+  createdAt        DateTime       @default(now())
 
   @@index([candidateEventId])
   @@index([status])
 }
 
 model ModerationDecision {
-  id       String @id @default(cuid())
+  id               String         @id @default(cuid())
   candidateEventId String
-  candidateEvent CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
-  decision String // APPROVE | REJECT | QUARANTINE | PUBLISH | MERGE
-  decidedBy String?
-  reason   String?
-  createdAt DateTime @default(now())
+  candidateEvent   CandidateEvent @relation(fields: [candidateEventId], references: [id], onDelete: Cascade)
+  decision         String // APPROVE | REJECT | QUARANTINE | PUBLISH | MERGE
+  decidedBy        String?
+  reason           String?
+  createdAt        DateTime       @default(now())
 
   @@index([candidateEventId])
 }
 
 model PublicationRecord {
-  id       String @id @default(cuid())
+  id               String          @id @default(cuid())
   candidateEventId String?
-  candidateEvent CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: SetNull)
-  eventId  String?
-  sourceId String?
-  publishedBy String?
-  publishedAt DateTime @default(now())
-  snapshot String // JSON of the fields published
-  method   String @default("MANUAL") // MANUAL | ATLAS_AUTO
+  candidateEvent   CandidateEvent? @relation(fields: [candidateEventId], references: [id], onDelete: SetNull)
+  eventId          String?
+  sourceId         String?
+  publishedBy      String?
+  publishedAt      DateTime        @default(now())
+  snapshot         String // JSON of the fields published
+  method           String          @default("MANUAL") // MANUAL | ATLAS_AUTO
 
   @@index([eventId])
 }
 
 model SourceHealth {
-  id       String @id @default(cuid())
-  sourceId String
-  source   DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  windowStart DateTime @default(now())
-  successCount Int @default(0)
-  failureCount Int @default(0)
-  skippedCount  Int @default(0)
-  avgLatencyMs  Int @default(0)
-  candidatesFound Int @default(0)
-  candidatesAccepted Int @default(0)
-  contentChanged Boolean @default(false)
-  lastSuccessAt DateTime?
-  healthScore Float @default(0)
+  id                 String          @id @default(cuid())
+  sourceId           String
+  source             DiscoverySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  windowStart        DateTime        @default(now())
+  successCount       Int             @default(0)
+  failureCount       Int             @default(0)
+  skippedCount       Int             @default(0)
+  avgLatencyMs       Int             @default(0)
+  candidatesFound    Int             @default(0)
+  candidatesAccepted Int             @default(0)
+  contentChanged     Boolean         @default(false)
+  lastSuccessAt      DateTime?
+  healthScore        Float           @default(0)
 
   @@index([sourceId, windowStart])
 }
 
 model Venue {
-  id        String @id @default(cuid())
-  name      String
-  address   String?
-  city      String?
-  state     String?
-  zip       String?
-  lat       Float?
-  lng       Float?
-  timezone  String?
-  websiteUrl String?
-  normalizedAddress String? @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  name              String
+  address           String?
+  city              String?
+  state             String?
+  zip               String?
+  lat               Float?
+  lng               Float?
+  timezone          String?
+  websiteUrl        String?
+  normalizedAddress String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   events Event[]
 }
 
+// ── Business platform (M1) — see docs/SPEC-BUSINESS-PLATFORM.md ─────────────
+
+model Business {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  kind            String   @default("TEACHER") // TEACHER | ACADEMY | ORGANIZER
+  ownerId         String // User.id (relation added in a later migration)
+  timeZone        String   @default("America/New_York")
+  city            String?
+  state           String?
+  websiteUrl      String?
+  logoUrl         String?
+  stripeAccountId String?
+  payoutsReady    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members   BusinessMember[]
+  offerings Offering[]
+}
+
+model BusinessMember {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String // User.id
+  role       String   @default("OWNER") // OWNER | INSTRUCTOR | CHECKIN
+  createdAt  DateTime @default(now())
+
+  @@unique([businessId, userId])
+  @@index([userId])
+}
+
+model Offering {
+  id                 String   @id @default(cuid())
+  businessId         String
+  business           Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type               String // CLASS | EVENT
+  title              String
+  slug               String   @unique
+  styles             String   @default("[]") // JSON array, mirrors Event.styles
+  level              String? // Beginner | Intermediate | Advanced | All levels
+  description        String?
+  venueName          String?
+  address            String?
+  city               String?
+  state              String?
+  lat                Float?
+  lng                Float?
+  timeZone           String   @default("America/New_York")
+  price              Float? // null = free
+  currency           String   @default("usd")
+  capacity           Int      @default(30)
+  cancellationPolicy String   @default("Free cancellation up to 4 hours before start")
+  bookingWindowHours Int      @default(1)
+  partnerRequired    Boolean  @default(false)
+  status             String   @default("DRAFT") // DRAFT | PUBLISHED | CANCELED
+  isTicketed         Boolean  @default(false) // true = sold via paid TicketTiers (M2)
+  isRecurring        Boolean  @default(false)
+  recurrenceGroupId  String?
+  recurrenceRule     String? // JSON: { byDay: number[], interval: 1, weeks } — mirrors RecurrenceRule.ruleJson
+  coverImageUrl      String?
+  djCredits          String?
+  importedEventId    String? // imported listing this native offering replaces
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  sessions     ClassSession[]
+  tiers        TicketTier[]
+  reservations Reservation[]
+  orders       Order[]
+}
+
+model ClassSession {
+  id               String   @id @default(cuid())
+  offeringId       String
+  offering         Offering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  startDateTime    DateTime
+  endDateTime      DateTime
+  status           String   @default("SCHEDULED") // SCHEDULED | CANCELED
+  capacityOverride Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  reservations Reservation[]
+  waitlist     WaitlistEntry[]
+  orders       Order[]
+
+  @@index([offeringId, startDateTime])
+}
+
+model Reservation {
+  id         String        @id @default(cuid())
+  sessionId  String?
+  session    ClassSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  offeringId String
+  offering   Offering      @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  userId     String? // signed-in student
+  guestEmail String?
+  guestName  String?
+  guestToken String? // secure link token for guest access
+  source     String        @default("ACCOUNT") // ACCOUNT | PACK | DROPIN | WAITLIST
+  status     String        @default("CONFIRMED") // CONFIRMED | PENDING_PAYMENT | WAITLISTED | CANCELED | NO_SHOW | CHECKED_IN
+  paymentRef String? @unique // Order.id for paid drop-ins (M2)
+  order      Order?  @relation(fields: [paymentRef], references: [id], onDelete: SetNull)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([sessionId])
+  @@index([offeringId])
+  @@index([userId])
+}
+
+model WaitlistEntry {
+  id             String       @id @default(cuid())
+  sessionId      String
+  session        ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  email          String
+  position       Int
+  status         String       @default("WAITING") // WAITING | PROMOTED | CLAIMED | EXPIRED
+  claimExpiresAt DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([sessionId, status])
+}
+
+model TicketTier {
+  id         String    @id @default(cuid())
+  offeringId String
+  offering   Offering  @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  name       String // Early Bird | General Admission | VIP
+  price      Float
+  inventory  Int
+  sold       Int       @default(0)
+  salesStart DateTime?
+  salesEnd   DateTime?
+  createdAt  DateTime  @default(now())
+
+  tickets Ticket[]
+  orders  Order[]
+}
+
+model Ticket {
+  id           String      @id @default(cuid())
+  code         String      @unique
+  offeringId   String
+  tierId       String?
+  tier         TicketTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  orderId      String?     @unique
+  order        Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  holderEmail  String
+  holderName   String?
+  holderUserId String?
+  guestToken   String? // secure link for guest ticket access
+  status       String      @default("ISSUED") // ISSUED | CHECKED_IN | REFUNDED | CANCELED
+  createdAt    DateTime    @default(now())
+
+  checkIns CheckIn[]
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  scannedBy String? // staff user id
+  method    String   @default("QR") // QR | MANUAL
+  createdAt DateTime @default(now())
+
+  @@unique([ticketId]) // first scan wins; repeat scans report the original
+}
+
+// M2 payment state machine: hold (PENDING_PAYMENT, expiresAt) → PAID →
+// REFUNDED / CANCELED. Stripe metadata carries orderId; webhooks reconcile.
+model Order {
+  id                    String        @id @default(cuid())
+  offeringId            String
+  offering              Offering      @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  sessionId             String? // class drop-in session (event sessions kept for reference)
+  session               ClassSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  tierId                String?
+  tier                  TicketTier?   @relation(fields: [tierId], references: [id], onDelete: SetNull)
+  userId                String?
+  guestEmail            String?
+  guestName             String?
+  guestToken            String?       @unique // secure /t/{token} link — shows "processing" until the webhook lands
+  amount                Float
+  currency              String        @default("usd")
+  status                String        @default("PENDING_PAYMENT") // PENDING_PAYMENT | PAID | REFUNDED | CANCELED
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String?
+  expiresAt             DateTime? // inventory hold — expired holds release lazily on read/write
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  ticket      Ticket?
+  reservation Reservation?
+
+  @@index([offeringId, status])
+  @@index([sessionId, status])
+  @@index([tierId, status])
+  @@index([status, expiresAt])
+}

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { sendEventSubmissionEmail } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { geocodeAddress, buildGeoQuery } from '@/lib/geocode'
+import { evaluateEventSubmission, applyTrustDelta } from '@/lib/event-validity'
 
 /**
  * Parse date + time strings as America/New_York and return proper UTC Date.
@@ -99,14 +100,31 @@ export async function POST(request: NextRequest) {
     const geoQuery = buildGeoQuery(data.venueName || '', data.address)
     const coords = await geocodeAddress(geoQuery)
 
-    // Look up user ID for createMany (which doesn't support connect)
-    const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+    // Look up user ID for createMany (which doesn't support connect), and
+    // their trust score for the validity agent's decision thresholds.
+    const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true, trustScore: true } })
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 400 })
     }
 
+    // Trust ladder: deterministic pre-checks, then one LLM call for the gray
+    // zone. Decides APPROVED (publish now) / PENDING (admin review) /
+    // REJECTED (reason is returned to the submitter below).
+    const validity = await evaluateEventSubmission({
+      title: data.title,
+      description: data.description,
+      styles: data.styles,
+      otherStyle: data.otherStyle,
+      venueName: data.venueName,
+      address: data.address,
+      city: coords?.city ?? null,
+      startDateTime,
+      submitterTrustScore: user.trustScore,
+    })
+    const finalStatus = validity.status
+
     const sharedFields = {
-      status: 'PENDING' as const,
+      status: finalStatus,
       title: data.title,
       eventType: data.eventType,
       styles: JSON.stringify(data.styles),
@@ -160,16 +178,27 @@ export async function POST(request: NextRequest) {
 
       await prisma.event.createMany({ data: eventsData })
 
-      // Send ONE admin notification for the series
-      const freqLabel = interval === 2 ? 'Biweekly' : 'Weekly'
-      await sendEventSubmissionEmail({
-        eventTitle: `${data.title} (${freqLabel}, ${weeks} occurrences)`,
-        organizerName: data.organizerName,
-        organizerEmail: data.organizerEmail,
-        eventType: data.eventType,
-      })
+      // Admin notification only for events waiting on human review
+      if (finalStatus === 'PENDING') {
+        // Send ONE admin notification for the series
+        const freqLabel = interval === 2 ? 'Biweekly' : 'Weekly'
+        await sendEventSubmissionEmail({
+          eventTitle: `${data.title} (${freqLabel}, ${weeks} occurrences)`,
+          organizerName: data.organizerName,
+          organizerEmail: data.organizerEmail,
+          eventType: data.eventType,
+        })
+      }
 
-      return NextResponse.json({ success: true, recurrenceGroupId, count: weeks })
+      await applyTrustDelta(user.id, finalStatus === 'APPROVED' ? 1 : finalStatus === 'REJECTED' ? -2 : 0)
+
+      return NextResponse.json({
+        success: true,
+        recurrenceGroupId,
+        count: weeks,
+        status: finalStatus,
+        rejectionReasons: finalStatus === 'REJECTED' ? validity.reasons : undefined,
+      })
     }
 
     // Single event (non-recurring)
@@ -181,15 +210,24 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Send notification email to admin
-    await sendEventSubmissionEmail({
-      eventTitle: data.title,
-      organizerName: data.organizerName,
-      organizerEmail: data.organizerEmail,
-      eventType: data.eventType,
-    })
+    // Admin notification only for events waiting on human review
+    if (finalStatus === 'PENDING') {
+      await sendEventSubmissionEmail({
+        eventTitle: data.title,
+        organizerName: data.organizerName,
+        organizerEmail: data.organizerEmail,
+        eventType: data.eventType,
+      })
+    }
 
-    return NextResponse.json({ success: true, id: event.id })
+    await applyTrustDelta(user.id, finalStatus === 'APPROVED' ? 1 : finalStatus === 'REJECTED' ? -2 : 0)
+
+    return NextResponse.json({
+      success: true,
+      id: event.id,
+      status: finalStatus,
+      rejectionReasons: finalStatus === 'REJECTED' ? validity.reasons : undefined,
+    })
   } catch (error: any) {
     console.error('Error submitting event:', error)
 

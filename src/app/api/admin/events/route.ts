@@ -4,6 +4,7 @@ import { authOptions, isAdmin } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { geocodeAddress, buildGeoQuery } from '@/lib/geocode'
+import { applyTrustDelta } from '@/lib/event-validity'
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
@@ -88,6 +89,9 @@ export async function PUT(request: NextRequest) {
         where: { recurrenceGroupId: event.recurrenceGroupId },
         data: { status: newStatus },
       })
+
+      // Trust ladder: reward an approval, penalize a rejection (once per series)
+      await applyTrustDelta(event.submittedByUserId, newStatus === 'APPROVED' ? 1 : -2)
 
       // On series approval, geocode if missing coords (once, then apply to all)
       if (newStatus === 'APPROVED' && (event.lat == null || event.lng == null)) {
@@ -183,6 +187,9 @@ export async function PUT(request: NextRequest) {
       where: { id: eventId },
       data: { status },
     })
+
+    // Trust ladder: reward an approval, penalize a rejection
+    await applyTrustDelta(event.submittedByUserId, status === 'APPROVED' ? 1 : -2)
 
     // On approval, always try geocoding if coordinates are missing
     if (status === 'APPROVED' && (event.lat == null || event.lng == null)) {

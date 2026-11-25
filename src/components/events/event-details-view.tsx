@@ -7,6 +7,7 @@ import { Calendar, MapPin, DollarSign, Clock, Instagram, Globe, Download, Repeat
 import { parseJsonArray, formatCurrency, formatDateTime, formatDate, formatTime, getEventTypeValue } from '@/lib/utils'
 import { EVENT_TYPES } from '@/lib/constants'
 import { SaveButton } from '@/components/auth/save-button'
+import { ReportEvent } from '@/components/events/report-event'
 
 export function EventDetailsView({ event, isLoggedIn = false }: { event: any; isLoggedIn?: boolean }) {
   const rawStyles = parseJsonArray(event.styles)
@@ -263,6 +264,8 @@ END:VCALENDAR`
           </p>
         </CardContent>
       </Card>
+
+      <ReportEvent eventId={event.id} />
     </div>
   )
 }

@@ -209,3 +209,245 @@ export async function sendEventSubmissionEmail(data: {
     html,
   })
 }
+
+// ---------------------------------------------------------------------------
+// M1 booking confirmations (classes + free events)
+// ---------------------------------------------------------------------------
+
+/** Shared style block for the booking confirmation templates below. */
+const BOOKING_EMAIL_STYLES = `
+  body { font-family: Inter, sans-serif; line-height: 1.6; color: #333; }
+  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  .header { background: #1B1F3B; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+  .content { background: white; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+  .button { display: inline-block; background: linear-gradient(135deg, #FF6F61, #C2185B); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+  .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+  .info-row { margin: 10px 0; }
+  .label { font-weight: 600; color: #1B1F3B; }
+`
+
+/** Render a datetime in the offering's own timezone so it reads as wall-clock. */
+function formatOfferingDateTime(date: Date, timeZone: string): string {
+  try {
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone,
+    })
+  } catch {
+    // Unknown IANA zone — fall back to UTC rather than failing the email
+    return date.toUTCString()
+  }
+}
+
+const BOOKING_FOOTER = `<p>Nodo Dance - ${process.env.NEXT_PUBLIC_CITY || 'Charlotte, NC'}</p>`
+
+/**
+ * Confirmation for a class reservation (M1: free classes). Guests get the
+ * secure /t/{token} link; signed-in users are pointed at their account.
+ */
+export async function sendReservationConfirmation(data: {
+  to: string
+  holderName?: string | null
+  offeringTitle: string
+  startTime: Date
+  timeZone: string
+  venueName?: string | null
+  cancellationPolicy?: string | null
+  guestToken?: string | null
+}) {
+  const when = formatOfferingDateTime(data.startTime, data.timeZone)
+  const link = data.guestToken ? `${APP_URL}/t/${data.guestToken}` : null
+  const greeting = data.holderName ? `Hi ${data.holderName},` : 'Hi there,'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><style>${BOOKING_EMAIL_STYLES}</style></head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>You're in! 🕺</h1>
+          </div>
+          <div class="content">
+            <p>${greeting}</p>
+            <p>Your spot for <strong>${data.offeringTitle}</strong> is confirmed. See you on the floor!</p>
+
+            <div class="info-row">
+              <span class="label">When:</span> ${when}
+            </div>
+            ${data.venueName ? `<div class="info-row"><span class="label">Where:</span> ${data.venueName}</div>` : ''}
+            ${data.cancellationPolicy ? `<div class="info-row"><span class="label">Cancellation policy:</span> ${data.cancellationPolicy}</div>` : ''}
+
+            ${link ? `
+              <p style="margin-top: 30px;">
+                <a href="${link}" class="button">View your booking</a>
+              </p>
+              <p style="margin-top: 16px; font-size: 14px;">
+                Keep this link — it's your proof of booking:<br/>
+                <a href="${link}">${link}</a>
+              </p>
+            ` : `
+              <p style="margin-top: 30px; font-size: 14px;">
+                Your reservation is saved under <strong>${data.to}</strong> — you can see all
+                your reservations anytime from your Nodo account.
+              </p>
+            `}
+
+            <p style="margin-top: 30px;">See you on the floor,<br/>The Nodo Dance team</p>
+          </div>
+          <div class="footer">
+            ${BOOKING_FOOTER}
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: `You're booked: ${data.offeringTitle}`,
+    html,
+  })
+}
+
+/**
+ * Ticket confirmation for a free event RSVP. The NODO- code and the secure
+ * /t/{token} link are the star of the show — that is what gets scanned at the door.
+ */
+export async function sendTicketConfirmation(data: {
+  to: string
+  holderName?: string | null
+  offeringTitle: string
+  startTime: Date
+  timeZone: string
+  venueName?: string | null
+  ticketCode: string
+  guestToken?: string | null
+}) {
+  const when = formatOfferingDateTime(data.startTime, data.timeZone)
+  const link = data.guestToken ? `${APP_URL}/t/${data.guestToken}` : null
+  const greeting = data.holderName ? `Hi ${data.holderName},` : 'Hi there,'
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><style>${BOOKING_EMAIL_STYLES}</style></head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Your ticket is ready 🎟️</h1>
+          </div>
+          <div class="content">
+            <p>${greeting}</p>
+            <p>You're on the list for <strong>${data.offeringTitle}</strong>. Show this code at the door:</p>
+
+            <p style="font-size: 28px; font-weight: bold; letter-spacing: 2px; text-align: center; margin: 24px 0; color: #1B1F3B;">
+              ${data.ticketCode}
+            </p>
+
+            <div class="info-row">
+              <span class="label">When:</span> ${when}
+            </div>
+            ${data.venueName ? `<div class="info-row"><span class="label">Where:</span> ${data.venueName}</div>` : ''}
+
+            ${link ? `
+              <p style="margin-top: 30px;">
+                <a href="${link}" class="button">Open your ticket</a>
+              </p>
+              <p style="margin-top: 16px; font-size: 14px;">
+                Keep this link — it's your proof of booking:<br/>
+                <a href="${link}">${link}</a>
+              </p>
+            ` : `
+              <p style="margin-top: 30px; font-size: 14px;">
+                Your ticket is saved under <strong>${data.to}</strong> — you can see it anytime
+                from your Nodo account.
+              </p>
+            `}
+
+            <p style="margin-top: 30px;">See you on the floor,<br/>The Nodo Dance team</p>
+          </div>
+          <div class="footer">
+            ${BOOKING_FOOTER}
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: `Your ticket for ${data.offeringTitle} — ${data.ticketCode}`,
+    html,
+  })
+}
+
+/**
+ * Waitlist promotion (M1): a spot opened up and this dancer is next in line.
+ * The claim link lands on the offering page — free classes re-reserve there,
+ * paid ones (M2) start checkout from the same page. The spot is theirs for
+ * 24 hours; after that it rolls to the next in line.
+ */
+export async function sendWaitlistPromotion(data: {
+  to: string
+  offeringTitle: string
+  offeringSlug: string
+  startTime: Date
+  timeZone: string
+  claimExpiresAt: Date
+}) {
+  const when = formatOfferingDateTime(data.startTime, data.timeZone)
+  const deadline = formatOfferingDateTime(data.claimExpiresAt, data.timeZone)
+  const link = `${APP_URL}/o/${data.offeringSlug}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><style>${BOOKING_EMAIL_STYLES}</style></head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>A spot opened up 🕺</h1>
+          </div>
+          <div class="content">
+            <p>Hi there,</p>
+            <p>You're next in line for <strong>${data.offeringTitle}</strong> — and a spot just opened.</p>
+
+            <div class="info-row">
+              <span class="label">When:</span> ${when}
+            </div>
+            <div class="info-row">
+              <span class="label">Claim by:</span> ${deadline}
+            </div>
+
+            <p style="margin-top: 30px;">
+              <a href="${link}" class="button">Claim your spot</a>
+            </p>
+            <p style="margin-top: 16px; font-size: 14px;">
+              You have <strong>24 hours</strong> to claim it. If the window passes,
+              the spot goes to the next dancer in line.
+            </p>
+
+            <p style="margin-top: 30px;">See you on the floor,<br/>The Nodo Dance team</p>
+          </div>
+          <div class="footer">
+            ${BOOKING_FOOTER}
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: 'A spot opened up — claim it within 24 hours',
+    html,
+  })
+}
