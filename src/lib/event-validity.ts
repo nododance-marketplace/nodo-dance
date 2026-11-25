@@ -17,6 +17,7 @@
  * submission lands in PENDING. The agent can never auto-publish while down.
  */
 
+import { GoogleGenAI } from '@google/genai'
 import { isPartnerDanceBusiness } from '../../atlas/lib/partner-dance'
 import { prisma } from './prisma'
 
@@ -141,37 +142,41 @@ interface LlmVerdict {
   reasons: string[]
 }
 
+/** The SDK client handles the auth exchange for new-style AI Studio keys ("AQ." prefix). */
+let geminiClient: GoogleGenAI | null = null
+function getGeminiClient(): GoogleGenAI {
+  if (!geminiClient) {
+    geminiClient = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY ?? '',
+      // The 'gemini-flash-latest' alias only exists on the v1beta API surface;
+      // the SDK's default 'v1' returns 404 for it.
+      httpOptions: { apiVersion: 'v1beta' },
+    })
+  }
+  return geminiClient
+}
+
 async function callGemini(userContent: string): Promise<LlmVerdict | null> {
-  const res = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-    {
-      method: 'POST',
-      // New-style AI Studio keys ("AQ." prefix) require the x-goog-api-key
-      // header; the ?key= query parameter only works for legacy AIza keys.
-      headers: {
-        'content-type': 'application/json',
-        'x-goog-api-key': process.env.GEMINI_API_KEY ?? '',
+  try {
+    const ai = getGeminiClient()
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: userContent,
+      config: {
+        temperature: 0,
+        maxOutputTokens: 400,
+        responseMimeType: 'application/json',
+        systemInstruction: SYSTEM_PROMPT,
+        abortSignal: AbortSignal.timeout(20_000),
       },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: userContent }] }],
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 400,
-          responseMimeType: 'application/json',
-        },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    }
-  )
-  if (!res.ok) {
-    console.error('[Validity] Gemini API error:', res.status)
+    })
+    const text = response.text
+    if (!text) return null
+    return parseLlmVerdict(extractJson(text))
+  } catch (error) {
+    console.error('[Validity] Gemini API error:', error)
     return null
   }
-  const data = await res.json()
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) return null
-  const parsed = extractJson(text)
-  return parseLlmVerdict(parsed)
 }
 
 async function callAnthropic(userContent: string): Promise<LlmVerdict | null> {
