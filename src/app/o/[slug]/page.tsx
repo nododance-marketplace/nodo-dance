@@ -227,6 +227,7 @@ export default async function OfferingPage({
                 isSignedIn={isSignedIn}
                 confirmed={confirmed}
                 capacity={capacity}
+                sessionId={next.id}
               />
             )}
           </div>

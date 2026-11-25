@@ -22,6 +22,8 @@ interface Props {
   /** Spots already taken on the next bookable occurrence. */
   confirmed: number
   capacity: number
+  /** Next bookable session — classes reserve a specific occurrence. */
+  sessionId: string
 }
 
 /**
@@ -29,7 +31,7 @@ interface Props {
  * (class) or RSVP (event) API; the server decides capacity, identity and
  * waitlist — this component only renders what the server answers.
  */
-export function BookPanel({ slug, type, price, isSignedIn, confirmed, capacity }: Props) {
+export function BookPanel({ slug, type, price, isSignedIn, confirmed, capacity, sessionId }: Props) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
@@ -47,9 +49,13 @@ export function BookPanel({ slug, type, price, isSignedIn, confirmed, capacity }
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          isSignedIn
-            ? {}
-            : { guestName: guestName.trim(), guestEmail: guestEmail.trim() }
+          type === 'CLASS'
+            ? isSignedIn
+              ? { sessionId }
+              : { sessionId, guestName: guestName.trim(), guestEmail: guestEmail.trim() }
+            : isSignedIn
+              ? {}
+              : { guestName: guestName.trim(), guestEmail: guestEmail.trim() }
         ),
       })
       const data = await res.json()
