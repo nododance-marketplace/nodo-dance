@@ -35,7 +35,9 @@ function googleCalendarUrl(title: string, start: Date, end: Date, location: stri
  *  2. a Reservation (guest class bookings);
  *  3. an Order (M2 paid checkout before the webhook lands — shows "processing
  *     payment"; refunded shows a refund banner).
- * A bad or unknown token is a plain 404.
+ * A bad or unknown token is a plain 404. Guests arrive with their 48-char
+ * secure token; signed-in dancers can also open their own ticket by its
+ * NODO- code from /my-tickets (the code is the door secret anyway).
  */
 export default async function TicketPage({
   params,
@@ -43,12 +45,13 @@ export default async function TicketPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
-  if (!/^[a-f0-9]{48}$/.test(token)) notFound()
+  const isTicketCode = /^NODO-[A-F0-9]{8}$/i.test(token)
+  if (!isTicketCode && !/^[a-f0-9]{48}$/.test(token)) notFound()
 
   // Tickets exist for events; guest class reservations only have a Reservation.
   // Ticket has no relation to Offering (id column only), so it is fetched after.
   const ticket = await prisma.ticket.findFirst({
-    where: { guestToken: token },
+    where: isTicketCode ? { code: token.toUpperCase() } : { guestToken: token },
   })
 
   const reservation = ticket

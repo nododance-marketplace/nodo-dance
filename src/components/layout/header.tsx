@@ -151,6 +151,13 @@ export function Header() {
                 >
                   Manage Business
                 </Link>
+                <Link
+                  href="/my-tickets"
+                  aria-current={pathname.startsWith('/my-tickets') ? 'page' : undefined}
+                  className="nav-link"
+                >
+                  My tickets
+                </Link>
                 {/* @ts-ignore */}
                 {session.user?.isAdmin && (
                   <Link href="/admin">
@@ -272,9 +279,18 @@ export function Header() {
                 >
                   Manage Business
                 </Link>
+                <Link
+                  href="/my-tickets"
+                  aria-current={pathname.startsWith('/my-tickets') ? 'page' : undefined}
+                  className="mobile-panel-link"
+                  style={{ '--i': 7 } as CSSProperties}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  My tickets
+                </Link>
                 {/* @ts-ignore */}
                 {session.user?.isAdmin && (
-                  <div className="mobile-panel-action" style={{ '--i': 7 } as CSSProperties}>
+                  <div className="mobile-panel-action" style={{ '--i': 8 } as CSSProperties}>
                     <Link href="/admin" className="block px-3 py-2">
                       <Button variant="outline" size="sm" className="w-full border-amber-400 text-amber-700">
                         <Shield className="w-4 h-4 mr-2" />
@@ -283,7 +299,7 @@ export function Header() {
                     </Link>
                   </div>
                 )}
-                <div className="mobile-panel-action" style={{ '--i': 8 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 9 } as CSSProperties}>
                   <Link href={dashboardUrl} className="block px-3 py-2">
                     <Button variant="outline" size="sm" className="w-full">
                       <User className="w-4 h-4 mr-2" />
@@ -291,7 +307,7 @@ export function Header() {
                     </Button>
                   </Link>
                 </div>
-                <div className="mobile-panel-action" style={{ '--i': 9 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 10 } as CSSProperties}>
                   <Button variant="ghost" size="sm" className="w-full" onClick={() => signOut()}>
                     Sign Out
                   </Button>
