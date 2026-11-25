@@ -721,6 +721,7 @@ model Offering {
   status             String   @default("DRAFT") // DRAFT | PUBLISHED | CANCELED
   isRecurring        Boolean  @default(false)
   recurrenceGroupId  String?
+  recurrenceRule     String? // JSON: { byDay: number[], interval: 1, weeks } — mirrors RecurrenceRule.ruleJson
   coverImageUrl      String?
   djCredits          String?
   importedEventId    String? // imported listing this native offering replaces
