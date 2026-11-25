@@ -92,6 +92,13 @@ export function Header() {
                     Become an Instructor
                   </Link>
                 )}
+                <Link
+                  href="/manage"
+                  aria-current={pathname.startsWith('/manage') ? 'page' : undefined}
+                  className="nav-link"
+                >
+                  Manage Business
+                </Link>
                 {/* @ts-ignore */}
                 {session.user?.isAdmin && (
                   <Link href="/admin">
@@ -207,9 +214,18 @@ export function Header() {
                     Become an Instructor
                   </Link>
                 )}
+                <Link
+                  href="/manage"
+                  aria-current={pathname.startsWith('/manage') ? 'page' : undefined}
+                  className="mobile-panel-link"
+                  style={{ '--i': 6 } as CSSProperties}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Manage Business
+                </Link>
                 {/* @ts-ignore */}
                 {session.user?.isAdmin && (
-                  <div className="mobile-panel-action" style={{ '--i': 6 } as CSSProperties}>
+                  <div className="mobile-panel-action" style={{ '--i': 7 } as CSSProperties}>
                     <Link href="/admin" className="block">
                       <Button variant="outline" size="sm" className="w-full border-amber-400 text-amber-700">
                         <Shield className="w-4 h-4 mr-2" />
@@ -218,7 +234,7 @@ export function Header() {
                     </Link>
                   </div>
                 )}
-                <div className="mobile-panel-action" style={{ '--i': 7 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 8 } as CSSProperties}>
                   <Link href={dashboardUrl} className="block">
                     <Button variant="outline" size="sm" className="w-full">
                       <User className="w-4 h-4 mr-2" />
@@ -226,7 +242,7 @@ export function Header() {
                     </Button>
                   </Link>
                 </div>
-                <div className="mobile-panel-action" style={{ '--i': 8 } as CSSProperties}>
+                <div className="mobile-panel-action" style={{ '--i': 9 } as CSSProperties}>
                   <Button variant="ghost" size="sm" className="w-full" onClick={() => signOut()}>
                     Sign Out
                   </Button>
