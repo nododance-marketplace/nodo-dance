@@ -143,10 +143,15 @@ interface LlmVerdict {
 
 async function callGemini(userContent: string): Promise<LlmVerdict | null> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
     {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      // New-style AI Studio keys ("AQ." prefix) require the x-goog-api-key
+      // header; the ?key= query parameter only works for legacy AIza keys.
+      headers: {
+        'content-type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY ?? '',
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: userContent }] }],
         generationConfig: {
