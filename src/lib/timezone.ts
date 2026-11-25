@@ -1,15 +1,36 @@
 /**
  * Parse date + time strings as a given IANA timezone and return the UTC Date.
  * On Vercel (UTC), `new Date("2026-02-27T19:00")` is 19:00 UTC — wrong.
- * This correctly interprets "19:00" as 7 PM in `timeZone` and stores the UTC
- * equivalent. Generalizes the proven parseAsET pattern from events/submit.
+ * This computes the zone's UTC offset at that wall time via Intl, so it is
+ * correct no matter what timezone the host runs in, and stays DST-safe.
+ * Generalizes the proven parseAsET pattern from events/submit.
  */
 export function parseAsLocal(dateStr: string, timeStr: string, timeZone: string): Date {
-  const naive = new Date(`${dateStr}T${timeStr}:00.000Z`)
-  const localStr = naive.toLocaleString('en-US', { timeZone })
-  const localDate = new Date(localStr)
-  const offsetMs = naive.getTime() - localDate.getTime()
-  return new Date(naive.getTime() + offsetMs)
+  const utcGuess = Date.parse(`${dateStr}T${timeStr}:00.000Z`)
+  if (Number.isNaN(utcGuess)) return new Date(NaN)
+  // Offset of `timeZone` from UTC at the guess instant. Two-digit hours with
+  // hour12:false can emit "24" at midnight — mod 24 keeps Date.UTC valid.
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(utcGuess))
+  const p: Record<string, string> = {}
+  for (const part of parts) p[part.type] = part.value
+  const wallAsUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour) % 24,
+    Number(p.minute),
+    Number(p.second)
+  )
+  return new Date(utcGuess - (wallAsUtc - utcGuess))
 }
 
 /**
