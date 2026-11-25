@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { refreshPayoutsReady } from '@/lib/stripe'
 import { OfferingForms } from './offering-forms'
 
 export const dynamic = 'force-dynamic'
@@ -67,10 +68,13 @@ function formatPrice(price: number | null): string {
  */
 export default async function BusinessDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ onboarding?: string }>
 }) {
   const { slug } = await params
+  const { onboarding } = await searchParams
 
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) redirect('/auth/signin')
@@ -81,13 +85,26 @@ export default async function BusinessDashboardPage({
   })
   if (!user) redirect('/auth/signin')
 
-  const business = await prisma.business.findUnique({
+  let business = await prisma.business.findUnique({
     where: { slug },
     include: {
       members: { where: { userId: user.id, role: 'OWNER' }, select: { id: true } },
     },
   })
   if (!business || business.members.length === 0) notFound()
+
+  // Returning from Stripe's hosted onboarding: re-read the connected account
+  // and store charges_enabled as the payouts-ready flag (server-side only).
+  if (onboarding && business.stripeAccountId) {
+    await refreshPayoutsReady(business.id)
+    business = await prisma.business.findUnique({
+      where: { slug },
+      include: {
+        members: { where: { userId: user.id, role: 'OWNER' }, select: { id: true } },
+      },
+    })
+    if (!business || business.members.length === 0) notFound()
+  }
 
   const now = new Date()
   const offerings = await prisma.offering.findMany({
@@ -145,6 +162,50 @@ export default async function BusinessDashboardPage({
           </p>
         </div>
       </div>
+
+      <section aria-labelledby="payouts-heading" className="max-w-3xl">
+        <h2 id="payouts-heading" className="text-xl font-bold text-primary mb-4">
+          Payouts
+        </h2>
+        <div className="bg-surface border border-gray-200 rounded-xl p-5 data-card">
+          {!business.stripeAccountId ? (
+            <>
+              <p className="text-sm text-gray-700">
+                Connect a Stripe account to take payments for paid classes and
+                tickets. Payouts go straight to your bank account — Nodo takes
+                no cut.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href={`/api/stripe/onboard?slug=${business.slug}`}
+                className="mt-3 inline-block px-4 py-2 rounded-md bg-primary text-primary-dark text-sm font-semibold"
+              >
+                Connect with Stripe →
+              </a>
+            </>
+          ) : business.payoutsReady ? (
+            <p className="text-sm text-gray-700">
+              <span className="font-bold text-[var(--color-success)]">Connected ✓</span>{' '}
+              — you can take payments. Paid offerings are charged to your Stripe
+              account.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-700">
+                Your Stripe account is created but onboarding isn't finished, so
+                payments are paused. Pick up where you left off.
+              </p>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href={`/api/stripe/onboard?slug=${business.slug}`}
+                className="mt-3 inline-block px-4 py-2 rounded-md bg-primary text-primary-dark text-sm font-semibold"
+              >
+                Finish Stripe onboarding →
+              </a>
+            </>
+          )}
+        </div>
+      </section>
 
       <section aria-labelledby="offerings-heading" className="max-w-3xl">
         <h2 id="offerings-heading" className="text-xl font-bold text-primary mb-4">
