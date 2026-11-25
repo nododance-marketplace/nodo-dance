@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { sendReservationConfirmation } from '@/lib/email'
 
 /**
  * Reserve a spot in a class session (M1: free classes only). Capacity is
@@ -148,6 +149,9 @@ export async function POST(
       }
 
       // Full. Signed-in users can join the waitlist; guests are told it's full.
+      // M2 (waitlist promotion): when a spot opens, the promotion email —
+      // "you're in, claim it before <claimExpiresAt>" — goes here and in the
+      // promotion flow itself. Nothing is sent while merely waiting.
       if (!userId || !userEmail) {
         return { kind: 'full' }
       }
@@ -173,6 +177,28 @@ export async function POST(
     })
 
     if (outcome.kind === 'reserved') {
+      // Transactional confirmation — awaited but wrapped so a failed email
+      // never fails the booking. Only sent on first confirmation, not on
+      // duplicate requests (idempotency means no repeat emails either).
+      if (!outcome.alreadyReserved) {
+        try {
+          await sendReservationConfirmation({
+            to: userId ? userEmail! : guestEmail!,
+            holderName: data.guestName ?? null,
+            offeringTitle: offering.title,
+            startTime: sessionRow.startDateTime,
+            timeZone: offering.timeZone,
+            venueName: offering.venueName,
+            cancellationPolicy: offering.cancellationPolicy,
+            guestToken: userId ? null : guestToken,
+          })
+        } catch (emailError) {
+          console.error(
+            '[RESERVE] Confirmation email failed (booking still confirmed):',
+            emailError
+          )
+        }
+      }
       return NextResponse.json(
         {
           success: true,

@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
+import { sendTicketConfirmation } from '@/lib/email'
 
 /**
  * Guest RSVP to an event (M1: free socials). Same transactional capacity guard
@@ -198,6 +199,29 @@ export async function POST(
         { error: 'EVENT_FULL', message: 'This event is at capacity' },
         { status: 409 }
       )
+    }
+
+    // Transactional ticket email — awaited but wrapped so a failed email
+    // never fails the RSVP. Only on first issuance; a duplicate request
+    // returns the original ticket without emailing again.
+    if (!outcome.alreadyRsvped) {
+      try {
+        await sendTicketConfirmation({
+          to: holderEmail!,
+          holderName,
+          offeringTitle: offering.title,
+          startTime: sessionRow.startDateTime,
+          timeZone: offering.timeZone,
+          venueName: offering.venueName,
+          ticketCode: outcome.ticketCode,
+          guestToken: userId ? null : guestToken,
+        })
+      } catch (emailError) {
+        console.error(
+          '[RSVP] Ticket email failed (ticket still issued):',
+          emailError
+        )
+      }
     }
 
     return NextResponse.json(
