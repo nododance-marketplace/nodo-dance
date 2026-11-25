@@ -387,3 +387,67 @@ export async function sendTicketConfirmation(data: {
     html,
   })
 }
+
+/**
+ * Waitlist promotion (M1): a spot opened up and this dancer is next in line.
+ * The claim link lands on the offering page — free classes re-reserve there,
+ * paid ones (M2) start checkout from the same page. The spot is theirs for
+ * 24 hours; after that it rolls to the next in line.
+ */
+export async function sendWaitlistPromotion(data: {
+  to: string
+  offeringTitle: string
+  offeringSlug: string
+  startTime: Date
+  timeZone: string
+  claimExpiresAt: Date
+}) {
+  const when = formatOfferingDateTime(data.startTime, data.timeZone)
+  const deadline = formatOfferingDateTime(data.claimExpiresAt, data.timeZone)
+  const link = `${APP_URL}/o/${data.offeringSlug}`
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head><style>${BOOKING_EMAIL_STYLES}</style></head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>A spot opened up 🕺</h1>
+          </div>
+          <div class="content">
+            <p>Hi there,</p>
+            <p>You're next in line for <strong>${data.offeringTitle}</strong> — and a spot just opened.</p>
+
+            <div class="info-row">
+              <span class="label">When:</span> ${when}
+            </div>
+            <div class="info-row">
+              <span class="label">Claim by:</span> ${deadline}
+            </div>
+
+            <p style="margin-top: 30px;">
+              <a href="${link}" class="button">Claim your spot</a>
+            </p>
+            <p style="margin-top: 16px; font-size: 14px;">
+              You have <strong>24 hours</strong> to claim it. If the window passes,
+              the spot goes to the next dancer in line.
+            </p>
+
+            <p style="margin-top: 30px;">See you on the floor,<br/>The Nodo Dance team</p>
+          </div>
+          <div class="footer">
+            ${BOOKING_FOOTER}
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: 'A spot opened up — claim it within 24 hours',
+    html,
+  })
+}

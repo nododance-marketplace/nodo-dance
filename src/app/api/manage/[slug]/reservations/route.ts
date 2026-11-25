@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 
 /**
  * Roster actions (M2): mark / unmark a no-show on a class reservation.
@@ -49,7 +50,7 @@ export async function PATCH(
     // The reservation must belong to THIS business — not just exist
     const reservation = await prisma.reservation.findFirst({
       where: { id: body.reservationId, offering: { businessId: business.id } },
-      select: { id: true, status: true },
+      select: { id: true, status: true, sessionId: true },
     })
     if (!reservation) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -64,6 +65,15 @@ export async function PATCH(
       data: { status: body.status },
       select: { id: true, status: true },
     })
+
+    // A no-show frees the spot — hand it to the next dancer in line (lazily,
+    // and never blocking the roster write)
+    const freedSpot =
+      ['CONFIRMED', 'CHECKED_IN'].includes(reservation.status) &&
+      !['CONFIRMED', 'CHECKED_IN'].includes(body.status)
+    if (freedSpot && reservation.sessionId) {
+      await promoteFromWaitlist(reservation.sessionId)
+    }
 
     return NextResponse.json({ success: true, status: updated.status })
   } catch (error: any) {

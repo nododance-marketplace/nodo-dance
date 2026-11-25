@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getStripe } from '@/lib/stripe'
 import { generateTicketCode } from '@/lib/holds'
 import { sendTicketConfirmation, sendReservationConfirmation } from '@/lib/email'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 
 /**
  * Stripe webhook (M2). Raw-body signature verification: Next route handlers
@@ -235,6 +236,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     return // replay
   }
 
+  let freedSpot = false
   await prisma.$transaction(async (tx) => {
     const updated = await tx.order.updateMany({
       where: { id: order.id, status: { in: ['PENDING_PAYMENT', 'PAID'] } },
@@ -253,6 +255,12 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         where: { id: order.reservation.id },
         data: { status: 'CANCELED' },
       })
+      freedSpot = true
     }
   })
+
+  // The canceled reservation frees a spot — offer it to the next in line
+  if (freedSpot && order.sessionId) {
+    await promoteFromWaitlist(order.sessionId)
+  }
 }

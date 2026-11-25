@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sendReservationConfirmation } from '@/lib/email'
+import { notifyPromotedSpots, sweepWaitlist, type PromotedSpot } from '@/lib/waitlist'
 
 /**
  * Reserve a spot in a class session (M1: free classes only). Capacity is
@@ -107,9 +108,15 @@ export async function POST(
       | { kind: 'waitlisted'; position: number }
       | { kind: 'full' }
 
+    let promotedSpots: PromotedSpot[] = []
     const outcome: ReserveOutcome = await prisma.$transaction(async (tx) => {
       // Serialize all bookings for this session on one row lock
       await tx.$queryRaw`SELECT id FROM "ClassSession" WHERE id = ${sessionRow.id} FOR UPDATE`
+
+      // Lazy waitlist sweep before any capacity decision: overdue promotions
+      // expire back into the queue, and a freed spot (cancellation, no-show,
+      // expired hold) is handed to the next in line
+      promotedSpots = await sweepWaitlist(tx, sessionRow.id)
 
       // Idempotency: a confirmed reservation wins over a duplicate request
       const existing = await tx.reservation.findFirst({
@@ -131,7 +138,26 @@ export async function POST(
       })
       const capacity = sessionRow.capacityOverride ?? offering.capacity
 
-      if (count < capacity) {
+      // Live promotions hold real spots — count them against capacity so a
+      // promoted dancer's claim can't be sniped while their window is open
+      const livePromotions = await tx.waitlistEntry.count({
+        where: { sessionId: sessionRow.id, status: 'PROMOTED', claimExpiresAt: { gt: new Date() } },
+      })
+
+      // A live promotion holds a real spot — its owner can claim even at full
+      // capacity (their slot is one of the ones being counted)
+      const myPromotion = userEmail
+        ? await tx.waitlistEntry.findFirst({
+            where: {
+              sessionId: sessionRow.id,
+              email: userEmail,
+              status: 'PROMOTED',
+              claimExpiresAt: { gt: new Date() },
+            },
+          })
+        : null
+
+      if (count + livePromotions < capacity || myPromotion) {
         const reservation = await tx.reservation.create({
           data: {
             sessionId: sessionRow.id,
@@ -141,17 +167,23 @@ export async function POST(
             guestName: userId ? null : data.guestName ?? null,
             guestToken,
             // Guests have no account yet — they are walk-in style bookings
-            source: userId ? 'ACCOUNT' : 'DROPIN',
+            source: myPromotion ? 'WAITLIST' : userId ? 'ACCOUNT' : 'DROPIN',
             status: 'CONFIRMED',
           },
         })
+        // Claiming turns the promotion into the booking itself
+        if (myPromotion) {
+          await tx.waitlistEntry.update({
+            where: { id: myPromotion.id },
+            data: { status: 'CLAIMED' },
+          })
+        }
         return { kind: 'reserved', reservationId: reservation.id, alreadyReserved: false }
       }
 
       // Full. Signed-in users can join the waitlist; guests are told it's full.
-      // M2 (waitlist promotion): when a spot opens, the promotion email —
-      // "you're in, claim it before <claimExpiresAt>" — goes here and in the
-      // promotion flow itself. Nothing is sent while merely waiting.
+      // When a spot opens later, promoteFromWaitlist emails the next in line
+      // ("claim it within 24 hours") — nothing is sent while merely waiting.
       if (!userId || !userEmail) {
         return { kind: 'full' }
       }
@@ -175,6 +207,10 @@ export async function POST(
       })
       return { kind: 'waitlisted', position: entry.position }
     })
+
+    // Promotion emails go out after the sweep's transaction has committed —
+    // a failed email never fails the request (same guard as confirmations)
+    await notifyPromotedSpots(promotedSpots)
 
     if (outcome.kind === 'reserved') {
       // Transactional confirmation — awaited but wrapped so a failed email

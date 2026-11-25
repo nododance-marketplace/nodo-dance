@@ -21,14 +21,21 @@ export function unexpiredOrderFilter(now = new Date()): Prisma.OrderWhereInput {
 
 /**
  * Lazily release stale holds. Called on checkout write paths. Cheap updateMany
- * with an index on (status, expiresAt).
+ * with an index on (status, expiresAt). Returns the session ids whose holds
+ * were released, so the caller can hand those freed spots to the waitlist.
  */
-export async function releaseExpiredOrders(): Promise<void> {
+export async function releaseExpiredOrders(): Promise<string[]> {
   const { prisma } = await import('./prisma')
+  const stale = await prisma.order.findMany({
+    where: { status: 'PENDING_PAYMENT', expiresAt: { lte: new Date() } },
+    select: { sessionId: true },
+    distinct: ['sessionId'],
+  })
   await prisma.order.updateMany({
     where: { status: 'PENDING_PAYMENT', expiresAt: { lte: new Date() } },
     data: { status: 'CANCELED' },
   })
+  return stale.map((o) => o.sessionId).filter((id): id is string => Boolean(id))
 }
 
 /**

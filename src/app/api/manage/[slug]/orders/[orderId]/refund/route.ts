@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 
 /**
  * Refund a paid order (M2). OWNER-only, business-scoped: the order must belong
@@ -66,6 +67,7 @@ export async function POST(
     )
 
     // Local flip — webhook will replay as a no-op thanks to the status guard
+    let freedSpot = false
     await prisma.$transaction(async (tx) => {
       const updated = await tx.order.updateMany({
         where: { id: order.id, status: { in: ['PENDING_PAYMENT', 'PAID'] } },
@@ -83,8 +85,14 @@ export async function POST(
           where: { id: order.reservation.id },
           data: { status: 'CANCELED' },
         })
+        freedSpot = true
       }
     })
+
+    // The canceled reservation frees a spot — offer it to the next in line
+    if (freedSpot && order.sessionId) {
+      await promoteFromWaitlist(order.sessionId)
+    }
 
     return NextResponse.json({ success: true, status: 'REFUNDED' })
   } catch (error: any) {

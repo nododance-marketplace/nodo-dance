@@ -12,6 +12,7 @@ import {
   releaseExpiredOrders,
   unexpiredOrderFilter,
 } from '@/lib/holds'
+import { promoteFromWaitlist } from '@/lib/waitlist'
 
 /**
  * Paid checkout (M2). Two paths:
@@ -84,7 +85,12 @@ export async function POST(
     }
 
     // Lazy release: stale 30-minute holds free up before anything counts them
-    await releaseExpiredOrders()
+    const releasedSessionIds = await releaseExpiredOrders()
+    // Every freed hold hands its spot to the next dancer in line (a no-op for
+    // sessions without a waitlist)
+    for (const sessionId of releasedSessionIds) {
+      await promoteFromWaitlist(sessionId)
+    }
 
     const offering = await prisma.offering.findUnique({
       where: { slug },
