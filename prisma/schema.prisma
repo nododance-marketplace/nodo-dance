@@ -18,6 +18,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Trust ladder: starts at 0. +1 when one of their events is auto-published
+  // or approved, −2 on a rejection or a reported event. High trust lowers
+  // the auto-publish bar in the validity agent.
+  trustScore Int @default(0)
+
   accounts          Account[]
   sessions          Session[]
   instructorProfile InstructorProfile?
@@ -238,6 +243,11 @@ model Event {
   updatedAt DateTime @updatedAt
 
   savedBy SavedEvent[]
+  reports EventReport[]
+
+  // How many distinct reporters have flagged this event. At 3+ the event
+  // drops back to PENDING for admin review.
+  reportCount Int @default(0)
 
   @@index([status])
   @@index([startDateTime])
@@ -245,6 +255,21 @@ model Event {
   @@index([recurrenceGroupId])
   @@index([sourceId])
   @@index([city, state])
+}
+
+// Community flagging: one report per (event, reporter). reporterKey is a
+// hashed session/IP so anonymous reporters can't double-report but never
+// store personal data.
+model EventReport {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reporterKey String // hashed session token + IP
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([eventId, reporterKey])
+  @@index([eventId])
 }
 
 model RateLimitEntry {
