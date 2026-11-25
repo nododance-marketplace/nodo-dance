@@ -22,7 +22,12 @@ import WebSocket from 'ws'
 import { createPrisma } from '../lib/db'
 import { wallTimeToUtc } from '../lib/recurrence'
 
-const NEON_URL = 'postgresql://neondb_owner:npg_CF7HJt4EOuWT@ep-restless-glade-aihi8wpy.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require'
+// Connection string comes from the environment (root .env: DATABASE_URL /
+// DIRECT_URL). Never commit real credentials.
+const NEON_URL = process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? ''
+if (!NEON_URL) {
+  throw new Error('DIRECT_URL or DATABASE_URL must be set in the environment for neon-sync')
+}
 neonConfig.webSocketConstructor = WebSocket as never
 const pool = new Pool({ connectionString: NEON_URL })
 
