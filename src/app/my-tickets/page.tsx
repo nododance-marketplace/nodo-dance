@@ -149,6 +149,17 @@ export default async function MyTicketsPage() {
     orderBy: { position: 'asc' },
   })
 
+  // M3 class packs: live cards, soonest-expiring first. Expired cards are
+  // filtered here (and everywhere) by expiresAt — status EXPIRED is bookkeeping.
+  const packsRemaining = await prisma.packPurchase.findMany({
+    where: { userId: user.id, status: 'ACTIVE', expiresAt: { gt: now }, creditsRemaining: { gt: 0 } },
+    include: {
+      pack: { select: { name: true } },
+      business: { select: { name: true, slug: true } },
+    },
+    orderBy: { expiresAt: 'asc' },
+  })
+
   const reservationRows: BookingRow[] = reservations.map((r) => {
     const ticket = ticketByOffering.get(r.offeringId) ?? null
     const styles = parseStyles(r.offering.styles)
@@ -208,7 +219,16 @@ export default async function MyTicketsPage() {
   const waitlisted = waitlistRows
 
   const hasAnything =
-    confirmed.length + pending.length + waitlisted.length + past.length > 0
+    confirmed.length + pending.length + waitlisted.length + past.length + packsRemaining.length > 0
+
+  function formatExpiry(date: Date): string {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'America/New_York',
+    })
+  }
 
   function RowCard({ row }: { row: BookingRow }) {
     const badge = STATUS_STYLE[row.status] ?? 'bg-gray-100 text-gray-800'
@@ -330,6 +350,35 @@ export default async function MyTicketsPage() {
         </div>
       ) : (
         <div className="max-w-2xl space-y-8">
+          {packsRemaining.length > 0 && (
+            <section aria-labelledby="packs-heading">
+              <h2 id="packs-heading" className="text-sm uppercase tracking-wide text-gray-500 mb-3">
+                Class packs
+              </h2>
+              <ul role="list" className="space-y-4">
+                {packsRemaining.map((p) => (
+                  <li
+                    key={p.id}
+                    className="bg-surface border border-gray-200 rounded-xl p-5 data-card"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-base font-bold text-gray-900">{p.pack.name}</h3>
+                        <p className="mt-1 text-sm text-gray-600">{p.business.name}</p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-accent-coral/15 text-accent-ink">
+                        {p.creditsRemaining} {p.creditsRemaining === 1 ? 'class' : 'classes'} left
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-gray-700">
+                      Valid through {formatExpiry(p.expiresAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {confirmed.length > 0 && (
             <section aria-labelledby="confirmed-heading">
               <h2 id="confirmed-heading" className="text-sm uppercase tracking-wide text-gray-500 mb-3">

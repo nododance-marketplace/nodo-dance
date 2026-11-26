@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 import { getStripe } from '@/lib/stripe'
 import { generateTicketCode } from '@/lib/holds'
+import { restorePackCreditIfAllowed } from '@/lib/packs'
 import { sendTicketConfirmation, sendReservationConfirmation } from '@/lib/email'
 import { promoteFromWaitlist } from '@/lib/waitlist'
 
@@ -65,9 +66,16 @@ export async function POST(request: NextRequest) {
 /**
  * Payment completed: flip the Order to PAID, then issue what was bought —
  * a Ticket (event tiers and single-price events) or a CONFIRMED reservation
- * (paid class drop-in) — and send the matching confirmation email.
+ * (paid class drop-in) — and send the matching confirmation email. Class
+ * packs (M3) carry packPurchaseId metadata instead of orderId and flip their
+ * PackPurchase PENDING_PAYMENT → ACTIVE.
  */
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  if (session.metadata?.packPurchaseId) {
+    await handlePackCheckoutCompleted(session)
+    return
+  }
+
   const orderId = session.metadata?.orderId
   if (!orderId) {
     console.error('[WEBHOOK] checkout.session.completed without orderId metadata — ignoring')
@@ -212,6 +220,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 /**
+ * Pack checkout completed (M3): flip the card PENDING_PAYMENT → ACTIVE so the
+ * dancer can spend it. The status guard makes replays no-ops, same as orders.
+ */
+async function handlePackCheckoutCompleted(session: Stripe.Checkout.Session) {
+  const packPurchaseId = session.metadata?.packPurchaseId
+  if (!packPurchaseId) return
+
+  const updated = await prisma.packPurchase.updateMany({
+    where: { id: packPurchaseId, status: 'PENDING_PAYMENT' },
+    data: { status: 'ACTIVE' },
+  })
+  if (updated.count === 0) {
+    console.log(`[WEBHOOK] Pack purchase ${packPurchaseId} not pending — replay or refunded, skipping`)
+    return
+  }
+
+  const purchase = await prisma.packPurchase.findUnique({
+    where: { id: packPurchaseId },
+    include: { pack: { select: { name: true, credits: true } } },
+  })
+  console.log(
+    `[WEBHOOK] Pack purchase ${packPurchaseId} activated: ${purchase?.pack.credits ?? '?'} credits (${purchase?.pack.name ?? 'unknown pack'})`
+  )
+}
+
+/**
  * Refund landed: mark the Order REFUNDED and demote what it bought — the
  * ticket becomes REFUNDED (door check-in will reject it), a paid class
  * reservation is canceled.
@@ -256,6 +290,12 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         data: { status: 'CANCELED' },
       })
       freedSpot = true
+      // M3: a pack-funded booking returns its credit when the policy window
+      // still allows cancellation — a no-op for non-pack reservations.
+      const restore = await restorePackCreditIfAllowed(tx, order.reservation.id)
+      if (restore !== 'NOT_PACK') {
+        console.log(`[WEBHOOK] Pack credit restore for reservation ${order.reservation.id}: ${restore}`)
+      }
     }
   })
 

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 type Phase =
   | { kind: 'idle' }
   | { kind: 'submitting' }
-  | { kind: 'confirmed'; ticketToken?: string; waitlisted?: false }
+  | { kind: 'confirmed'; ticketToken?: string; waitlisted?: false; packCreditsRemaining?: number }
   | { kind: 'already' }
   | { kind: 'waitlisted'; position: number }
   | { kind: 'full' }
@@ -33,6 +33,8 @@ interface Props {
   sessionId: string
   /** M2: ticket tiers for a paid/ticketed event. */
   tiers?: Tier[]
+  /** M3: the signed-in dancer holds a pack that covers this class. */
+  packHint?: { credits: number; name: string } | null
 }
 
 function fmt(n: number): string {
@@ -54,6 +56,7 @@ export function BookPanel({
   capacity,
   sessionId,
   tiers,
+  packHint,
 }: Props) {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
   const [guestName, setGuestName] = useState('')
@@ -110,7 +113,12 @@ export function BookPanel({
       } else if (data.alreadyReserved || data.alreadyRsvped) {
         setPhase({ kind: 'already' })
       } else {
-        setPhase({ kind: 'confirmed', ticketToken: data.guestToken })
+        setPhase({
+          kind: 'confirmed',
+          ticketToken: data.guestToken,
+          packCreditsRemaining:
+            typeof data.packCreditsRemaining === 'number' ? data.packCreditsRemaining : undefined,
+        })
       }
     } catch {
       setPhase({ kind: 'error', message: 'Network error — please try again.' })
@@ -234,6 +242,13 @@ export function BookPanel({
             ? 'Your spot is confirmed. See you on the dance floor.'
             : 'Your spot is confirmed — your ticket is ready.'}
         </p>
+        {typeof phase.packCreditsRemaining === 'number' && (
+          <p className="mt-2 text-sm font-medium text-accent-ink">
+            {phase.packCreditsRemaining === 1
+              ? 'That used the last credit on your pack.'
+              : `${phase.packCreditsRemaining} classes left on your pack.`}
+          </p>
+        )}
         {phase.ticketToken && (
           <Link
             href={`/t/${phase.ticketToken}`}
@@ -301,6 +316,14 @@ export function BookPanel({
           </>
         )}
       </p>
+
+      {packHint && packHint.credits > 0 && !soldOut && (
+        <p className="mt-2 text-sm font-medium text-accent-ink">
+          {packHint.credits === 1
+            ? `You have 1 class left on your ${packHint.name} — booking uses it.`
+            : `You have ${packHint.credits} classes left on your ${packHint.name} — booking uses one.`}
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         {!isSignedIn && (

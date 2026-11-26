@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { pickApplicablePack, spendablePackFilter } from '@/lib/packs'
 import { BookPanel } from './book-panel'
 
 export const dynamic = 'force-dynamic'
@@ -136,6 +137,25 @@ export default async function OfferingPage({
       price: t.price,
       remaining: Math.max(t.inventory - t.sold - (holdsByTier.get(t.id) ?? 0), 0),
     }))
+  }
+
+  // M3: a signed-in pack holder sees what's left on the card that would pay
+  // for this class (soonest-expiring applicable pack). Purely informational —
+  // the reserve route re-checks everything server-side.
+  let packHint: { credits: number; name: string } | null = null
+  if (isSignedIn && offering.type === 'CLASS') {
+    const viewer = session?.user?.email
+      ? await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+      : null
+    if (viewer) {
+      const cards = await prisma.packPurchase.findMany({
+        where: spendablePackFilter(viewer.id, offering.businessId),
+        include: { pack: { select: { name: true, eligibleStyles: true } } },
+        orderBy: { expiresAt: 'asc' },
+      })
+      const pack = pickApplicablePack(cards, offering.styles)
+      if (pack) packHint = { credits: pack.creditsRemaining, name: pack.pack.name }
+    }
   }
 
   return (
@@ -290,6 +310,7 @@ export default async function OfferingPage({
                 capacity={capacity}
                 sessionId={next.id}
                 tiers={tiers.length > 0 ? tiers : undefined}
+                packHint={packHint}
               />
             )}
           </div>

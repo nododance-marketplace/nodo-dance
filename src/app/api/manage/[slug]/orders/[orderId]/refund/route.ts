@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
+import { restorePackCreditIfAllowed } from '@/lib/packs'
 import { promoteFromWaitlist } from '@/lib/waitlist'
 
 /**
@@ -86,6 +87,12 @@ export async function POST(
           data: { status: 'CANCELED' },
         })
         freedSpot = true
+        // M3: a pack-funded booking returns its credit when the policy window
+        // still allows cancellation — a no-op for non-pack reservations.
+        const restore = await restorePackCreditIfAllowed(tx, order.reservation.id)
+        if (restore !== 'NOT_PACK') {
+          console.log(`[REFUND] Pack credit restore for reservation ${order.reservation.id}: ${restore}`)
+        }
       }
     })
 

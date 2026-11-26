@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit'
 import { sendReservationConfirmation } from '@/lib/email'
 import { notifyPromotedSpots, sweepWaitlist, type PromotedSpot } from '@/lib/waitlist'
+import { pickApplicablePack, spendPackCredit, spendablePackFilter } from '@/lib/packs'
 
 /**
  * Reserve a spot in a class session (M1: free classes only). Capacity is
@@ -104,7 +105,7 @@ export async function POST(
     const guestToken = userId ? null : randomBytes(24).toString('hex')
 
     type ReserveOutcome =
-      | { kind: 'reserved'; reservationId: string; alreadyReserved: boolean }
+      | { kind: 'reserved'; reservationId: string; alreadyReserved: boolean; packCreditsRemaining?: number }
       | { kind: 'waitlisted'; position: number }
       | { kind: 'full' }
 
@@ -158,6 +159,22 @@ export async function POST(
         : null
 
       if (count + livePromotions < capacity || myPromotion) {
+        // M3: a spendable pack covering this class's style pays with one
+        // credit. The guarded decrement runs inside this same transaction —
+        // creditsRemaining can never go negative, so two concurrent bookings
+        // can never double-spend the last credit. If the card raced to zero
+        // mid-booking, the dancer still gets the spot as a regular booking.
+        let packPurchaseId: string | null = null
+        if (userId) {
+          const candidates = await tx.packPurchase.findMany({
+            where: spendablePackFilter(userId, offering.businessId),
+            include: { pack: { select: { name: true, eligibleStyles: true } } },
+            orderBy: { expiresAt: 'asc' },
+          })
+          const pack = pickApplicablePack(candidates, offering.styles)
+          if (pack) packPurchaseId = pack.id
+        }
+
         const reservation = await tx.reservation.create({
           data: {
             sessionId: sessionRow.id,
@@ -167,10 +184,31 @@ export async function POST(
             guestName: userId ? null : data.guestName ?? null,
             guestToken,
             // Guests have no account yet — they are walk-in style bookings
-            source: myPromotion ? 'WAITLIST' : userId ? 'ACCOUNT' : 'DROPIN',
+            source: packPurchaseId ? 'PACK' : myPromotion ? 'WAITLIST' : userId ? 'ACCOUNT' : 'DROPIN',
             status: 'CONFIRMED',
           },
         })
+
+        let packCreditsRemaining: number | undefined
+        if (packPurchaseId) {
+          const spent = await spendPackCredit(tx, packPurchaseId, reservation.id)
+          if (spent) {
+            const card = await tx.packPurchase.findUnique({
+              where: { id: packPurchaseId },
+              select: { creditsRemaining: true },
+            })
+            packCreditsRemaining = card?.creditsRemaining ?? undefined
+          } else {
+            // Last credit was spent by a concurrent booking — keep the spot,
+            // pay the regular way
+            packPurchaseId = null
+            await tx.reservation.update({
+              where: { id: reservation.id },
+              data: { source: 'ACCOUNT' },
+            })
+          }
+        }
+
         // Claiming turns the promotion into the booking itself
         if (myPromotion) {
           await tx.waitlistEntry.update({
@@ -178,7 +216,12 @@ export async function POST(
             data: { status: 'CLAIMED' },
           })
         }
-        return { kind: 'reserved', reservationId: reservation.id, alreadyReserved: false }
+        return {
+          kind: 'reserved',
+          reservationId: reservation.id,
+          alreadyReserved: false,
+          ...(packPurchaseId ? { packCreditsRemaining } : {}),
+        }
       }
 
       // Full. Signed-in users can join the waitlist; guests are told it's full.
@@ -241,6 +284,8 @@ export async function POST(
           reservationId: outcome.reservationId,
           status: 'CONFIRMED',
           alreadyReserved: outcome.alreadyReserved,
+          // Set when a class pack paid for this spot — the panel shows what's left
+          packCreditsRemaining: outcome.packCreditsRemaining,
           // Only for guests, and only on the first response — it is the key
           // to the secure link later, so we do not hand it out repeatedly
           guestToken: !outcome.alreadyReserved && guestToken ? guestToken : undefined,

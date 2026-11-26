@@ -704,8 +704,10 @@ model Business {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  members   BusinessMember[]
-  offerings Offering[]
+  members      BusinessMember[]
+  offerings    Offering[]
+  classPacks   ClassPack[]
+  packPurchases PackPurchase[]
 }
 
 model BusinessMember {
@@ -792,6 +794,7 @@ model Reservation {
   status     String        @default("CONFIRMED") // CONFIRMED | PENDING_PAYMENT | WAITLISTED | CANCELED | NO_SHOW | CHECKED_IN
   paymentRef String? @unique // Order.id for paid drop-ins (M2)
   order      Order?  @relation(fields: [paymentRef], references: [id], onDelete: SetNull)
+  packSpend  PackSpend?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
@@ -888,4 +891,63 @@ model Order {
   @@index([sessionId, status])
   @@index([tierId, status])
   @@index([status, expiresAt])
+}
+
+// M3 class packs: a business sells a card of N credits; dancers spend one per
+// eligible class at that business. Server-side spend only — the credit math
+// never touches the client (spec rule 3).
+model ClassPack {
+  id             String   @id @default(cuid())
+  businessId     String
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String // "10-Class Card"
+  price          Float // 0 = free preview pack, no Stripe needed
+  currency       String   @default("usd")
+  credits        Int
+  eligibleStyles String   @default("[]") // JSON array; empty = all styles
+  monthsValid    Int      @default(6)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  purchases PackPurchase[]
+
+  @@index([businessId])
+}
+
+// One dancer's card. status is a small state machine: PENDING_PAYMENT →
+// ACTIVE → EXHAUSTED (or EXPIRED). Every read also filters on expiresAt, so a
+// lapsed card is unusable even before a sweep flips its status.
+model PackPurchase {
+  id               String    @id @default(cuid())
+  packId           String
+  pack             ClassPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  userId           String
+  businessId       String
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  creditsTotal     Int
+  creditsRemaining Int
+  purchasedAt      DateTime
+  expiresAt        DateTime
+  status           String    @default("PENDING_PAYMENT") // PENDING_PAYMENT | ACTIVE | EXHAUSTED | EXPIRED
+
+  spends PackSpend[]
+
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+// The ledger: exactly one spend per reservation (unique reservationId). The
+// reservation may not reference its pack directly, so restoring a credit on
+// cancellation = delete the spend row + increment back — idempotent by
+// construction, since a second restore finds no row to delete.
+model PackSpend {
+  id             String       @id @default(cuid())
+  packPurchaseId String
+  packPurchase   PackPurchase @relation(fields: [packPurchaseId], references: [id], onDelete: Cascade)
+  reservationId  String       @unique
+  reservation    Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  credits        Int
+  createdAt      DateTime     @default(now())
+
+  @@index([packPurchaseId])
 }
