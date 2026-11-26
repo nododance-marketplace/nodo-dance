@@ -214,6 +214,9 @@ export default async function BusinessDashboardPage({
         <Link href={`/manage/${slug}/guests`} className="font-medium text-accent-ink hover:underline">
           Event guest lists →
         </Link>
+        <Link href={`/manage/${slug}/reporting`} className="font-medium text-accent-ink hover:underline">
+          Reporting →
+        </Link>
         <Link href="/checkin" className="font-medium text-accent-ink hover:underline">
           Door check-in →
         </Link>
